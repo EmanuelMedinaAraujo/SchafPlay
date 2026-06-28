@@ -1,0 +1,6 @@
+{
+  "name": "Schafkopf",
+  "description": "A mobile-first Bavarian card game (Schafkopf) PWA with local AI opponents, statistics, serverless offline/online multiplayer, and Gemini-powered game analysis.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
