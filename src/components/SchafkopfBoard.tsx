@@ -82,6 +82,7 @@ export default function SchafkopfBoard({
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const [confirmRestart, setConfirmRestart] = useState<boolean>(false);
   const [showLastTrickModal, setShowLastTrickModal] = useState<boolean>(false);
+  const [showTrickHistory, setShowTrickHistory] = useState<boolean>(false);
 
   // Pass & Play hand concealment state to prevent screen cheating
   const [isHandRevealed, setIsHandRevealed] = useState<boolean>(false);
@@ -186,6 +187,7 @@ export default function SchafkopfBoard({
     setIsCollecting(false);
     setIsHandRevealed(!isMultiplayer); // Auto-reveal for single player
     setHasClickedInvalid(false);
+    setShowTrickHistory(false);
   };
 
   useEffect(() => {
@@ -1501,7 +1503,7 @@ export default function SchafkopfBoard({
 
       </div>
 
-      {/* Round Tally Overlay (Fitted inside central area) */}
+      {/* Round Tally Overlay (Full-screen Popup Modal) */}
       <AnimatePresence>
         {gameState.status === "ROUND_OVER" && (() => {
           const limit = gamesPerList || 12;
@@ -1511,7 +1513,9 @@ export default function SchafkopfBoard({
           const sortedListStandings = [...gameState.players].map(p => ({
             id: p.id,
             name: p.name,
-            total: listStandings[p.id] || 0
+            total: listStandings[p.id] || 0,
+            changeScore: lastRoundScoreChange[p.id] || 0,
+            pointsCollected: p.pointsCollected
           })).sort((a, b) => b.total - a.total);
 
           const listWinnerName = sortedListStandings[0]?.name;
@@ -1519,99 +1523,250 @@ export default function SchafkopfBoard({
 
           return (
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="rounded-2xl border border-neutral-800 bg-[#0d0d10] p-4 shadow-2xl text-center space-y-3 z-30 max-w-sm mx-auto"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4 overflow-y-auto"
             >
-              {isListCompleted ? (
-                <div className="space-y-1.5 text-center">
-                  <Trophy className="h-9 w-9 text-amber-400 mx-auto animate-bounce" />
-                  <h3 className="text-sm font-black text-white uppercase tracking-wider">
-                    {language === "de" ? "Liste beendet!" : "List Completed!"}
-                  </h3>
-                  <p className="text-[10px] text-neutral-400">
-                    {language === "de"
-                      ? `${limit} von ${limit} Spielen absolviert.`
-                      : `${limit} of ${limit} games played.`}
-                  </p>
-                  <p className="text-xs font-black text-amber-400 uppercase tracking-wide">
-                    👑 {listWinnerName} ({listWinnerScore >= 0 ? "+" : ""}{listWinnerScore} {language === "de" ? "Punkte" : "pts"})
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-1 text-center">
-                  <Trophy className="h-7 w-7 text-amber-500 mx-auto" />
-                  <h3 className="text-xs font-black text-white uppercase tracking-wider">
-                    {language === "de" ? `Spiel ${gamesPlayedInList} von ${limit}` : `Game ${gamesPlayedInList} of ${limit}`}
-                  </h3>
-                  <p className="text-xs font-black text-emerald-400 uppercase tracking-wide leading-tight mt-1">
-                    {getRoundSummary().scoreStr}
-                  </p>
-                  <p className="text-[9px] text-slate-400 max-w-xs mx-auto leading-normal">
-                    {getRoundSummary().details}
-                  </p>
-                </div>
-              )}
-
-              {/* Standing List showing changes & cumulative totals */}
-              <div className="bg-[#07080b] rounded-xl p-2.5 border border-neutral-850 max-w-xs mx-auto space-y-1.5 text-left">
-                <span className="text-[8px] font-black uppercase text-neutral-500 tracking-wider block border-b border-neutral-850/50 pb-1">
-                  {isListCompleted
-                    ? (language === "de" ? "Endstand der Liste" : "Final List Standings")
-                    : (language === "de" ? "Aktueller Listenstand" : "Current List Standings")}
-                </span>
-                <div className="grid grid-cols-1 gap-1 text-[10px] font-bold">
-                  {(isListCompleted ? sortedListStandings : gameState.players).map(p => {
-                    const totalScore = listStandings[p.id] || 0;
-                    const changeScore = lastRoundScoreChange[p.id] || 0;
-                    return (
-                      <div key={p.id} className="flex justify-between items-center py-0.5">
-                        <span className="text-slate-400">{p.name}:</span>
-                        <div className="flex items-center gap-2">
-                          {!isListCompleted && (
-                            <span className={`text-[8.5px] font-extrabold ${changeScore > 0 ? "text-emerald-500" : changeScore < 0 ? "text-rose-500" : "text-neutral-500"}`}>
-                              {changeScore > 0 ? "+" : ""}{changeScore}
-                            </span>
-                          )}
-                          <span className={`font-black ${totalScore > 0 ? "text-emerald-400" : totalScore < 0 ? "text-rose-400" : "text-neutral-300"}`}>
-                            {totalScore >= 0 ? "+" : ""}{totalScore}
-                          </span>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="w-full max-w-lg bg-[#0d0d10] border border-neutral-800 rounded-3xl p-6 shadow-2xl space-y-5 relative text-left"
+              >
+                {!showTrickHistory ? (
+                  <>
+                    {/* Header */}
+                    <div className="text-center space-y-2">
+                      {isListCompleted ? (
+                        <div className="space-y-1.5">
+                          <Trophy className="h-12 w-12 text-amber-400 mx-auto animate-bounce" />
+                          <h3 className="text-lg font-black text-white uppercase tracking-wider">
+                            {language === "de" ? "Liste beendet!" : "List Completed!"}
+                          </h3>
+                          <p className="text-xs text-neutral-400">
+                            {language === "de"
+                              ? `${limit} von ${limit} Spielen absolviert.`
+                              : `${limit} of ${limit} games played.`}
+                          </p>
+                          <p className="text-sm font-black text-amber-400 uppercase tracking-wide">
+                            👑 {listWinnerName} ({listWinnerScore >= 0 ? "+" : ""}{listWinnerScore} {language === "de" ? "Punkte" : "pts"})
+                          </p>
                         </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <Trophy className="h-9 w-9 text-amber-500 mx-auto" />
+                          <h3 className="text-sm font-black text-white uppercase tracking-wider">
+                            {language === "de" ? `Spiel ${gamesPlayedInList} von ${limit}` : `Game ${gamesPlayedInList} of ${limit}`}
+                          </h3>
+                          <p className="text-sm font-black text-emerald-400 uppercase tracking-wide leading-tight mt-1">
+                            {getRoundSummary().scoreStr}
+                          </p>
+                          <p className="text-xs text-slate-400 max-w-xs mx-auto leading-normal">
+                            {getRoundSummary().details}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Standings Table */}
+                    <div className="space-y-2">
+                      <div className="overflow-hidden rounded-2xl border border-neutral-850 bg-[#07080b]/80">
+                        <table className="w-full text-left border-collapse text-[11px] sm:text-xs">
+                          <thead>
+                            <tr className="border-b border-neutral-850 bg-[#0c0d12]/50 text-[9px] sm:text-[10px] uppercase font-black tracking-wider text-neutral-400">
+                              <th className="px-3 py-2.5 text-center">{language === "de" ? "Platz" : "Rank"}</th>
+                              <th className="px-3 py-2.5">{language === "de" ? "Spieler" : "Player"}</th>
+                              <th className="px-3 py-2.5 text-right">{language === "de" ? "Augen (Runde)" : "Eyes (Round)"}</th>
+                              <th className="px-3 py-2.5 text-right">{language === "de" ? "Punkte (Runde)" : "Score (Round)"}</th>
+                              <th className="px-3 py-2.5 text-right">{language === "de" ? "Gesamt" : "Total"}</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-neutral-900 font-semibold">
+                            {sortedListStandings.map((p, idx) => {
+                              const isFirst = idx === 0;
+
+                              let rankBadge = "";
+                              if (isFirst) {
+                                rankBadge = language === "de" ? "🏆 1. (Erster)" : "🏆 1st (First)";
+                              } else {
+                                rankBadge = `${idx + 1}.`;
+                              }
+
+                              return (
+                                <tr
+                                  key={p.id}
+                                  className={`${
+                                    isFirst ? "bg-emerald-500/5" : ""
+                                  } hover:bg-white/5 transition-colors`}
+                                >
+                                  <td className="px-3 py-2.5 text-center font-bold">
+                                    <span
+                                      className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-black ${
+                                        isFirst ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20" :
+                                        "bg-neutral-800 text-neutral-400"
+                                      }`}
+                                    >
+                                      {rankBadge}
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-2.5 text-slate-200">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-bold">{p.name}</span>
+                                      {p.id === "p1" && !isMultiplayer && (
+                                        <span className="text-[8px] bg-blue-500/15 text-blue-400 border border-blue-500/20 px-1.5 py-0.2 rounded font-black uppercase">
+                                          {language === "de" ? "Du" : "You"}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-3 py-2.5 text-right font-bold text-slate-300">
+                                    {p.pointsCollected} / 120
+                                  </td>
+                                  <td className="px-3 py-2.5 text-right font-black">
+                                    <span className={`${p.changeScore > 0 ? "text-emerald-400" : p.changeScore < 0 ? "text-rose-400" : "text-neutral-500"}`}>
+                                      {p.changeScore > 0 ? "+" : ""}{p.changeScore}
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-2.5 text-right font-black text-white">
+                                    <span className={`px-2 py-0.5 rounded-lg ${p.total > 0 ? "bg-emerald-500/10 text-emerald-400" : p.total < 0 ? "bg-rose-500/10 text-rose-400" : "bg-neutral-800/50 text-neutral-400"}`}>
+                                      {p.total >= 0 ? "+" : ""}{p.total}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
+                    </div>
 
-              <div className="flex gap-2 justify-center max-w-xs mx-auto pt-1">
-                {isListCompleted ? (
-                  <button
-                    onClick={() => {
-                      setListStandings({ p1: 0, p2: 0, p3: 0, p4: 0 });
-                      setGamesPlayedInList(0);
-                      initGame();
-                    }}
-                    className="flex-1 rounded-xl border border-amber-950/30 bg-amber-950/80 text-amber-400 py-2.5 text-[9px] font-black uppercase tracking-wider hover:bg-amber-900 transition-all cursor-pointer"
-                  >
-                    {language === "de" ? "Neue Liste" : "New List"}
-                  </button>
+                    {/* Action Buttons */}
+                    <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                      <button
+                        onClick={() => setShowTrickHistory(true)}
+                        className="flex-1 rounded-xl border border-neutral-800 bg-neutral-950 hover:bg-neutral-900 py-3 text-[10px] font-black uppercase text-neutral-300 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        {language === "de" ? "Spielverlauf" : "View History"}
+                      </button>
+
+                      {isListCompleted ? (
+                        <button
+                          onClick={() => {
+                            setListStandings({ p1: 0, p2: 0, p3: 0, p4: 0 });
+                            setGamesPlayedInList(0);
+                            initGame();
+                          }}
+                          className="flex-1 rounded-xl border border-amber-950/30 bg-amber-950/80 text-amber-400 py-3 text-[10px] font-black uppercase tracking-wider hover:bg-amber-900 transition-all cursor-pointer"
+                        >
+                          {language === "de" ? "Neue Liste" : "New List"}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={initGame}
+                          className="flex-1 rounded-xl border border-neutral-800 bg-neutral-950 py-3 text-[10px] font-black uppercase text-slate-300 hover:bg-neutral-900 transition-all cursor-pointer"
+                        >
+                          {language === "de" ? "Nächstes Spiel" : "Play Next"}
+                        </button>
+                      )}
+
+                      <button
+                        onClick={handleProcedToAnalysis}
+                        className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-550 text-white font-black text-[10px] py-3 uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer shadow-lg"
+                      >
+                        {language === "de" ? "Spielanalyse" : "Get Coaching"}
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </>
                 ) : (
-                  <button
-                    onClick={initGame}
-                    className="flex-1 rounded-xl border border-neutral-800 bg-neutral-950 py-2.5 text-[9px] font-black uppercase text-slate-300 hover:bg-neutral-900 transition-all cursor-pointer"
-                  >
-                    {language === "de" ? "Nächstes Spiel" : "Play Next"}
-                  </button>
-                )}
+                  <>
+                    {/* Trick History Sub-view */}
+                    <div className="flex items-center justify-between border-b border-neutral-850 pb-3">
+                      <div className="flex items-center gap-2">
+                        <Trophy className="h-5 w-5 text-amber-500" />
+                        <h3 className="text-sm font-black text-white uppercase tracking-wider">
+                          {language === "de" ? "Spielverlauf (Stiche)" : "Trick History"}
+                        </h3>
+                      </div>
+                      <button
+                        onClick={() => setShowTrickHistory(false)}
+                        className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-white transition-all cursor-pointer"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
 
-                <button
-                  onClick={handleProcedToAnalysis}
-                  className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-550 text-white font-black text-[9px] py-2.5 uppercase tracking-wider transition-all flex items-center justify-center gap-0.5 cursor-pointer shadow-lg"
-                >
-                  {language === "de" ? "Spielanalyse" : "Get Coaching"}
-                  <ArrowRight className="h-3 w-3" />
-                </button>
-              </div>
+                    {/* Scrollable list of tricks */}
+                    <div className="space-y-3 max-h-[55vh] overflow-y-auto pr-1">
+                      {gameState.tricks.map((trick, index) => {
+                        const winnerName = gameState.players.find(p => p.id === trick.winnerId)?.name || trick.winnerId;
+                        const leaderName = gameState.players.find(p => p.id === trick.leaderId)?.name || trick.leaderId;
+                        return (
+                          <div
+                            key={trick.id}
+                            className="p-3 rounded-2xl border border-neutral-850 bg-[#07080b]/60 flex flex-col gap-2.5"
+                          >
+                            <div className="flex justify-between items-center border-b border-neutral-900 pb-1.5">
+                              <span className="text-[10px] font-black text-amber-400 uppercase tracking-wider">
+                                {language === "de" ? `Stich ${index + 1}` : `Trick ${index + 1}`}
+                              </span>
+                              <span className="text-[9px] text-neutral-500 font-medium">
+                                {language === "de" ? `Ausspieler: ` : `Led by: `}
+                                <span className="text-neutral-300 font-bold">{leaderName}</span>
+                              </span>
+                            </div>
+
+                            {/* Played cards in order */}
+                            <div className="grid grid-cols-4 gap-1.5 py-1 justify-items-center">
+                              {trick.playedCards.map((played) => {
+                                const player = gameState.players.find(p => p.id === played.playerId);
+                                const isWinner = trick.winnerId === played.playerId;
+                                return (
+                                  <div key={played.card.id} className="flex flex-col items-center space-y-1">
+                                    <span className={`text-[8px] font-bold truncate max-w-[70px] ${isWinner ? "text-amber-400 font-black" : "text-neutral-400"}`}>
+                                      {player?.name || played.playerId}
+                                    </span>
+                                    <div className={`relative rounded-xl transition-all ${isWinner ? "ring-2 ring-amber-400 shadow-md shadow-amber-400/10 scale-105" : "opacity-80"}`}>
+                                      {renderCardFace(played.card, { isPlayed: true })}
+                                      {isWinner && (
+                                        <span className="absolute -top-1 -right-1 text-[7px] bg-amber-500 text-slate-950 px-1 rounded-full leading-none font-black shadow-sm z-30">
+                                          ★
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            <div className="flex items-center justify-between bg-neutral-900/40 px-3 py-1.5 rounded-xl border border-neutral-850/40">
+                              <div className="flex items-center gap-1.5">
+                                <Trophy className="h-3.5 w-3.5 text-amber-500" />
+                                <span className="text-[9px] text-neutral-400 font-semibold">
+                                  {language === "de" ? "Stichgewinner:" : "Trick Winner:"}
+                                </span>
+                              </div>
+                              <span className="text-[10px] font-black text-white">{winnerName}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Footer / Close Button */}
+                    <div className="pt-2">
+                      <button
+                        onClick={() => setShowTrickHistory(false)}
+                        className="w-full rounded-xl bg-neutral-850 hover:bg-neutral-800 text-white font-black text-[10px] py-3 uppercase tracking-wider transition-all cursor-pointer text-center"
+                      >
+                        {language === "de" ? "Zurück zur Übersicht" : "Back to Summary"}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </motion.div>
             </motion.div>
           );
         })()}
