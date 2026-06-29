@@ -29,6 +29,7 @@ import AnalysisView from "./components/AnalysisView";
 import MultiplayerView from "./components/MultiplayerView";
 import SettingsView from "./components/SettingsView";
 import { translations, Language } from "./lib/i18n";
+import { wsClient } from "./utils/websocketClient";
 
 const STATS_KEY = "schafkopf_pwa_stats";
 const NAME_KEY = "schafkopf_pwa_username";
@@ -74,6 +75,42 @@ export default function App() {
   // Active multiplayer state
   const [isMultiplayer, setIsMultiplayer] = useState<boolean>(false);
   const [multiplayerPlayers, setMultiplayerPlayers] = useState<{ name: string; isHuman: boolean; difficulty?: Difficulty }[]>([]);
+
+  // WebSocket Lobby States
+  const [wsStatus, setWsStatus] = useState<any>("disconnected");
+  const [wsLobby, setWsLobby] = useState<any>(null);
+  const [onlineGameState, setOnlineGameState] = useState<any>(null);
+  const [wsError, setWsError] = useState<string | null>(null);
+  const [isOnlineGame, setIsOnlineGame] = useState<boolean>(false);
+  const [myPlayerId, setMyPlayerId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = wsClient.subscribe((state) => {
+      setWsStatus(state.status);
+      setWsLobby(state.lobby);
+      setOnlineGameState(state.gameState);
+      setWsError(state.error);
+      setMyPlayerId(state.playerId);
+
+      if (state.gameState) {
+        setIsOnlineGame(true);
+        setIsMultiplayer(true);
+        setActiveTab("play");
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "multiplayer") {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${protocol}//${window.location.host}`;
+      wsClient.connect(wsUrl);
+    }
+  }, [activeTab]);
 
   // Current analysis targets
   const [lastGameHand, setLastGameHand] = useState<Card[]>([]);
@@ -315,9 +352,20 @@ export default function App() {
         onShowRules={() => setIsRulesOpen(true)}
         isGameFocusMode={true}
         setIsGameFocusMode={() => {}}
-        onBackToMenu={() => setActiveTab("home")}
+        onBackToMenu={() => {
+          if (isOnlineGame) {
+            wsClient.leaveLobby();
+            setIsOnlineGame(false);
+            setOnlineGameState(null);
+          }
+          setActiveTab("home");
+        }}
         showPointsDuringGame={showPointsDuringGame}
         gamesPerList={gamesPerList}
+        isOnline={isOnlineGame}
+        onlineGameState={onlineGameState}
+        playerId={myPlayerId || undefined}
+        onSendPlayerAction={(action) => wsClient.send(action)}
       />
         <RulesModal isOpen={isRulesOpen} onClose={() => setIsRulesOpen(false)} language={language} />
       </div>
@@ -491,24 +539,12 @@ export default function App() {
                 language={language}
                 playerName={playerName}
                 onStartPassAndPlay={handleStartPassAndPlay}
-                onJoinPeerGame={(peerId) => {
-                  alert(`Direct Peer Network Connection established with code ${peerId}! Launching local lobby...`);
-                  handleStartPassAndPlay([
-                    { name: playerName, isHuman: true },
-                    { name: `Peer [${peerId.slice(3, 6)}]`, isHuman: true },
-                    { name: "Sepp (AI)", isHuman: false },
-                    { name: "Moni (AI)", isHuman: false }
-                  ]);
-                }}
-                onHostPeerGame={() => {
-                  alert("Local Hotspot server hosted on channel 1! Waiting for peer devices on 0.0.0.0...");
-                  handleStartPassAndPlay([
-                    { name: playerName, isHuman: true },
-                    { name: "Hans (AI)", isHuman: false },
-                    { name: "Sepp (AI)", isHuman: false },
-                    { name: "Moni (AI)", isHuman: false }
-                  ]);
-                }}
+                lobby={wsLobby}
+                connectionStatus={wsStatus}
+                errorMessage={wsError}
+                onHostLobby={(maxHumans) => wsClient.createLobby(playerName, maxHumans)}
+                onJoinLobby={(code) => wsClient.joinLobby(playerName, code)}
+                onLeaveLobby={() => wsClient.leaveLobby()}
               />
             </div>
           </div>

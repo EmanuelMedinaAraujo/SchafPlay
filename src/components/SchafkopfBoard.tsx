@@ -43,6 +43,10 @@ interface SchafkopfBoardProps {
   onBackToMenu?: () => void;
   showPointsDuringGame?: boolean;
   gamesPerList?: number;
+  isOnline?: boolean;
+  onlineGameState?: GameState | null;
+  playerId?: string;
+  onSendPlayerAction?: (action: any) => void;
 }
 
 export default function SchafkopfBoard({
@@ -59,6 +63,10 @@ export default function SchafkopfBoard({
   onBackToMenu,
   showPointsDuringGame = true,
   gamesPerList = 12,
+  isOnline = false,
+  onlineGameState = null,
+  playerId,
+  onSendPlayerAction,
 }: SchafkopfBoardProps) {
   const [gameState, setGameState] = useState<GameState>({
     status: "LOBBY",
@@ -75,6 +83,22 @@ export default function SchafkopfBoard({
 
   const [startingHand, setStartingHand] = useState<Card[]>([]);
   const [tricksPlayed, setTricksPlayed] = useState<Trick[]>([]);
+
+  // Sync with online game state if online
+  useEffect(() => {
+    if (isOnline && onlineGameState) {
+      setGameState(onlineGameState);
+      if (onlineGameState.tricks) {
+        setTricksPlayed(onlineGameState.tricks);
+      }
+      if (playerId) {
+        const me = onlineGameState.players.find((p: any) => p.id === playerId);
+        if (me && me.cards && me.cards.length > 0 && startingHand.length === 0) {
+          setStartingHand([...me.cards]);
+        }
+      }
+    }
+  }, [isOnline, onlineGameState, playerId, startingHand.length]);
 
   const [biddingIndex, setBiddingIndex] = useState<number>(0);
   const [trickWinnerId, setTrickWinnerId] = useState<string | null>(null);
@@ -191,13 +215,18 @@ export default function SchafkopfBoard({
   };
 
   useEffect(() => {
+    if (isOnline) return;
     if (gameState.status === "LOBBY") {
       initGame();
     }
-  }, [gameState.status]);
+  }, [gameState.status, isOnline]);
 
   // Handle auto turn handover on player index shifts
   useEffect(() => {
+    if (isOnline) {
+      setIsHandRevealed(true);
+      return;
+    }
     if (gameState.status === "PLAYING" || gameState.status === "BIDDING") {
       const nextPlayer = gameState.players[gameState.activePlayerIdx];
       if (isMultiplayer && nextPlayer?.isHuman) {
@@ -208,7 +237,7 @@ export default function SchafkopfBoard({
       setBiddingStage("category"); // Always reset bidding sub-stage when active player changes
       setWenzIsTout(false);
     }
-  }, [gameState.activePlayerIdx, gameState.status, isMultiplayer]);
+  }, [gameState.activePlayerIdx, gameState.status, isMultiplayer, isOnline]);
 
   // Dynamic delays based on dealSpeed setting
   const getDelayFactor = () => {
@@ -227,6 +256,7 @@ export default function SchafkopfBoard({
 
   // AI Bidding simulation
   useEffect(() => {
+    if (isOnline) return;
     if (gameState.status !== "BIDDING") return;
     
     const activePlayer = gameState.players[gameState.activePlayerIdx];
@@ -237,10 +267,11 @@ export default function SchafkopfBoard({
       }, Math.round(1000 * delayFactor));
       return () => clearTimeout(timer);
     }
-  }, [gameState.status, gameState.activePlayerIdx, delayFactor]);
+  }, [gameState.status, gameState.activePlayerIdx, delayFactor, isOnline]);
 
   // AI Play simulation
   useEffect(() => {
+    if (isOnline) return;
     if (gameState.status !== "PLAYING" || isCollecting) return;
 
     const activePlayer = gameState.players[gameState.activePlayerIdx];
@@ -251,10 +282,11 @@ export default function SchafkopfBoard({
       }, Math.round(1200 * delayFactor));
       return () => clearTimeout(timer);
     }
-  }, [gameState.status, gameState.activePlayerIdx, isCollecting, delayFactor]);
+  }, [gameState.status, gameState.activePlayerIdx, isCollecting, delayFactor, isOnline]);
 
   // Automatically collect tricks after delay
   useEffect(() => {
+    if (isOnline) return;
     if (!isCollecting) return;
 
     const timer = setTimeout(() => {
@@ -262,7 +294,7 @@ export default function SchafkopfBoard({
     }, Math.round(2000 * delayFactor));
 
     return () => clearTimeout(timer);
-  }, [isCollecting, delayFactor]);
+  }, [isCollecting, delayFactor, isOnline]);
 
   // Ref to guarantee list score calculations only run once per round-over
   const processedRoundOver = React.useRef<boolean>(false);
@@ -369,6 +401,12 @@ export default function SchafkopfBoard({
 
   // Handle bidding decisions
   const handleBidSelection = (playerId: string, bid: { type: GameType; calledSuit?: Suit; isTout?: boolean; wenzSuit?: Suit } | null) => {
+    if (isOnline) {
+      if (onSendPlayerAction) {
+        onSendPlayerAction({ type: "DECLARE_BID", bid });
+      }
+      return;
+    }
     const activePlayer = gameState.players.find(p => p.id === playerId)!;
     
     let bidLabel = "";
@@ -525,6 +563,12 @@ export default function SchafkopfBoard({
   };
 
   const playCard = (playerId: string, card: Card) => {
+    if (isOnline) {
+      if (onSendPlayerAction) {
+        onSendPlayerAction({ type: "PLAY_CARD", cardId: card.id });
+      }
+      return;
+    }
     const activePlayer = gameState.players.find(p => p.id === playerId)!;
 
     // Remove card from hand
@@ -714,9 +758,11 @@ export default function SchafkopfBoard({
   const activePlayer = gameState.players[gameState.activePlayerIdx];
   
   // Who is the active human player whose cards we should show
-  const currentActingHumanPlayer = isMultiplayer 
-    ? (activePlayer?.isHuman ? activePlayer : null)
-    : gameState.players[0]; // Player 1 (user) in single player
+  const currentActingHumanPlayer = isOnline
+    ? gameState.players.find(p => p.id === playerId)
+    : (isMultiplayer 
+      ? (activePlayer?.isHuman ? activePlayer : null)
+      : gameState.players[0]);
 
   const callableSuits = currentActingHumanPlayer ? getCallableSuits(currentActingHumanPlayer.cards) : [];
 
@@ -1901,7 +1947,9 @@ export default function SchafkopfBoard({
 
                       const totalCards = sortedHandCards.length;
                       return sortedHandCards.map((card, index) => {
-                        const isActiveTurn = gameState.status === "PLAYING" && (isMultiplayer ? activePlayer?.isHuman && activePlayer?.id === currentActingHumanPlayer?.id : gameState.activePlayerIdx === 0);
+                        const isActiveTurn = isOnline
+                          ? (gameState.status === "PLAYING" && activePlayer?.id === playerId)
+                          : (gameState.status === "PLAYING" && (isMultiplayer ? activePlayer?.isHuman && activePlayer?.id === currentActingHumanPlayer?.id : gameState.activePlayerIdx === 0));
                         const isLegal = gameState.status === "BIDDING" || (gameState.status === "PLAYING" && legalUserCards.some(lc => lc.id === card.id));
                         
                         // Always enabled by default, disabled only if an invalid card was clicked
