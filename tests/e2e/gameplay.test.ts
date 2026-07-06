@@ -114,18 +114,17 @@ describe("E2E - Gameplay & Security (Tier 1 & Tier 2)", () => {
 
     const startMsg = await p1.waitForMessage("GAME_START");
 
-    if (startMsg.gameStates) {
-      const bobState = startMsg.gameStates[p2.playerId];
-      if (bobState) {
-        // In Bob's state, Bob's own cards should be visible (8 cards),
-        // but other players' cards should be redacted (0 cards).
-        for (const p of bobState.players) {
-          if (p.id === p2.playerId) {
-            expect(p.cards).toHaveLength(8);
-          } else {
-            expect(p.cards || []).toHaveLength(0);
-          }
-        }
+    // The payload must not contain a map of every player's state — that
+    // would leak all hands to anyone inspecting the WebSocket traffic.
+    expect(startMsg.gameStates).toBeUndefined();
+    expect(startMsg.yourPlayerId).toBe(p1.playerId);
+
+    // Alice's own view: her cards visible, everyone else redacted.
+    for (const p of startMsg.gameState.players) {
+      if (p.id === p1.playerId) {
+        expect(p.cards).toHaveLength(8);
+      } else {
+        expect(p.cards || []).toHaveLength(0);
       }
     }
 

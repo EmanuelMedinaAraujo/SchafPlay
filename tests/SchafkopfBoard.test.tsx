@@ -178,10 +178,14 @@ describe("SchafkopfBoard - Multiplayer Pass & Play", () => {
     const handCards = container.querySelectorAll(".cursor-grab");
     expect(handCards.length).toBeGreaterThan(0);
 
-    // Click the first card in Player A's hand to play it
-    await act(async () => {
-      fireEvent.click(handCards[0]);
-    });
+    // The deal is random, so the first card is not always legal (follow suit!).
+    // Click cards in order until one is accepted and the hand gets concealed.
+    for (const card of Array.from(handCards)) {
+      await act(async () => {
+        fireEvent.click(card);
+      });
+      if (screen.queryByText(/Sichtschutz aktiv/i)) break;
+    }
 
     // Once Player A plays, their hand should be concealed, and the turn goes to Player B (Human)
     expect(screen.queryByText(/Sichtschutz aktiv/i)).not.toBeNull();

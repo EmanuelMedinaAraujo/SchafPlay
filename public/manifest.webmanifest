@@ -1,0 +1,19 @@
+{
+  "name": "Schafkopf Coach",
+  "short_name": "Schafkopf",
+  "description": "Bayerisches Schafkopf mit KI-Gegnern, Pass & Play und Online-Multiplayer.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#050806",
+  "theme_color": "#050806",
+  "lang": "de",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -156,8 +156,8 @@ class WebSocketClient {
           maxHumans: message.maxHumans,
           players: message.players,
         };
-        let playerId = this.state.playerId;
-        if (this.playerName) {
+        let playerId = message.yourPlayerId || this.state.playerId;
+        if (!playerId && this.playerName) {
           const me = lobby.players.find(p => p.name === this.playerName);
           if (me) {
             playerId = me.id;
@@ -166,48 +166,16 @@ class WebSocketClient {
         this.setState({ lobby, playerId, gameState: null });
         break;
       }
-      case "GAME_START": {
-        let gameState = message.gameState;
-        let playerId = this.state.playerId;
-
-        if (!playerId && this.playerName && gameState) {
-          const me = gameState.players.find((p: any) => p.name === this.playerName);
-          if (me) {
-            playerId = me.id;
-          }
-        }
-
-        if (message.gameStates && playerId && message.gameStates[playerId]) {
-          gameState = message.gameStates[playerId];
-        } else if (message.gameStates && !playerId) {
-          // If we don't have playerId yet, find which key in gameStates matches our playerName
-          for (const pid of Object.keys(message.gameStates)) {
-            const gs = message.gameStates[pid];
-            const me = gs.players.find((p: any) => p.name === this.playerName);
-            if (me) {
-              playerId = pid;
-              gameState = gs;
-              break;
-            }
-          }
-        }
-
-        this.setState({ gameState, playerId });
-        break;
-      }
+      case "GAME_START":
       case "GAME_STATE_UPDATED": {
-        let gameState = message.gameState;
-        let playerId = this.state.playerId;
+        const gameState = message.gameState;
+        let playerId = message.yourPlayerId || this.state.playerId;
 
         if (!playerId && this.playerName && gameState) {
           const me = gameState.players.find((p: any) => p.name === this.playerName);
           if (me) {
             playerId = me.id;
           }
-        }
-
-        if (message.gameStates && playerId && message.gameStates[playerId]) {
-          gameState = message.gameStates[playerId];
         }
 
         this.setState({ gameState, playerId });

@@ -106,19 +106,31 @@ function redactGameState(gameState: GameState, targetPlayerId: string): GameStat
 function broadcastGameState(lobby: Lobby, isStart: boolean = false) {
   if (!lobby.gameState) return;
 
-  const gameStatesMap: { [playerId: string]: GameState } = {};
-  for (const player of lobby.players) {
-    gameStatesMap[player.id] = redactGameState(lobby.gameState, player.id);
-  }
-
+  // Each player only ever receives their own redacted view of the game —
+  // never the full map, so other hands cannot be read from the wire.
   for (const player of lobby.players) {
     if (player.ws.readyState === WebSocket.OPEN) {
-      const redactedState = gameStatesMap[player.id];
       player.ws.send(
         JSON.stringify({
           type: isStart ? "GAME_START" : "GAME_STATE_UPDATED",
-          gameState: redactedState,
-          gameStates: gameStatesMap,
+          gameState: redactGameState(lobby.gameState, player.id),
+          yourPlayerId: player.id,
+        })
+      );
+    }
+  }
+}
+
+function broadcastLobbyUpdate(lobby: Lobby) {
+  const cleanDetails = getCleanLobbyDetails(lobby);
+  for (const player of lobby.players) {
+    if (player.ws.readyState === WebSocket.OPEN) {
+      player.ws.send(
+        JSON.stringify({
+          type: "LOBBY_UPDATED",
+          ...cleanDetails,
+          lobby: cleanDetails,
+          yourPlayerId: player.id,
         })
       );
     }
@@ -435,12 +447,7 @@ function handlePlayerLeave(ws: WebSocket) {
         lobbies.delete(lobbyCode);
         console.log(`Lobby ${lobbyCode} disbanded because host left`);
       } else {
-        const cleanDetails = getCleanLobbyDetails(lobby);
-        broadcastToLobby(lobby, {
-          type: "LOBBY_UPDATED",
-          ...cleanDetails,
-          lobby: cleanDetails
-        });
+        broadcastLobbyUpdate(lobby);
       }
     }
   }
@@ -461,7 +468,7 @@ async function startServer() {
 
       if (!process.env.GEMINI_API_KEY) {
         return res.status(500).json({
-          error: "GEMINI_API_KEY is not configured. Please add it in Settings > Secrets.",
+          error: "GEMINI_API_KEY is not configured. Set it in the server's .env file to enable AI analysis.",
         });
       }
 
@@ -667,12 +674,7 @@ async function startServer() {
             lobbies.set(lobbyCode, newLobby);
             socketToPlayer.set(ws, { lobbyCode, playerId });
 
-            const cleanDetails = getCleanLobbyDetails(newLobby);
-            ws.send(JSON.stringify({
-              type: "LOBBY_UPDATED",
-              ...cleanDetails,
-              lobby: cleanDetails
-            }));
+            broadcastLobbyUpdate(newLobby);
             console.log(`Lobby ${lobbyCode} created by ${playerName} (${playerId})`);
             break;
           }
@@ -740,12 +742,7 @@ async function startServer() {
             lobby.players.push(newPlayer);
             socketToPlayer.set(ws, { lobbyCode: code, playerId });
 
-            const cleanDetails = getCleanLobbyDetails(lobby);
-            broadcastToLobby(lobby, {
-              type: "LOBBY_UPDATED",
-              ...cleanDetails,
-              lobby: cleanDetails
-            });
+            broadcastLobbyUpdate(lobby);
             console.log(`Player ${playerName} (${playerId}) joined lobby ${code}`);
 
             if (lobby.players.length === lobby.maxHumans) {

@@ -209,8 +209,9 @@ export default function App() {
     localStorage.setItem(STATS_KEY, JSON.stringify(defaultStats));
   };
 
-  // Callback when a card game ends to update stats and cache the log for Gemini
-  const handleGameFinished = (
+  // Called once per finished round: updates stats and persists the game log.
+  // Runs regardless of whether the player opens the analysis view afterwards.
+  const handleRoundComplete = (
     winnerIds: string[],
     finalPoints: { [playerId: string]: number },
     contract: Contract,
@@ -292,16 +293,17 @@ export default function App() {
         console.error("Failed to send game log to server", err);
       });
 
-    // Calculate role of user
+    // Calculate role of user (online games use server-assigned ids)
+    const meId = isOnlineGame && myPlayerId ? myPlayerId : "p1";
     let userRole: "DECLARER" | "PARTNER" | "DEFENDER" = "DEFENDER";
-    if (contract.declarerId === "p1") {
+    if (contract.declarerId === meId) {
       userRole = "DECLARER";
-    } else if (contract.partnerId === "p1") {
+    } else if (contract.partnerId === meId) {
       userRole = "PARTNER";
     }
 
-    const userPoints = finalPoints["p1"] || 0;
-    const userWon = winnerIds.includes("p1");
+    const userPoints = finalPoints[meId] || 0;
+    const userWon = winnerIds.includes(meId);
 
     // Update stats
     setStats(prev => {
@@ -325,8 +327,20 @@ export default function App() {
       localStorage.setItem(STATS_KEY, JSON.stringify(next));
       return next;
     });
+  };
 
-    // Auto navigate to the analysis page so player gets coached!
+  // "Spielanalyse" button in the round-over popup: jump to the coaching view.
+  // Stats were already recorded by handleRoundComplete when the round ended.
+  const handleGameFinished = (
+    _winnerIds: string[],
+    _finalPoints: { [playerId: string]: number },
+    contract: Contract,
+    startingHand: Card[],
+    tricksPlayed: Trick[]
+  ) => {
+    setLastGameHand(startingHand);
+    setLastGameTricks(tricksPlayed);
+    setLastGameContract(contract);
     setActiveTab("analysis");
   };
 
@@ -349,6 +363,7 @@ export default function App() {
         isMultiplayer={isMultiplayer}
         multiplayerPlayers={isMultiplayer ? multiplayerPlayers : undefined}
         onGameFinished={handleGameFinished}
+        onRoundComplete={handleRoundComplete}
         onShowRules={() => setIsRulesOpen(true)}
         isGameFocusMode={true}
         setIsGameFocusMode={() => {}}
@@ -462,6 +477,19 @@ export default function App() {
         {/* VIEW 1: BEAUTIFUL HOME MENU DASHBOARD */}
         {activeTab === "home" && (
           <div className="animate-fade-in w-full space-y-5">
+
+            {/* Brand Hero */}
+            <div className="flex items-center justify-center gap-3 pt-1">
+              <img src="/icon.svg" alt="" className="h-9 w-9 rounded-xl shadow-lg" />
+              <div className="text-left leading-tight">
+                <h1 className="text-base font-black text-white uppercase tracking-widest">
+                  Schafkopf <span className="text-emerald-500">Coach</span>
+                </h1>
+                <p className="text-[10px] text-neutral-500 font-bold">
+                  {language === "de" ? "Des boarische Kartenspiel – jetzt digital" : "The Bavarian card game – digital"}
+                </p>
+              </div>
+            </div>
 
             {/* Selection Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">

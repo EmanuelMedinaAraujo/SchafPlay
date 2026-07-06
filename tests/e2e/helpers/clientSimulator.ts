@@ -62,6 +62,9 @@ export class ClientSimulator {
    * Process incoming WebSocket messages and update local state
    */
   private handleMessage(message: any) {
+    if (message.yourPlayerId) {
+      this.playerId = message.yourPlayerId;
+    }
     if (message.type === "LOBBY_UPDATED") {
       this.lobbyCode = message.code;
       const me = message.players.find((p: any) => p.name === this.playerName);

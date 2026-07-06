@@ -37,6 +37,14 @@ interface SchafkopfBoardProps {
     startingHand: Card[],
     tricksPlayed: Trick[]
   ) => void;
+  /** Fires once as soon as a round ends — for stats/history recording, no navigation */
+  onRoundComplete?: (
+    winnerIds: string[],
+    finalPoints: { [playerId: string]: number },
+    contract: Contract,
+    startingHand: Card[],
+    tricksPlayed: Trick[]
+  ) => void;
   onShowRules: () => void;
   isGameFocusMode?: boolean;
   setIsGameFocusMode?: (val: boolean) => void;
@@ -57,6 +65,7 @@ export default function SchafkopfBoard({
   isMultiplayer,
   multiplayerPlayers,
   onGameFinished,
+  onRoundComplete,
   onShowRules,
   isGameFocusMode = false,
   setIsGameFocusMode,
@@ -104,6 +113,7 @@ export default function SchafkopfBoard({
   const [trickWinnerId, setTrickWinnerId] = useState<string | null>(null);
   const [isCollecting, setIsCollecting] = useState<boolean>(false);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+  const [rotateHintDismissed, setRotateHintDismissed] = useState<boolean>(false);
   const [confirmRestart, setConfirmRestart] = useState<boolean>(false);
   const [showLastTrickModal, setShowLastTrickModal] = useState<boolean>(false);
   const [showTrickHistory, setShowTrickHistory] = useState<boolean>(false);
@@ -397,6 +407,18 @@ export default function SchafkopfBoard({
     setLastRoundScoreChange(scoresChange);
     setGamesPlayedInList(prev => prev + 1);
 
+    // Record the finished round for stats/history right away — the player
+    // may never open the analysis view.
+    if (onRoundComplete) {
+      onRoundComplete(
+        getRoundSummary().winners,
+        gameState.players.reduce((acc, p) => ({ ...acc, [p.id]: p.pointsCollected }), {}),
+        contract,
+        startingHand,
+        gameState.tricks
+      );
+    }
+
   }, [gameState.status, gameState.currentContract, gameState.players]);
 
   // Handle bidding decisions
@@ -676,14 +698,13 @@ export default function SchafkopfBoard({
     if (!gameState.currentContract) return { winners: [], scoreStr: "", userWon: false, details: "" };
     
     const contract = gameState.currentContract;
-    const p1 = gameState.players.find(p => p.id === "p1")!; // User
     const declarer = gameState.players.find(p => p.id === contract.declarerId);
 
     if (contract.type === GameType.RAMSCH) {
       const sortedByPoints = [...gameState.players].sort((a, b) => a.pointsCollected - b.pointsCollected);
       const winner = sortedByPoints[0];
       const loser = sortedByPoints[3];
-      const userWon = p1.id === winner.id;
+      const userWon = winner.id === meId;
       return {
         winners: [winner.id],
         scoreStr: language === "de" 
@@ -712,7 +733,7 @@ export default function SchafkopfBoard({
 
       const declarerTeamWon = declarerPoints >= 61;
       const winningTeamIds = declarerTeamWon ? declarerTeam : defenderTeam;
-      const userWon = winningTeamIds.includes("p1");
+      const userWon = winningTeamIds.includes(meId);
 
       return {
         winners: winningTeamIds,
@@ -731,7 +752,7 @@ export default function SchafkopfBoard({
     const defenders = gameState.players.filter(p => p.id !== contract.declarerId);
     
     const winningTeamIds = isDeclarerWon ? [contract.declarerId] : defenders.map(p => p.id);
-    const userWon = winningTeamIds.includes("p1");
+    const userWon = winningTeamIds.includes(meId);
 
     return {
       winners: winningTeamIds,
@@ -756,7 +777,26 @@ export default function SchafkopfBoard({
   };
 
   const activePlayer = gameState.players[gameState.activePlayerIdx];
-  
+
+  // The id that identifies "me" in the game state: online games use
+  // server-assigned ids (p_xxx), local games always use p1.
+  const meId = isOnline && playerId ? playerId : "p1";
+
+  // Seat rotation so the viewing player always sits South (seat 0).
+  // Offline the viewer is index 0; online it's wherever the server put us.
+  const viewerIdx = (() => {
+    if (!isOnline || !playerId) return 0;
+    const idx = gameState.players.findIndex(p => p.id === playerId);
+    return idx >= 0 ? idx : 0;
+  })();
+  // 0 = South (me), 1 = West, 2 = North, 3 = East
+  const seatOfPlayerId = (pid: string) => {
+    const idx = gameState.players.findIndex(p => p.id === pid);
+    return idx < 0 ? 0 : (idx - viewerIdx + 4) % 4;
+  };
+  const playerIdxAtSeat = (seat: number) => (viewerIdx + seat) % 4;
+  const playerAtSeat = (seat: number) => gameState.players[playerIdxAtSeat(seat)];
+
   // Who is the active human player whose cards we should show
   const currentActingHumanPlayer = isOnline
     ? gameState.players.find(p => p.id === playerId)
@@ -897,7 +937,9 @@ export default function SchafkopfBoard({
       }
       if (player.id === contract.partnerId) {
         // Only show if it is the user themselves (since they know their cards) or if revealed
-        const isMe = isMultiplayer ? (activePlayer?.id === player.id) : (player.id === "p1");
+        const isMe = isOnline
+          ? player.id === meId
+          : (isMultiplayer ? (activePlayer?.id === player.id) : (player.id === "p1"));
         if (isMe || isPartnerRevealed()) {
           return (
             <span className="text-[7.5px] font-black uppercase px-1 py-0.2 bg-sky-500/20 text-sky-400 border border-sky-500/30 rounded tracking-wider scale-90 flex items-center gap-1">
@@ -934,9 +976,73 @@ export default function SchafkopfBoard({
     return null;
   };
 
+  // Compact opponent seat chip (name, points, role badge, card backs)
+  const renderOpponentSeat = (seat: number, align: "left" | "center" | "right") => {
+    const player = playerAtSeat(seat);
+    if (!player) return null;
+    const isActive = gameState.activePlayerIdx === playerIdxAtSeat(seat);
+    // Online states redact other players' hands, so derive the count from plays
+    let cardBackCount = player.cards.length;
+    if (isOnline && cardBackCount === 0 && gameState.status !== "ROUND_OVER") {
+      const playedCount =
+        gameState.tricks.reduce((n, t) => n + t.playedCards.filter(pc => pc.playerId === player.id).length, 0) +
+        (gameState.currentTrick?.playedCards.filter(pc => pc.playerId === player.id).length || 0);
+      cardBackCount = Math.max(0, 8 - playedCount);
+    }
+    const alignItems = align === "left" ? "items-start text-left" : align === "right" ? "items-end text-right" : "items-center text-center";
+    const justify = align === "left" ? "justify-start" : align === "right" ? "justify-end" : "justify-center";
+    return (
+      <div className={`flex flex-col ${alignItems} gap-1`}>
+        <div className={`px-2.5 py-1 rounded-xl border transition-all ${
+          isActive
+            ? "bg-emerald-950/40 border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.2)] text-white"
+            : "bg-[#0d0d10]/65 border-neutral-850/60 text-neutral-300"
+        }`}>
+          <div className={`text-[9px] font-extrabold flex items-center ${justify} gap-1`}>
+            {isActive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping shrink-0" />}
+            <span className="truncate max-w-[90px]">{player.name}</span>
+            {renderPlayerRoleBadge(player)}
+          </div>
+          {showPointsDuringGame && (
+            <div className="text-[8px] text-neutral-400 font-bold mt-0.5">
+              {player.pointsCollected} {language === "de" ? "Augen" : "Pts"}
+            </div>
+          )}
+        </div>
+        <div className={`flex gap-0.5 ${justify} w-full`}>
+          {Array.from({ length: cardBackCount }).map((_, idx) => (
+            <div key={idx} className="w-1.5 h-2.5 bg-gradient-to-br from-red-800 to-red-950 rounded-xs border border-red-950 shadow" />
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="w-full h-full max-h-screen flex flex-col justify-between p-2 sm:p-4 select-none overflow-hidden text-left relative">
-      
+    <div className="w-full h-full flex flex-col p-1.5 sm:p-3 gap-1.5 select-none overflow-hidden text-left relative">
+
+      {/* Landscape-first: on small portrait screens suggest rotating the device */}
+      {!rotateHintDismissed && (
+        <div className="hidden portrait:max-sm:flex fixed inset-0 z-[70] bg-[#050806]/97 backdrop-blur-sm flex-col items-center justify-center gap-4 p-8 text-center">
+          <div className="text-5xl animate-bounce" style={{ animationDuration: "2s" }}>📱</div>
+          <RefreshCw className="h-8 w-8 text-emerald-500 rotate-90" />
+          <h3 className="text-base font-black text-white uppercase tracking-wider">
+            {language === "de" ? "Handy drehen!" : "Rotate your device!"}
+          </h3>
+          <p className="text-xs text-neutral-400 max-w-xs leading-relaxed">
+            {language === "de"
+              ? "Der Schafkopf-Tisch ist für das Querformat optimiert. Dreh dein Handy für das beste Spielerlebnis."
+              : "The Schafkopf table is optimized for landscape mode. Rotate your phone for the best experience."}
+          </p>
+          <button
+            onClick={() => setRotateHintDismissed(true)}
+            className="mt-2 px-5 py-2.5 rounded-xl border border-neutral-800 bg-neutral-950 hover:bg-neutral-900 text-[10px] font-black uppercase tracking-wider text-neutral-300 cursor-pointer transition-all"
+          >
+            {language === "de" ? "Trotzdem hochkant spielen" : "Play in portrait anyway"}
+          </button>
+        </div>
+      )}
+
       {/* Full Screen Menu Modal Backdrop & Drawer */}
       <AnimatePresence>
         {isMenuOpen && (
@@ -1069,8 +1175,8 @@ export default function SchafkopfBoard({
                     </div>
                   </div>
 
-                  {/* Custom inline confirmation button for safe iframe-compatible restart! */}
-                  {!confirmRestart ? (
+                  {/* Custom inline confirmation button for safe iframe-compatible restart! (local games only) */}
+                  {isOnline ? null : !confirmRestart ? (
                     <button
                       onClick={() => setConfirmRestart(true)}
                       className="w-full text-left py-2.5 px-3 rounded-xl text-xs font-bold text-slate-200 hover:bg-neutral-800 flex items-center gap-2 cursor-pointer transition-all border border-neutral-850/50 bg-neutral-950/30"
@@ -1126,7 +1232,7 @@ export default function SchafkopfBoard({
       </AnimatePresence>
 
       {/* 3D-Like Bavarian Card Table Grid - Flexible Height */}
-      <div className="relative h-[55dvh] sm:h-[60dvh] min-h-0 w-full rounded-2xl bg-gradient-to-b from-[#101b15] to-[#040806] border border-emerald-950 p-2 sm:p-4 flex flex-col justify-between overflow-hidden shadow-2xl flex-1">
+      <div className="relative flex-1 min-h-0 w-full rounded-2xl bg-gradient-to-b from-[#101b15] to-[#040806] border border-emerald-950 p-2 sm:p-4 flex flex-col justify-between overflow-hidden shadow-2xl">
         
         {/* Ambient table grain overlay */}
         <div className="absolute inset-0 bg-radial from-transparent to-[#020403]/90 pointer-events-none" />
@@ -1141,7 +1247,7 @@ export default function SchafkopfBoard({
               title={language === "de" ? "Letzter Stich" : "Last Trick"}
             >
               <Eye className="h-3.5 w-3.5 text-amber-400" />
-              {language === "de" ? "Letzter Stich" : "Last Trick"}
+              <span className="hidden sm:inline">{language === "de" ? "Letzter Stich" : "Last Trick"}</span>
             </button>
           )}
 
@@ -1170,86 +1276,41 @@ export default function SchafkopfBoard({
         )}
 
         {/* Seats Grid */}
-        <div className="relative flex-1 grid grid-cols-3 grid-rows-3 gap-1 w-full h-full z-10 pt-1 sm:pt-2">
+        <div className="relative flex-1 grid grid-cols-[auto_1fr_auto] grid-rows-[auto_1fr_auto] gap-1 w-full h-full z-10 pt-1 sm:pt-2">
           
-          {/* North Seat (Opponent AI 2) */}
-          <div className="col-start-2 row-start-1 flex flex-col items-center text-center justify-self-center">
-            {gameState.players[2] && (
-              <div className="space-y-1">
-                <div className={`px-2.5 py-1 rounded-xl border text-center transition-all ${
-                  gameState.activePlayerIdx === 2
-                    ? "bg-emerald-950/40 border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.2)] text-white"
-                    : "bg-[#0d0d10]/65 border-neutral-850/60 text-neutral-300"
-                }`}>
-                  <div className="text-[9px] font-extrabold flex items-center justify-center gap-1">
-                    {gameState.activePlayerIdx === 2 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping shrink-0" />}
-                    <span>{gameState.players[2].name}</span>
-                    {renderPlayerRoleBadge(gameState.players[2])}
-                  </div>
-                  {showPointsDuringGame && (
-                    <div className="text-[8px] text-neutral-400 font-bold mt-0.5">
-                      {gameState.players[2].pointsCollected} {language === "de" ? "Augen" : "Pts"}
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-0.5 justify-center">
-                  {gameState.players[2].cards.map((_, idx) => (
-                    <div key={idx} className="w-1.5 h-2.5 bg-gradient-to-br from-red-800 to-red-950 rounded-xs border border-red-950 shadow" />
-                  ))}
-                </div>
-              </div>
-            )}
+          {/* North Seat */}
+          <div className="col-start-2 row-start-1 flex flex-col items-center justify-self-center">
+            {renderOpponentSeat(2, "center")}
           </div>
 
-          {/* West Seat (Opponent AI 1) */}
-          <div className="col-start-1 row-start-2 flex items-center justify-self-start text-left gap-1 pl-1">
-            {gameState.players[1] && (
-              <div className="space-y-1">
-                <div className={`px-2.5 py-1 rounded-xl border text-left transition-all ${
-                  gameState.activePlayerIdx === 1
-                    ? "bg-emerald-950/40 border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.2)] text-white"
-                    : "bg-[#0d0d10]/65 border-neutral-850/60 text-neutral-300"
-                }`}>
-                  <div className="text-[9px] font-extrabold flex items-center gap-1">
-                    {gameState.activePlayerIdx === 1 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping shrink-0" />}
-                    <span>{gameState.players[1].name}</span>
-                    {renderPlayerRoleBadge(gameState.players[1])}
-                  </div>
-                  {showPointsDuringGame && (
-                    <div className="text-[8px] text-neutral-400 font-bold mt-0.5">
-                      {gameState.players[1].pointsCollected} {language === "de" ? "Augen" : "Pts"}
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-0.5 mt-0.5 justify-start">
-                  {gameState.players[1].cards.map((_, idx) => (
-                    <div key={idx} className="w-1.5 h-2.5 bg-gradient-to-br from-red-800 to-red-950 rounded-xs border border-red-950 shadow" />
-                  ))}
-                </div>
-              </div>
-            )}
+          {/* West Seat */}
+          <div className="col-start-1 row-start-2 flex items-center justify-self-start pl-1">
+            {renderOpponentSeat(1, "left")}
           </div>
 
           {/* Trick Arena in the center */}
           <div className="col-start-2 row-start-2 flex items-center justify-center relative">
             <AnimatePresence>
               {gameState.currentTrick && gameState.currentTrick.playedCards.map((played) => {
+                // Position each card towards the seat of the player who threw it
+                const seat = seatOfPlayerId(played.playerId);
                 let rx = 0;
                 let ry = 0;
                 let rot = 0;
-                if (played.playerId === "p1") { ry = 35; rot = 0; } // South
-                if (played.playerId === "p2") { rx = -45; rot = -15; } // West
-                if (played.playerId === "p3") { ry = -35; rot = 5; } // North
-                if (played.playerId === "p4") { rx = 45; rot = 15; } // East
+                if (seat === 0) { ry = 30; rot = 0; } // South (me)
+                if (seat === 1) { rx = -44; rot = -15; } // West
+                if (seat === 2) { ry = -30; rot = 5; } // North
+                if (seat === 3) { rx = 44; rot = 15; } // East
 
                 const isWinner = trickWinnerId === played.playerId;
 
                 // Dynamic flight path exit animation coordinates to fly directly towards winner's seat!
+                const winnerSeat = trickWinnerId ? seatOfPlayerId(trickWinnerId) : -1;
                 let exitTarget = { scale: 0.1, opacity: 0, x: 0, y: 0, rotate: rot };
-                if (trickWinnerId === "p1") exitTarget = { scale: 0.1, opacity: 0, x: 0, y: 150, rotate: rot }; // South seat
-                if (trickWinnerId === "p2") exitTarget = { scale: 0.1, opacity: 0, x: -150, y: 0, rotate: rot }; // West seat
-                if (trickWinnerId === "p3") exitTarget = { scale: 0.1, opacity: 0, x: 0, y: -150, rotate: rot }; // North seat
-                if (trickWinnerId === "p4") exitTarget = { scale: 0.1, opacity: 0, x: 150, y: 0, rotate: rot }; // East seat
+                if (winnerSeat === 0) exitTarget = { scale: 0.1, opacity: 0, x: 0, y: 150, rotate: rot }; // South seat
+                if (winnerSeat === 1) exitTarget = { scale: 0.1, opacity: 0, x: -150, y: 0, rotate: rot }; // West seat
+                if (winnerSeat === 2) exitTarget = { scale: 0.1, opacity: 0, x: 0, y: -150, rotate: rot }; // North seat
+                if (winnerSeat === 3) exitTarget = { scale: 0.1, opacity: 0, x: 150, y: 0, rotate: rot }; // East seat
 
                 return (
                   <motion.div
@@ -1269,33 +1330,9 @@ export default function SchafkopfBoard({
             </AnimatePresence>
           </div>
 
-          {/* East Seat (Opponent AI 3) */}
-          <div className="col-start-3 row-start-2 flex items-center justify-self-end text-right gap-1 pr-1">
-            {gameState.players[3] && (
-              <div className="space-y-1">
-                <div className={`px-2.5 py-1 rounded-xl border text-right transition-all ${
-                  gameState.activePlayerIdx === 3
-                    ? "bg-emerald-950/40 border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.2)] text-white"
-                    : "bg-[#0d0d10]/65 border-neutral-850/60 text-neutral-300"
-                }`}>
-                  <div className="text-[9px] font-extrabold flex items-center justify-end gap-1">
-                    {gameState.activePlayerIdx === 3 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping shrink-0" />}
-                    <span>{gameState.players[3].name}</span>
-                    {renderPlayerRoleBadge(gameState.players[3])}
-                  </div>
-                  {showPointsDuringGame && (
-                    <div className="text-[8px] text-neutral-400 font-bold mt-0.5">
-                      {gameState.players[3].pointsCollected} {language === "de" ? "Augen" : "Pts"}
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-0.5 justify-end mt-0.5">
-                  {gameState.players[3].cards.map((_, idx) => (
-                    <div key={idx} className="w-1.5 h-2.5 bg-gradient-to-br from-red-800 to-red-950 rounded-xs border border-red-950 shadow" />
-                  ))}
-                </div>
-              </div>
-            )}
+          {/* East Seat */}
+          <div className="col-start-3 row-start-2 flex items-center justify-self-end pr-1">
+            {renderOpponentSeat(3, "right")}
           </div>
 
           {/* South Seat (Omitted from table to make space for the fanned cards) */}
@@ -1305,12 +1342,12 @@ export default function SchafkopfBoard({
 
         {/* ELEGANT MODAL POPUP FOR DECLARATION/BIDDING (Centered on the table!) */}
         <AnimatePresence>
-          {gameState.status === "BIDDING" && activePlayer?.isHuman && isHandRevealed && (
+          {gameState.status === "BIDDING" && (isOnline ? activePlayer?.id === meId : activePlayer?.isHuman) && isHandRevealed && (
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="absolute inset-x-4 top-1/2 -translate-y-1/2 z-35 bg-[#121318]/95 backdrop-blur-md border border-emerald-900/50 p-4 rounded-2xl shadow-2xl text-center space-y-3.5 max-w-sm mx-auto"
+              className="absolute inset-x-4 top-1/2 -translate-y-1/2 z-35 bg-[#121318]/95 backdrop-blur-md border border-emerald-900/50 p-3 sm:p-4 rounded-2xl shadow-2xl text-center space-y-3 max-w-sm mx-auto max-h-full overflow-y-auto"
             >
               <div className="space-y-1">
                 <span className="text-[9px] font-black uppercase text-emerald-500 tracking-widest block">{activePlayer.name}</span>
@@ -1572,13 +1609,13 @@ export default function SchafkopfBoard({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4 overflow-y-auto"
+              className="fixed inset-0 bg-black/85 backdrop-blur-md flex z-50 p-4 overflow-y-auto"
             >
               <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="w-full max-w-lg bg-[#0d0d10] border border-neutral-800 rounded-3xl p-6 shadow-2xl space-y-5 relative text-left"
+                className="w-full max-w-lg m-auto bg-[#0d0d10] border border-neutral-800 rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 relative text-left"
               >
                 {!showTrickHistory ? (
                   <>
@@ -1659,7 +1696,7 @@ export default function SchafkopfBoard({
                                   <td className="px-3 py-2.5 text-slate-200">
                                     <div className="flex items-center gap-1.5">
                                       <span className="font-bold">{p.name}</span>
-                                      {p.id === "p1" && !isMultiplayer && (
+                                      {p.id === meId && (isOnline || !isMultiplayer) && (
                                         <span className="text-[8px] bg-blue-500/15 text-blue-400 border border-blue-500/20 px-1.5 py-0.2 rounded font-black uppercase">
                                           {language === "de" ? "Du" : "You"}
                                         </span>
@@ -1697,7 +1734,14 @@ export default function SchafkopfBoard({
                         {language === "de" ? "Spielverlauf" : "View History"}
                       </button>
 
-                      {isListCompleted ? (
+                      {isOnline ? (
+                        <button
+                          onClick={() => onBackToMenu && onBackToMenu()}
+                          className="flex-1 rounded-xl border border-neutral-800 bg-neutral-950 py-3 text-[10px] font-black uppercase text-slate-300 hover:bg-neutral-900 transition-all cursor-pointer"
+                        >
+                          {language === "de" ? "Zurück zum Menü" : "Back to Menu"}
+                        </button>
+                      ) : isListCompleted ? (
                         <button
                           onClick={() => {
                             setListStandings({ p1: 0, p2: 0, p3: 0, p4: 0 });
@@ -1858,18 +1902,18 @@ export default function SchafkopfBoard({
                 animate={{ opacity: 1 }}
                 className="space-y-1.5"
               >
-                           {/* Overlapping Card Fan - Rendered as elegant "Half Cards" fanned to avoid scrolling */}
-                <div className={`relative flex flex-col items-center justify-center gap-1.5 py-2 px-4 rounded-2xl border transition-all duration-300 shadow-inner overflow-visible min-h-[90px] ${
+                {/* Overlapping Card Fan - Rendered as elegant "Half Cards" fanned to avoid scrolling */}
+                <div className={`relative flex flex-col items-stretch justify-center gap-1 py-1.5 px-2 sm:px-3 rounded-2xl border transition-all duration-300 shadow-inner overflow-visible ${
                   gameState.status === "PLAYING" && (isMultiplayer ? activePlayer?.isHuman : gameState.activePlayerIdx === 0)
-                    ? "border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.25)] bg-emerald-950/10 animate-pulse"
+                    ? "border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.25)] bg-emerald-950/10"
                     : "border-neutral-850 bg-[#0d0d10]/40"
                 }`}>
-                  {/* Left Side: Player Info/Points Badge & Contra Call Button */}
+                  {/* Player Info/Points Chip Row & Contra Call Button */}
                   {currentActingHumanPlayer && (
-                    <div className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 z-20 flex flex-col items-start gap-1.5 select-none max-w-[120px] sm:max-w-[160px]">
+                    <div className="flex items-center justify-between gap-2 select-none px-0.5 z-20">
                       {/* Name & Points Badge */}
                       <div className="flex items-center gap-1.5 bg-[#0d0d10]/90 border border-neutral-800 px-2 py-1 rounded-xl shadow backdrop-blur-xs text-[9px] font-black leading-none uppercase tracking-wider text-left">
-                        <span className="text-white truncate max-w-[50px] sm:max-w-[80px]">{currentActingHumanPlayer.name}</span>
+                        <span className="text-white truncate max-w-[110px] sm:max-w-[160px]">{currentActingHumanPlayer.name}</span>
                         {renderPlayerRoleBadge(currentActingHumanPlayer)}
                         {showPointsDuringGame && (
                           <span className="text-emerald-400 font-extrabold border-l border-neutral-800/80 pl-1.5">
@@ -1878,17 +1922,19 @@ export default function SchafkopfBoard({
                         )}
                       </div>
 
-                      {/* Contra Button */}
+                      {/* Contra Button (local games only — the server has no Contra flow yet) */}
                       {(() => {
-                        const userHasPlayed = gameState.tricks.some(t => t.playedCards.some(pc => pc.playerId === "p1")) ||
-                          (gameState.currentTrick?.playedCards.some(pc => pc.playerId === "p1") ?? false);
+                        const myHandId = currentActingHumanPlayer.id;
+                        const userHasPlayed = gameState.tricks.some(t => t.playedCards.some(pc => pc.playerId === myHandId)) ||
+                          (gameState.currentTrick?.playedCards.some(pc => pc.playerId === myHandId) ?? false);
 
-                        const canDeclareContra = 
+                        const canDeclareContra =
+                          !isOnline &&
                           gameState.status === "PLAYING" &&
                           gameState.currentContract &&
                           gameState.currentContract.type !== GameType.RAMSCH &&
-                          gameState.currentContract.declarerId !== "p1" &&
-                          gameState.currentContract.partnerId !== "p1" &&
+                          gameState.currentContract.declarerId !== myHandId &&
+                          gameState.currentContract.partnerId !== myHandId &&
                           !userHasPlayed &&
                           !gameState.currentContract.isContra;
 
@@ -1918,7 +1964,7 @@ export default function SchafkopfBoard({
                     </div>
                   )}
 
-                  <div className="flex justify-center -space-x-4 sm:-space-x-5 py-1 w-full items-center overflow-visible pr-4 pl-32 sm:pl-40">
+                  <div className="flex justify-center -space-x-4 sm:-space-x-5 py-1 w-full items-center overflow-visible px-1">
                     {currentActingHumanPlayer && (() => {
                       const activeGameType = gameState?.currentContract?.type || GameType.SAUSPIEL;
                       const activeWenzSuit = gameState?.currentContract?.wenzSuit;
@@ -1964,7 +2010,7 @@ export default function SchafkopfBoard({
                         const handlePlayAttempt = () => {
                           if (isLegal) {
                             playCard(currentActingHumanPlayer.id, card);
-                            if (isMultiplayer) {
+                            if (isMultiplayer && !isOnline) {
                               setIsHandRevealed(false);
                             }
                           } else {
