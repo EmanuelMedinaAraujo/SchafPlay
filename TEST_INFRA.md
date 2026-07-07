@@ -1,8 +1,10 @@
 # E2E Test Infrastructure - SchafPlay
 
+> **Status: design document, not yet implemented.** This describes a *planned* E2E test suite. The tests actually committed today are unit-level only: [tests/engine.test.ts](tests/engine.test.ts) and [tests/scoring.test.ts](tests/scoring.test.ts). None of the WebRTC/E2E test cases below exist as code yet — treat this as a backlog/spec, not a report of current coverage.
+
 ## 1. Testing Philosophy & Methodology
 
-This document outlines the testing principles, features under test, and the comprehensive E2E test suite for Bavarian Schafkopf multiplayer mode over serverless WebRTC.
+This document outlines the testing principles, features under test, and the planned E2E test suite for Bavarian Schafkopf multiplayer mode over serverless WebRTC.
 
 ### 1.1 Methodology
 To ensure high reliability and compliance with game rules, our test design incorporates several formal engineering methodologies:
