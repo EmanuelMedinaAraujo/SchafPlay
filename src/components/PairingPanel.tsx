@@ -121,12 +121,9 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
       .catch(() => undefined);
   }
 
-  // --- HOST MODE ---
   if (mode === "host") {
     return (
       <div className="pairing-flow">
-        <p className="muted">{t.hostIntro}</p>
-
         {!inviteCode && !error && (
           <p className="muted pulse-soft">
             <LoaderIcon /> {t.creatingCode}
@@ -140,7 +137,7 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
               className="input code-textarea"
               readOnly
               value={inviteCode}
-              rows={3}
+              rows={2}
               onClick={(e) => (e.target as HTMLTextAreaElement).select()}
             />
             <button className="secondary-button" onClick={() => copyText(inviteCode)} type="button">
@@ -156,7 +153,7 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
                   value={pastedCode}
                   onChange={(e) => setPastedCode(e.target.value)}
                   placeholder={t.pasteReplyHint}
-                  rows={3}
+                  rows={2}
                 />
                 <button
                   className="primary-button"
@@ -184,8 +181,6 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
   // --- GUEST MODE ---
   return (
     <div className="pairing-flow">
-      <p className="muted">{t.joinIntro}</p>
-
       {!replyCode && (
         <>
           <label className="field-label">{t.pasteInvite}</label>
@@ -194,7 +189,7 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
             value={pastedCode}
             onChange={(e) => setPastedCode(e.target.value)}
             placeholder={t.pasteInviteHint}
-            rows={3}
+            rows={2}
           />
           <button
             className="primary-button"
@@ -215,14 +210,13 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
             className="input code-textarea"
             readOnly
             value={replyCode}
-            rows={3}
+            rows={2}
             onClick={(e) => (e.target as HTMLTextAreaElement).select()}
           />
           <button className="secondary-button" onClick={() => copyText(replyCode)} type="button">
             {copied ? <CheckIcon /> : <CopyIcon />}
             {copied ? t.copied : t.copy}
           </button>
-          <p className="muted">{t.replyCodeHint}</p>
         </>
       )}
 

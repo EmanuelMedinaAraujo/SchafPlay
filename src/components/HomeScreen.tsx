@@ -37,49 +37,22 @@ export default function HomeScreen(props: HomeScreenProps) {
   return (
     <main className="home-screen">
       <section className="home-grid">
-        <div className="panel">
-          <label className="field-label" htmlFor="player-name">
-            {t.playerName}
-          </label>
-          <input
-            id="player-name"
-            className="input"
-            maxLength={20}
-            value={props.playerName}
-            onChange={(event) => props.onPlayerNameChange(event.target.value)}
-          />
-
-          <div className="mode-switch" role="tablist">
-            <button
-              className={mode === "host" ? "active" : ""}
-              onClick={() => setMode("host")}
-              role="tab"
-              aria-selected={mode === "host"}
-              type="button"
-            >
-              <UsersIcon />
-              {t.hostGame}
-            </button>
-            <button
-              className={mode === "join" ? "active" : ""}
-              onClick={() => setMode("join")}
-              role="tab"
-              aria-selected={mode === "join"}
-              type="button"
-            >
-              <RadioIcon />
-              {t.joinGame}
-            </button>
+        <div className="panel" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <div>
+            <label className="field-label" htmlFor="player-name">
+              {t.playerName}
+            </label>
+            <input
+              id="player-name"
+              className="input"
+              maxLength={20}
+              value={props.playerName}
+              onChange={(event) => props.onPlayerNameChange(event.target.value)}
+            />
           </div>
-        </div>
 
-        <div className="panel">
-          <h2>
-            {mode === "host" ? <UsersIcon /> : <RadioIcon />}
-            {mode === "host" ? t.hostGame : t.joinGame}
-          </h2>
           {mode === "host" && (
-            <div style={{ marginBottom: "16px" }}>
+            <div>
               <label className="field-label">{t.matchLength}</label>
               <div className="mode-switch" role="group" style={{ marginTop: "4px" }}>
                 {[4, 8, 12].map((r) => (
@@ -96,6 +69,39 @@ export default function HomeScreen(props: HomeScreenProps) {
               </div>
             </div>
           )}
+
+          <div>
+            <label className="field-label">{mode === "host" ? t.hostGame : t.joinGame}</label>
+            <div className="mode-switch" role="tablist">
+              <button
+                className={mode === "host" ? "active" : ""}
+                onClick={() => setMode("host")}
+                role="tab"
+                aria-selected={mode === "host"}
+                type="button"
+              >
+                <UsersIcon />
+                {t.hostGame}
+              </button>
+              <button
+                className={mode === "join" ? "active" : ""}
+                onClick={() => setMode("join")}
+                role="tab"
+                aria-selected={mode === "join"}
+                type="button"
+              >
+                <RadioIcon />
+                {t.joinGame}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="panel">
+          <h2>
+            {mode === "host" ? <UsersIcon /> : <RadioIcon />}
+            {mode === "host" ? t.hostGame : t.joinGame}
+          </h2>
           <PairingPanel
             key={mode}
             language={props.language}
