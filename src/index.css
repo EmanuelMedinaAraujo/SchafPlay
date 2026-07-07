@@ -924,11 +924,12 @@ button:not(:disabled):hover {
 }
 
 .playing-card:disabled {
+  opacity: 1;
   cursor: default;
 }
 
 .playing-card.grayed-out {
-  opacity: 0.25;
+  opacity: 0.25 !important;
   filter: grayscale(1);
 }
 
