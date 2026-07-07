@@ -31,6 +31,30 @@ export default function App() {
     localStorage.setItem(NAME_KEY, playerName);
   }, [playerName]);
 
+  // Landscape-only UI: on portrait screens the whole app is rotated 90°
+  // via CSS (html.rotated). html.compact drives the one-screen phone layout
+  // based on the *effective* height, which media queries can't see once
+  // the UI is rotated.
+  useEffect(() => {
+    const root = document.documentElement;
+    const update = () => {
+      const portrait = window.innerHeight > window.innerWidth;
+      const effectiveHeight = portrait ? window.innerWidth : window.innerHeight;
+      root.classList.toggle("rotated", portrait);
+      root.classList.toggle("compact", effectiveHeight <= 520);
+    };
+    update();
+    window.addEventListener("resize", update);
+    // iOS can rotate without a (timely) resize event.
+    const orientation = window.matchMedia("(orientation: portrait)");
+    orientation.addEventListener("change", update);
+    return () => {
+      window.removeEventListener("resize", update);
+      orientation.removeEventListener("change", update);
+      root.classList.remove("rotated", "compact");
+    };
+  }, []);
+
   useEffect(() => {
     localStorage.setItem(LANG_KEY, language);
   }, [language]);

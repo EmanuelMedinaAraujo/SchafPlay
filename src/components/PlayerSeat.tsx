@@ -11,6 +11,10 @@ interface PlayerSeatProps {
   language: Language;
 }
 
+/**
+ * One compact box per player. When it's this player's turn the box itself
+ * pulses — it doubles as the turn indicator, no separate chip needed.
+ */
 export default function PlayerSeat({ player, position, active, score, contract, language }: PlayerSeatProps) {
   const t = translations[language];
   const isDeclarer = contract?.declarerId === player.id;
@@ -24,11 +28,6 @@ export default function PlayerSeat({ player, position, active, score, contract, 
         <strong>{player.name}</strong>
         {isDeclarer && <span className="role-badge declarer">{t.caller}</span>}
         {isPartner && !isDeclarer && <span className="role-badge partner">{t.partner}</span>}
-      </div>
-      <div className="seat-cards" aria-label={`${player.cards.length} ${t.cards}`}>
-        {Array.from({ length: player.cards.length }).map((_, index) => (
-          <span key={index} className="card-back" />
-        ))}
       </div>
       <div className="seat-meta">
         <span>

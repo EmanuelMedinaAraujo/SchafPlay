@@ -49,6 +49,50 @@ button {
   flex-direction: column;
 }
 
+/* ---------- Landscape-only ----------
+   The game is designed for landscape. On portrait screens the whole app is
+   rotated 90° so it always renders the landscape layout; html.rotated is set
+   by App.tsx. Inside the rotated frame, position:fixed descendants attach to
+   #root (transform creates the containing block), so overlays keep working. */
+
+html.rotated,
+html.rotated body {
+  overflow: hidden;
+}
+
+html.rotated #root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vh;
+  height: 100vw;
+  width: 100dvh;
+  height: 100dvw;
+  transform: rotate(90deg) translateY(-100%);
+  transform-origin: top left;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+html.rotated .app-shell {
+  min-height: 100%;
+}
+
+/* Physical top (notch) is the rotated UI's left edge; the physical bottom
+   (home indicator) is its right edge. */
+html.rotated .topbar {
+  padding-top: 8px;
+  padding-left: max(clamp(14px, 3vw, 32px), env(safe-area-inset-top, 0px));
+  padding-right: max(clamp(14px, 3vw, 32px), env(safe-area-inset-bottom, 0px));
+}
+
+html.rotated .home-screen,
+html.rotated .game-screen {
+  padding-left: max(12px, env(safe-area-inset-top, 0px));
+  padding-right: max(12px, env(safe-area-inset-bottom, 0px));
+  padding-bottom: 10px;
+}
+
 /* ---------- Top bar ---------- */
 
 .topbar {
@@ -268,8 +312,7 @@ button:not(:disabled):hover {
   font-weight: 700;
 }
 
-.input,
-.code-box {
+.input {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -279,18 +322,39 @@ button:not(:disabled):hover {
   outline: none;
 }
 
-.input:focus,
-.code-box:focus {
+.input:focus {
   border-color: var(--red);
 }
 
-.code-box {
-  min-height: 88px;
-  resize: vertical;
-  margin: 6px 0 10px;
+/* The host's short game code, one cell per character. */
+.game-code {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0 6px;
+}
+
+.game-code span {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 58px;
+  border: 1px solid rgba(220, 38, 38, 0.45);
+  border-radius: 10px;
+  background: #0d0d12;
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 11px;
-  word-break: break-all;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.code-input {
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 22px;
+  font-weight: 800;
+  margin: 6px 0 10px;
 }
 
 .mode-switch {
@@ -350,17 +414,21 @@ button:not(:disabled):hover {
   }
 }
 
-.pulse {
-  animation: pulse 1.6s ease-in-out infinite;
+/* Attention pulse without transparency: brightness only. */
+.pulse-soft {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  animation: pulse-soft 1.6s ease-in-out infinite;
 }
 
-@keyframes pulse {
+@keyframes pulse-soft {
   0%,
   100% {
-    opacity: 1;
+    filter: brightness(1);
   }
   50% {
-    opacity: 0.45;
+    filter: brightness(1.7);
   }
 }
 
@@ -393,24 +461,6 @@ button:not(:disabled):hover {
   white-space: nowrap;
 }
 
-.turn-chip {
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 6px 12px;
-  background: var(--panel-2);
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.turn-chip.mine {
-  border-color: rgba(34, 197, 94, 0.5);
-  background: rgba(34, 197, 94, 0.12);
-  color: var(--green);
-  animation: pulse 1.6s ease-in-out infinite;
-}
-
 /* ---------- Table & seats ---------- */
 
 .table {
@@ -434,14 +484,26 @@ button:not(:disabled):hover {
   min-width: 130px;
 }
 
+/* The active seat is the turn indicator: it pulses (glow only, never
+   transparency) and already carries the player's name, points and score. */
 .seat.active {
   border-color: var(--red-2);
-  box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.35), 0 0 18px rgba(220, 38, 38, 0.18);
+  animation: seat-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes seat-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.35), 0 0 10px rgba(220, 38, 38, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.75), 0 0 26px rgba(220, 38, 38, 0.4);
+  }
 }
 
 .seat.offline {
-  opacity: 0.55;
   border-style: dashed;
+  border-color: rgba(239, 68, 68, 0.5);
 }
 
 .seat-name {
@@ -476,19 +538,6 @@ button:not(:disabled):hover {
   background: rgba(245, 158, 11, 0.14);
   color: var(--amber);
   border: 1px solid rgba(245, 158, 11, 0.4);
-}
-
-.seat-cards {
-  display: flex;
-  gap: 2px;
-}
-
-.card-back {
-  width: 9px;
-  height: 14px;
-  border-radius: 2px;
-  background: linear-gradient(145deg, #7f1d1d, #450a0a);
-  border: 1px solid #27272a;
 }
 
 .seat-meta {
@@ -594,8 +643,54 @@ button:not(:disabled):hover {
   transform: translateY(-50%) rotate(8deg);
 }
 
-.trick-slot.winner .card-face {
+/* Trick collection: the winning card lights up, then all four cards fly
+   towards the winner's seat before the engine clears the trick. */
+.trick-card.winner .card-face {
   box-shadow: 0 0 0 2px var(--amber), 0 0 22px rgba(245, 158, 11, 0.45);
+}
+
+.trick-card.fly-bottom {
+  animation: fly-bottom 0.55s cubic-bezier(0.5, 0, 0.9, 0.6) 0.85s forwards;
+}
+
+.trick-card.fly-top {
+  animation: fly-top 0.55s cubic-bezier(0.5, 0, 0.9, 0.6) 0.85s forwards;
+}
+
+.trick-card.fly-left {
+  animation: fly-left 0.55s cubic-bezier(0.5, 0, 0.9, 0.6) 0.85s forwards;
+}
+
+.trick-card.fly-right {
+  animation: fly-right 0.55s cubic-bezier(0.5, 0, 0.9, 0.6) 0.85s forwards;
+}
+
+@keyframes fly-bottom {
+  to {
+    transform: translateY(240px) scale(0.35);
+    opacity: 0;
+  }
+}
+
+@keyframes fly-top {
+  to {
+    transform: translateY(-240px) scale(0.35);
+    opacity: 0;
+  }
+}
+
+@keyframes fly-left {
+  to {
+    transform: translateX(-420px) scale(0.35);
+    opacity: 0;
+  }
+}
+
+@keyframes fly-right {
+  to {
+    transform: translateX(420px) scale(0.35);
+    opacity: 0;
+  }
 }
 
 /* ---------- Cards ---------- */
@@ -625,14 +720,29 @@ button:not(:disabled):hover {
   box-shadow: 0 10px 18px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(245, 158, 11, 0.35);
 }
 
+/* Rank + suit stacked in the corner so overlapping fanned cards stay readable. */
 .card-corner {
-  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  align-self: flex-start;
+  gap: 2px;
+  font-size: 14px;
   font-weight: 900;
   line-height: 1;
 }
 
-.card-face.small .card-corner {
+.card-corner-suit {
   font-size: 11px;
+  line-height: 1;
+}
+
+.card-face.small .card-corner {
+  font-size: 12px;
+}
+
+.card-face.small .card-corner-suit {
+  font-size: 9px;
 }
 
 .card-corner.flipped {
@@ -673,9 +783,10 @@ button:not(:disabled):hover {
   align-items: flex-end;
   justify-content: center;
   gap: 0;
-  min-height: 116px;
-  padding: 14px 4px 6px;
-  overflow-x: auto;
+  min-height: 118px;
+  padding: 16px 4px 8px;
+  /* Cards may be lifted or dragged out of the tray — never clip them. */
+  overflow: visible;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel);
@@ -688,23 +799,39 @@ button:not(:disabled):hover {
   box-shadow: 0 0 18px rgba(34, 197, 94, 0.12);
 }
 
+/* Fanned hand: each card is slightly rotated (--fan-rot / --fan-lift come
+   from PlayerHand) so the card underneath stays identifiable. Cards are
+   never rendered transparent or dimmed — legality only shows as a green ring. */
 .playing-card {
+  position: relative;
   flex: 0 0 auto;
   padding: 0;
   background: transparent;
   border-radius: 8px;
   cursor: pointer;
-  margin-left: -14px;
-  transition: transform 0.15s ease, filter 0.15s ease;
+  margin-left: -22px;
+  transform: rotate(var(--fan-rot, 0deg)) translateY(var(--fan-lift, 0px));
+  transform-origin: 50% 130%;
+  transition: transform 0.18s ease;
 }
 
 .playing-card:first-child {
   margin-left: 0;
 }
 
+.playing-card:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.playing-card.legal {
+  /* The card is a drag handle; don't let touch dragging scroll the page. */
+  touch-action: none;
+}
+
 .playing-card.legal:hover,
 .playing-card.legal:focus-visible {
-  transform: translateY(-12px);
+  transform: rotate(var(--fan-rot, 0deg)) translateY(calc(var(--fan-lift, 0px) - 14px));
   z-index: 2;
 }
 
@@ -712,9 +839,14 @@ button:not(:disabled):hover {
   box-shadow: 0 10px 18px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(34, 197, 94, 0.5);
 }
 
-.playing-card.illegal .card-face,
-.playing-card:disabled .card-face {
-  filter: grayscale(0.5) brightness(0.75);
+.playing-card.dragging {
+  transition: none;
+  z-index: 30;
+  cursor: grabbing;
+}
+
+.playing-card.dragging .card-face {
+  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(34, 197, 94, 0.7);
 }
 
 /* ---------- Bidding ---------- */
@@ -920,26 +1052,6 @@ button:not(:disabled):hover {
   color: var(--red-2);
 }
 
-/* ---------- Log ---------- */
-
-.log-panel {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--panel);
-  padding: 10px 14px;
-  margin-top: 12px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.log-panel p {
-  margin: 3px 0;
-}
-
-.log-panel p:first-child {
-  color: var(--text);
-}
-
 /* ---------- Rules modal ---------- */
 
 .rules-modal-overlay {
@@ -1122,162 +1234,139 @@ button:not(:disabled):hover {
   }
 
   /* iOS Safari auto-zooms focused inputs with fonts below 16px. */
-  .input,
-  .code-box {
+  .input {
     font-size: 16px;
   }
 }
 
-/* Narrow portrait phones (iPhone 12/12 Pro: 390px wide) */
-@media (max-width: 480px) {
-  .game-toolbar {
-    gap: 6px;
-  }
-
-  .turn-chip {
-    max-width: 40vw;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .table {
-    grid-template-columns: minmax(88px, auto) minmax(0, 1fr) minmax(88px, auto);
-    gap: 6px;
-    min-height: 260px;
-  }
-
-  .seat {
-    min-width: 88px;
-    padding: 6px 8px;
-    gap: 4px;
-  }
-
-  .seat-name {
-    font-size: 11px;
-  }
-
-  .seat-name strong {
-    max-width: 76px;
-  }
-
-  .seat-meta {
-    font-size: 11px;
-  }
-
-  .card-back {
-    width: 7px;
-    height: 11px;
-  }
-
-  /* Tighter fan so 8 cards fit a 390px screen without scrolling. */
-  .playing-card {
-    margin-left: -24px;
-  }
-
-  .card-face {
-    width: 58px;
-    height: 86px;
-  }
-
-  .card-face.small {
-    width: 46px;
-    height: 68px;
-  }
-
-  .trick-slot small {
-    max-width: 58px;
-  }
-
-  .slot-left {
-    left: 6%;
-  }
-
-  .slot-right {
-    right: 6%;
-  }
+/* Compact phone layout: keep everything on one screen. Driven by
+   html.compact (set in App.tsx from the *effective* landscape height) so it
+   also applies when the UI is rotated on a portrait screen, where a plain
+   media query would not match. */
+html.compact .topbar {
+  padding-top: 4px;
+  padding-bottom: 4px;
 }
 
-/* Compact landscape phones: keep everything on one screen */
-@media (orientation: landscape) and (max-height: 520px) {
-  .topbar {
-    padding-top: 6px;
-    padding-bottom: 6px;
-  }
+/* Tighter chrome so the board + hand fit a 390px-high screen. */
+html.compact .topbar .icon-button,
+html.compact .topbar .text-button,
+html.compact .game-toolbar .icon-button {
+  min-height: 34px;
+}
 
-  .game-screen {
-    padding: 6px 12px;
-    padding-left: max(12px, env(safe-area-inset-left, 0px));
-    padding-right: max(12px, env(safe-area-inset-right, 0px));
-    padding-bottom: max(6px, env(safe-area-inset-bottom, 0px));
-  }
+html.compact .topbar .icon-button,
+html.compact .game-toolbar .icon-button {
+  width: 34px;
+}
 
-  .game-toolbar {
-    margin-bottom: 6px;
-  }
+html.compact .contract-chip {
+  padding: 4px 10px;
+}
 
-  .table {
-    min-height: 136px;
-    grid-template-rows: auto minmax(84px, 1fr) auto;
-    gap: 5px;
-  }
+html.compact:not(.rotated) .topbar {
+  padding-top: max(6px, env(safe-area-inset-top, 0px));
+}
 
-  .trick-area {
-    min-height: 84px;
-  }
+html.compact .game-screen {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
 
-  /* Float the bidding dialog over the table so the hand stays visible. */
-  .bidding-panel {
-    position: fixed;
-    top: 44%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 30;
-    width: min(600px, 94vw);
-    max-height: 82dvh;
-    overflow-y: auto;
-    margin-top: 0;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
-  }
+html.compact:not(.rotated) .game-screen {
+  padding-left: max(12px, env(safe-area-inset-left, 0px));
+  padding-right: max(12px, env(safe-area-inset-right, 0px));
+  padding-bottom: max(6px, env(safe-area-inset-bottom, 0px));
+}
 
-  .seat {
-    padding: 5px 8px;
-    gap: 3px;
-  }
+html.compact .game-toolbar {
+  margin-bottom: 4px;
+}
 
-  .seat-cards {
-    display: none;
-  }
+html.compact .table {
+  min-height: 140px;
+  grid-template-rows: auto minmax(90px, 1fr) auto;
+  gap: 5px;
+}
 
-  .player-hand {
-    min-height: 86px;
-    padding: 6px 4px 4px;
-    margin-top: 6px;
-  }
+html.compact .trick-area {
+  min-height: 90px;
+}
 
-  .round-over {
-    padding: 14px 18px;
-  }
+/* Float the bidding dialog over the table so the hand stays visible. */
+html.compact .bidding-panel {
+  position: fixed;
+  top: 44%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 30;
+  width: min(600px, 94%);
+  max-height: 82%;
+  overflow-y: auto;
+  margin-top: 0;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
 
-  .round-over h3 {
-    margin: 10px 0 6px;
-  }
+html.compact .seat {
+  padding: 4px 8px;
+  gap: 2px;
+  min-width: 96px;
+}
 
-  .score-grid div {
-    padding: 7px 9px;
-    gap: 2px;
-  }
+html.compact .seat-name {
+  font-size: 12px;
+}
 
-  .card-face {
-    width: 52px;
-    height: 76px;
-  }
+html.compact .seat-name strong {
+  max-width: 84px;
+}
 
-  .card-face.small {
-    width: 44px;
-    height: 64px;
-  }
+html.compact .seat-meta {
+  font-size: 11px;
+}
 
-  .log-panel {
-    display: none;
-  }
+html.compact .player-hand {
+  min-height: 92px;
+  padding: 6px 4px 4px;
+  margin-top: 4px;
+}
+
+html.compact .playing-card {
+  margin-left: -26px;
+}
+
+html.compact .round-over {
+  padding: 14px 18px;
+}
+
+html.compact .round-over h3 {
+  margin: 10px 0 6px;
+}
+
+html.compact .score-grid div {
+  padding: 7px 9px;
+  gap: 2px;
+}
+
+/* Bigger than before on purpose: hand and trick cards must stay readable. */
+html.compact .card-face {
+  width: 58px;
+  height: 84px;
+}
+
+html.compact .card-face.small {
+  width: 50px;
+  height: 72px;
+}
+
+html.compact .trick-slot small {
+  max-width: 64px;
+}
+
+html.compact .slot-left {
+  left: 7%;
+}
+
+html.compact .slot-right {
+  right: 7%;
 }

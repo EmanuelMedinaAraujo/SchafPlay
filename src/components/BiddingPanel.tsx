@@ -88,7 +88,7 @@ export default function BiddingPanel({ state, language, myPlayerId, onAction }: 
         </p>
       )}
       {!isMyTurn && (
-        <p className="muted pulse">
+        <p className="muted pulse-soft">
           {t.waitingFor} {activeName} …
         </p>
       )}

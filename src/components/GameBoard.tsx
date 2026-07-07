@@ -1,6 +1,6 @@
 import { DoorOpen } from "lucide-react";
 import { GameState, Language, PlayerAction, PlayerActionType } from "../types";
-import { formatLog, gameLabel, translations } from "../lib/i18n";
+import { gameLabel, translations } from "../lib/i18n";
 import BiddingPanel from "./BiddingPanel";
 import PlayerHand from "./PlayerHand";
 import PlayerSeat from "./PlayerSeat";
@@ -44,11 +44,6 @@ export default function GameBoard({ state, language, myPlayerId, onAction, onRea
           {t.round} {state.roundNumber} · {t.trick} {Math.min(state.tricks.length + 1, 8)}/8
         </span>
         <span className="toolbar-spacer" />
-        {state.status === "PLAYING" && activePlayer && (
-          <span className={`turn-chip ${isMyTurn ? "mine" : ""}`}>
-            {isMyTurn ? t.yourTurn : `${t.waitingFor} ${activePlayer.name}`}
-          </span>
-        )}
         <button className="icon-button" onClick={onQuit} title={t.quit} type="button">
           <DoorOpen size={18} />
         </button>
@@ -75,12 +70,6 @@ export default function GameBoard({ state, language, myPlayerId, onAction, onRea
         disabled={state.status !== "PLAYING" || !isMyTurn}
         onPlay={playCard}
       />
-
-      <aside className="log-panel">
-        {state.logs.slice(0, 5).map((log, index) => (
-          <p key={`${log.key}-${index}`}>{formatLog(log, language)}</p>
-        ))}
-      </aside>
     </main>
   );
 }

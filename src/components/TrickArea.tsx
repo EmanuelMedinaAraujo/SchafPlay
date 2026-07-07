@@ -19,14 +19,21 @@ export default function TrickArea({ trick, players, contract, myIdx, collecting 
     return ["bottom", "left", "top", "right"][offset];
   };
 
+  const winnerPos = collecting && trick?.winnerId ? positionOf(trick.winnerId) : null;
+
   return (
     <div className="trick-area">
       <div className="trick-felt">
         {(trick?.playedCards ?? []).map((played) => {
           const isWinner = collecting && trick?.winnerId === played.playerId;
           return (
-            <div key={played.card.id} className={`trick-slot slot-${positionOf(played.playerId)} ${isWinner ? "winner" : ""}`}>
-              <CardFace card={played.card} contract={contract} small />
+            <div key={played.card.id} className={`trick-slot slot-${positionOf(played.playerId)}`}>
+              {/* Inner wrapper animates independently of the slot's placement
+                  transform: brief winner highlight, then all four cards fly
+                  off towards the winner's seat. */}
+              <div className={`trick-card ${isWinner ? "winner" : ""} ${winnerPos ? `fly fly-${winnerPos}` : ""}`}>
+                <CardFace card={played.card} contract={contract} small />
+              </div>
               <small>{players.find((player) => player.id === played.playerId)?.name}</small>
             </div>
           );
