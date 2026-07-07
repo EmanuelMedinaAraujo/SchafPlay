@@ -122,17 +122,7 @@ export default function PlayerHand({
 
   return (
     <div className={`player-hand-container ${disabled ? "" : "my-turn"}`}>
-      <div className="player-hand-header">
-        <span className="player-hand-name">{playerName}</span>
-        <button
-          className="secondary-button last-trick-btn"
-          onClick={onLastTrick}
-          disabled={lastTrickDisabled}
-          type="button"
-        >
-          {t.lastTrick}
-        </button>
-      </div>
+      <span className="player-hand-name">{playerName}</span>
 
       <div className="player-hand-cards">
         {sorted.map((card, index) => {
@@ -162,6 +152,15 @@ export default function PlayerHand({
           );
         })}
       </div>
+
+      <button
+        className="secondary-button last-trick-btn"
+        onClick={onLastTrick}
+        disabled={lastTrickDisabled}
+        type="button"
+      >
+        {t.lastTrick}
+      </button>
     </div>
   );
 }

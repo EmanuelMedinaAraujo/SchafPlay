@@ -865,7 +865,12 @@ button:not(:disabled):hover {
   border-radius: 12px;
   background: var(--panel);
   margin-top: 12px;
-  padding: 8px 12px;
+  padding: 8px 16px;
+  position: relative;
+  min-height: 114px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -874,25 +879,24 @@ button:not(:disabled):hover {
   box-shadow: 0 0 18px rgba(34, 197, 94, 0.12);
 }
 
-.player-hand-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
-  border-bottom: 1px solid var(--line);
-  padding-bottom: 6px;
-}
-
 .player-hand-name {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
   font-weight: 800;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--muted);
 }
 
 .last-trick-btn {
-  min-height: 28px !important;
-  font-size: 11px !important;
-  padding: 0 8px !important;
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  min-height: 32px !important;
+  font-size: 12px !important;
+  padding: 0 12px !important;
 }
 
 .player-hand-cards {
