@@ -4,15 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-SchafPlay: Bavarian Schafkopf for two human players as an offline-first PWA. Seats 1 & 3 are humans connected via serverless WebRTC; seats 2 & 4 are AI (Resi & Sepp). No backend — signaling goes through the public PeerJS broker, then play happens over a direct P2P WebRTC data channel.
+SchafPlay: Bavarian Schafkopf for two human players as an offline-first PWA. Seats 1 & 3 are humans connected via serverless WebRTC; seats 2 & 4 are AI (Resi & Sepp). No backend — signaling goes through compressed base64 SDP codes exchanged directly between players, then play happens over a direct P2P WebRTC data channel.
 
 ## Commands
 
 ```bash
 npm install
-npm run dev      # Vite dev server on http://localhost:5173
+npm run dev      # Vite dev server
 npm run lint     # tsc --noEmit (this is the project's "lint")
-npm run build    # production build incl. service worker (dist/)
+npm run build    # production build (dist/)
 npm run start    # vite preview of the built dist/
 ```
 
@@ -31,8 +31,8 @@ There is no separate lint tool (no ESLint config) — `npm run lint` is a TypeSc
 
 ### Networking (`src/net/`)
 
-- **`PeerConnection.ts`** wraps `peerjs`. The host registers a 5-character human-typeable code (`generateGameCode`, unambiguous alphabet, prefixed with `schafplay-7f3a-` to namespace the public broker) and waits for one guest to dial in via `host(code)`; the guest calls `join(code)`. Only the guest ever types anything — codes are one-way.
-- Once connected, everything is a raw WebRTC data channel; the PeerJS broker is only needed for the initial handshake (and to re-establish it after a broker disconnect via `peer.reconnect()` — this does not affect an already-open data channel).
+- **`PeerConnection.ts`** is a hand-rolled serverless WebRTC wrapper. It generates a compressed base64 SDP invitation blob for the host, accepts a reply SDP blob from the guest, and establishes a direct peer connection without any external broker.
+- Once connected, everything is a raw WebRTC data channel.
 - A 5s ping / 15s timeout heartbeat (host pings, both sides reset the timeout on any traffic) detects silent drops and flips connection state to `"disconnected"`.
 - On disconnect, the host **pauses** the engine (`engine.pause()`) rather than tearing it down — the `GameEngine` instance and all its state survive in `engineRef.current` in `App.tsx`. Re-pairing is just attaching a fresh `PeerConnection` and calling `engine.resume()`; nothing about the round is lost.
 - **`protocol.ts`** defines the wire message shape: `createMessage(type, payload)` stamps a timestamp. Message types are host→guest `GAME_STATE_UPDATE`, guest→host `PLAYER_ACTION`, guest→host-on-connect `CONNECTION_ACK` (carries the guest's display name), plus transport-level `PING`/`PONG`.

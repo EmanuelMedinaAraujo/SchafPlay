@@ -4,12 +4,13 @@ Bavarian **Schafkopf for two players** as an offline-first PWA. Two humans (seat
 
 ## How does the connection work?
 
-No server, no sign-up — signaling goes through the public **PeerJS broker**, but the game itself runs directly **P2P** over a WebRTC data channel:
+No server, no third-party signaling servers, no sign-up — signaling is completely serverless and done directly:
 
-1. **Host**: "Host game" → automatically gets a short **game code** (5 characters)
-2. **Guest**: type in the code → "Join" → connected, cards are dealt
+1. **Host**: "Host game" → copies the generated **invitation code** (compressed base64 SDP blob) and sends it to the guest.
+2. **Guest**: "Join game" → pastes the invitation code, generates a **reply code**, copies it, and sends it back to the host.
+3. **Host**: Pastes the reply code → connection is established directly P2P over a local WebRTC data channel.
 
-Only the guest has to type anything in; nothing is copied back. If the connection drops, the host **pauses** the game: the host gets a new code, the guest enters it — the entire game state is preserved.
+If the connection drops, the host pauses the game: they exchange fresh codes, and the entire game state is preserved.
 
 ## Game rules
 
@@ -30,20 +31,19 @@ The soloist receives/pays **three times** the opponent value (e.g. Solo won: +6 
 
 ```bash
 npm install
-npm run dev      # Vite dev server at http://localhost:5173
-npm test         # Engine and scoring tests
+npm run dev      # Vite dev server
 npm run lint     # TypeScript type-check
-npm run build    # Production build incl. service worker (dist/)
+npm run build    # Production build (dist/)
 ```
 
-The output in `dist/` is a purely static site — deployable to any static host (GitHub Pages, Netlify, Cloudflare Pages, …). Installable as a PWA; both devices need internet to connect (PeerJS broker for signaling, then a direct P2P connection).
+The output in `dist/` is a purely static site — deployable to any static host (GitHub Pages, Netlify, Cloudflare Pages, …). Installable as a PWA; both devices need to be on the same local network to establish the direct P2P WebRTC connection.
 
 ## Architecture
 
 ```
 src/
 ├── engine/GameEngine.ts   # Host-authoritative game state machine (bidding, tricks, scoring, AI pacing)
-├── net/PeerConnection.ts  # P2P connection (PeerJS signaling via game code, heartbeat)
+├── net/PeerConnection.ts  # P2P connection (hand-rolled serverless WebRTC data channel wrapper)
 ├── net/protocol.ts        # P2P message format
 ├── utils/gameLogic.ts     # Rules: trump, legality, trick evaluation, AI, tournament scoring
 ├── components/            # GameBoard, PlayerHand, BiddingPanel, TrickArea, PairingPanel, …
@@ -55,4 +55,4 @@ src/
 
 ## Tech stack
 
-React 19 · TypeScript · Vite · vite-plugin-pwa · Vanilla CSS · WebRTC · Vitest
+React 19 · TypeScript · Vite · Vanilla CSS · WebRTC

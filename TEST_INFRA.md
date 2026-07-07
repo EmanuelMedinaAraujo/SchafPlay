@@ -1,6 +1,6 @@
 # E2E Test Infrastructure - SchafPlay
 
-> **Status: design document, not yet implemented.** This describes a *planned* E2E test suite. The tests actually committed today are unit-level only: [tests/engine.test.ts](tests/engine.test.ts) and [tests/scoring.test.ts](tests/scoring.test.ts). None of the WebRTC/E2E test cases below exist as code yet — treat this as a backlog/spec, not a report of current coverage.
+> **Status: design document, not yet implemented.** This describes a *planned* E2E test suite. In accordance with user preferences, all automated testing frameworks and code tests have been completely removed from the repository. None of the WebRTC/E2E test cases below exist as code — treat this solely as a design reference / backlog for manual or future verification.
 
 ## 1. Testing Philosophy & Methodology
 
