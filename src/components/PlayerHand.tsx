@@ -26,6 +26,7 @@ const SUIT_ORDER: Record<Suit, number> = {
 interface DragState {
   id: string;
   el: HTMLButtonElement;
+  pointerId: number;
   startX: number;
   startY: number;
   moved: boolean;
@@ -83,7 +84,7 @@ export default function PlayerHand({
     } catch {
       // No active pointer with that id
     }
-    dragRef.current = { id: cardId, el, startX: event.clientX, startY: event.clientY, moved: false };
+    dragRef.current = { id: cardId, el, pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, moved: false };
     el.classList.add("dragging");
   }
 
@@ -106,6 +107,11 @@ export default function PlayerHand({
     dragRef.current = null;
     drag.el.classList.remove("dragging");
     drag.el.style.transform = "";
+    try {
+      drag.el.releasePointerCapture(drag.pointerId);
+    } catch {
+      // Already released or invalid pointer ID
+    }
     if (cancelled) return;
     const felt = document.querySelector(".trick-area");
     const rect = felt?.getBoundingClientRect();
