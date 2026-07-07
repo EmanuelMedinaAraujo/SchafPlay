@@ -154,7 +154,7 @@ export class GameEngine {
     if (action.type === PlayerActionType.BID_RETREAT) this.processBidDeclare(action.playerId, null);
     if (action.type === PlayerActionType.PLAY_CARD && action.data?.cardId) this.processCardPlay(action.playerId, action.data.cardId);
     if (action.type === PlayerActionType.READY_NEXT) this.setReady(action.playerId, true);
-    if (action.type === PlayerActionType.REMATCH) this.processRematch();
+    if (action.type === PlayerActionType.REMATCH) this.processRematchReady(action.playerId);
   }
 
   processBidWill(playerId: string, wantsToPlay: boolean): void {
@@ -429,6 +429,18 @@ export class GameEngine {
     state.currentTrick = null;
     state.readyState = { p1: false, p3: false };
     this.log(state, "log.roundOver", { names: result.winnerIds.map((id) => this.playerName(id)).join(", ") });
+  }
+
+  processRematchReady(playerId: string): void {
+    if (this.state.status !== "MATCH_OVER") return;
+    if (playerId !== "p1" && playerId !== "p3") return;
+    this.mutate((state) => {
+      state.readyState[playerId] = true;
+      this.log(state, "log.ready", { name: this.playerName(playerId) });
+    });
+    if (this.state.readyState.p1 && this.state.readyState.p3) {
+      this.processRematch();
+    }
   }
 
   processRematch(): void {

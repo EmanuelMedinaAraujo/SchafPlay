@@ -22,7 +22,10 @@ export default function MatchOverScreen({ state, language, myPlayerId, onAction,
   const t = translations[language];
   const sortedPlayers = [...state.players].sort((a, b) => (state.scores[b.id] ?? 0) - (state.scores[a.id] ?? 0));
   const winner = sortedPlayers[0];
-  const isHost = myPlayerId === "p1";
+  const iAmReady = Boolean(state.readyState[myPlayerId]);
+  const otherId = myPlayerId === "p1" ? "p3" : "p1";
+  const otherReady = Boolean(state.readyState[otherId]);
+  const otherName = state.players.find((player) => player.id === otherId)?.name ?? "";
 
   function triggerRematch() {
     onAction({ type: PlayerActionType.REMATCH, playerId: myPlayerId });
@@ -60,19 +63,22 @@ export default function MatchOverScreen({ state, language, myPlayerId, onAction,
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          {isHost ? (
-            <button className="primary-button" onClick={triggerRematch} type="button" style={{ width: "100%" }}>
-              {t.rematch}
-            </button>
-          ) : (
-            <button className="primary-button" disabled type="button" style={{ width: "100%" }}>
-              ⏳ {translations[language].readyWaiting}
-            </button>
-          )}
+          <button
+            className="primary-button"
+            onClick={triggerRematch}
+            disabled={iAmReady}
+            type="button"
+            style={{ width: "100%" }}
+          >
+            {iAmReady ? `⏳ ${t.readyWaiting}` : t.rematch}
+          </button>
           <button className="secondary-button" onClick={onQuit} type="button" style={{ width: "100%" }}>
             {t.quit}
           </button>
         </div>
+        <p className="muted" style={{ textAlign: "center", marginTop: "8px", fontSize: "13px" }}>
+          {otherName}: {otherReady ? `✓ ${t.isReady}` : `… ${t.notReady}`}
+        </p>
       </section>
     </div>
   );

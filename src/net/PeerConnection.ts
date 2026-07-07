@@ -14,7 +14,12 @@ async function compressSDP(obj: object): Promise<string> {
   const compressed = input.stream().pipeThrough(cs);
   const buf = await new Response(compressed).arrayBuffer();
   // base64url (no padding) so the blob is safe to paste anywhere.
-  return btoa(String.fromCharCode(...new Uint8Array(buf)))
+  const bytes = new Uint8Array(buf);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary)
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/, "");
@@ -69,10 +74,11 @@ export class PeerConnection {
     this.setupDataChannel(dc);
 
     const offer = await pc.createOffer();
+    const candidatesPromise = this.gatherCandidates(pc);
     await pc.setLocalDescription(offer);
 
     // Gather all ICE candidates (LAN-only, so they arrive quickly).
-    const candidates = await this.gatherCandidates(pc);
+    const candidates = await candidatesPromise;
 
     return compressSDP({
       sdp: pc.localDescription!.sdp,
@@ -119,9 +125,10 @@ export class PeerConnection {
     }
 
     const answer = await pc.createAnswer();
+    const candidatesPromise = this.gatherCandidates(pc);
     await pc.setLocalDescription(answer);
 
-    const candidates = await this.gatherCandidates(pc);
+    const candidates = await candidatesPromise;
 
     return compressSDP({
       sdp: pc.localDescription!.sdp,
@@ -174,17 +181,31 @@ export class PeerConnection {
   private gatherCandidates(pc: RTCPeerConnection): Promise<RTCIceCandidateInit[]> {
     return new Promise((resolve) => {
       const candidates: RTCIceCandidateInit[] = [];
+      let resolved = false;
+
+      const done = () => {
+        if (resolved) return;
+        resolved = true;
+        resolve(candidates);
+      };
+
+      // Safety timeout of 1.5s (candidate gathering is LAN-only and fast)
+      const timeoutId = setTimeout(done, 1500);
+
       pc.onicecandidate = (event) => {
         if (event.candidate) {
           candidates.push(event.candidate.toJSON());
         } else {
           // null candidate = gathering complete.
-          resolve(candidates);
+          clearTimeout(timeoutId);
+          done();
         }
       };
+
       // Safety: if gathering is already complete by the time we attach.
       if (pc.iceGatheringState === "complete") {
-        resolve(candidates);
+        clearTimeout(timeoutId);
+        done();
       }
     });
   }
@@ -226,6 +247,10 @@ export class PeerConnection {
 
   private emitState(state: PeerConnectionState) {
     this.stateHandlers.forEach((handler) => handler(state));
+  }
+
+  isConnected(): boolean {
+    return this.dc?.readyState === "open";
   }
 
   send(message: P2PMessage): void {

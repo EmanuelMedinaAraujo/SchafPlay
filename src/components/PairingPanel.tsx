@@ -58,6 +58,15 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
   const onPeerRef = useRef(onPeer);
   onPeerRef.current = onPeer;
 
+  // Clean up unconnected peer on unmount
+  useEffect(() => {
+    return () => {
+      if (peerRef.current && !peerRef.current.isConnected()) {
+        peerRef.current.disconnect();
+      }
+    };
+  }, []);
+
   // Host: create offer on mount.
   useEffect(() => {
     if (mode !== "host") return;
