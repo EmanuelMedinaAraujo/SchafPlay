@@ -222,11 +222,11 @@ button:not(:disabled):hover {
 .game-screen {
   width: min(1180px, 100%);
   margin: 0 auto;
-  padding: clamp(12px, 2.5vw, 28px);
+  padding: 8px clamp(12px, 2.5vw, 28px) 4px;
   /* Keep content clear of the notch (landscape) and home indicator. */
   padding-left: max(clamp(12px, 2.5vw, 28px), env(safe-area-inset-left, 0px));
   padding-right: max(clamp(12px, 2.5vw, 28px), env(safe-area-inset-right, 0px));
-  padding-bottom: max(clamp(12px, 2.5vw, 28px), env(safe-area-inset-bottom, 0px));
+  padding-bottom: max(4px, env(safe-area-inset-bottom, 0px));
 }
 
 .hero-panel {
@@ -478,12 +478,14 @@ button:not(:disabled):hover {
 /* ---------- Table & seats ---------- */
 
 .table {
-  min-height: 250px;
+  min-height: 290px;
   display: grid;
   grid-template-columns: minmax(120px, auto) minmax(200px, 1fr) minmax(120px, auto);
-  grid-template-rows: auto minmax(190px, 1fr);
+  grid-template-rows: minmax(220px, 1fr);
   gap: 10px;
   align-items: stretch;
+  position: relative;
+  margin-top: 10px;
 }
 
 .seat {
@@ -574,20 +576,22 @@ button:not(:disabled):hover {
 }
 
 .seat-top {
-  grid-column: 2;
-  grid-row: 1;
-  justify-self: center;
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
 }
 
 .seat-left {
   grid-column: 1;
-  grid-row: 2;
+  grid-row: 1;
   align-self: center;
 }
 
 .seat-right {
   grid-column: 3;
-  grid-row: 2;
+  grid-row: 1;
   align-self: center;
 }
 
@@ -597,14 +601,14 @@ button:not(:disabled):hover {
 
 .trick-area {
   grid-column: 2;
-  grid-row: 2;
+  grid-row: 1;
   border-radius: 14px;
   border: 1px solid rgba(220, 38, 38, 0.28);
   background: radial-gradient(circle at center, var(--felt), #0d1510 78%);
   position: relative;
   overflow: visible;
   z-index: 15;
-  min-height: 190px;
+  min-height: 220px;
 }
 
 .trick-felt {
@@ -676,7 +680,7 @@ button:not(:disabled):hover {
   0% { transform: translate(0, 0); }
   30% { transform: translate(0, -60px) rotate(0deg); }
   65% { transform: translate(0, -60px) rotate(0deg); }
-  100% { transform: translate(0, -280px) scale(0.35); opacity: 0; }
+  100% { transform: translate(0, -320px) scale(0.35); opacity: 0; }
 }
 @keyframes gather-and-fly-bottom-to-bottom {
   0% { transform: translate(0, 0); }
@@ -702,7 +706,7 @@ button:not(:disabled):hover {
   0% { transform: translate(0, 0); }
   30% { transform: translate(0, 60px) rotate(0deg); }
   65% { transform: translate(0, 60px) rotate(0deg); }
-  100% { transform: translate(0, -180px) scale(0.35); opacity: 0; }
+  100% { transform: translate(0, -220px) scale(0.35); opacity: 0; }
 }
 @keyframes gather-and-fly-top-to-bottom {
   0% { transform: translate(0, 0); }
@@ -728,7 +732,7 @@ button:not(:disabled):hover {
   0% { transform: translate(0, 0); }
   30% { transform: translate(100px, 0) rotate(0deg); }
   65% { transform: translate(100px, 0) rotate(0deg); }
-  100% { transform: translate(100px, -240px) scale(0.35); opacity: 0; }
+  100% { transform: translate(100px, -280px) scale(0.35); opacity: 0; }
 }
 @keyframes gather-and-fly-left-to-bottom {
   0% { transform: translate(0, 0); }
@@ -754,7 +758,7 @@ button:not(:disabled):hover {
   0% { transform: translate(0, 0); }
   30% { transform: translate(-100px, 0) rotate(0deg); }
   65% { transform: translate(-100px, 0) rotate(0deg); }
-  100% { transform: translate(-100px, -240px) scale(0.35); opacity: 0; }
+  100% { transform: translate(-100px, -280px) scale(0.35); opacity: 0; }
 }
 @keyframes gather-and-fly-right-to-bottom {
   0% { transform: translate(0, 0); }
@@ -897,6 +901,18 @@ button:not(:disabled):hover {
   min-height: 32px !important;
   font-size: 12px !important;
   padding: 0 12px !important;
+}
+
+.dev-skip-btn {
+  position: absolute;
+  right: 140px;
+  top: 50%;
+  transform: translateY(-50%);
+  min-height: 32px !important;
+  font-size: 12px !important;
+  padding: 0 12px !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+  color: var(--amber) !important;
 }
 
 .player-hand-cards {
@@ -1382,13 +1398,13 @@ html.compact .game-toolbar {
 }
 
 html.compact .table {
-  min-height: 140px;
-  grid-template-rows: auto minmax(90px, 1fr);
+  min-height: 150px;
+  grid-template-rows: minmax(100px, 1fr);
   gap: 5px;
 }
 
 html.compact .trick-area {
-  min-height: 90px;
+  min-height: 100px;
 }
 
 /* Float the bidding dialog over the table so the hand stays visible. */

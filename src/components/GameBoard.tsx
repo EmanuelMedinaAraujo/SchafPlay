@@ -66,11 +66,6 @@ export default function GameBoard({
         <span className="muted">
           {t.round} {state.roundNumber}/{state.totalRounds}
         </span>
-        {import.meta.env.DEV && state.status === "PLAYING" && onDevSkip && (
-          <button className="text-button" onClick={onDevSkip} type="button" style={{ marginLeft: "8px" }}>
-            ⚡ {t.devSkip}
-          </button>
-        )}
         <span className="toolbar-spacer" />
         <button className="icon-button" onClick={onQuit} title={t.quit} type="button">
           <DoorOpenIcon />
@@ -104,6 +99,7 @@ export default function GameBoard({
         language={language}
         onPlay={playCard}
         onLastTrick={() => setLastTrickOpen(true)}
+        onDevSkip={onDevSkip}
       />
 
       {lastTrickOpen && lastCompletedTrick && (
