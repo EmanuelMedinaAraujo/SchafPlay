@@ -25,6 +25,7 @@ interface GameBoardProps {
   onReady: () => void;
   onQuit: () => void;
   onDevSkip?: () => void;
+  onDevSkipRound?: () => void;
 }
 
 export default function GameBoard({
@@ -35,6 +36,7 @@ export default function GameBoard({
   onReady,
   onQuit,
   onDevSkip,
+  onDevSkipRound,
 }: GameBoardProps) {
   const t = translations[language];
   const [lastTrickOpen, setLastTrickOpen] = useState(false);
@@ -100,6 +102,7 @@ export default function GameBoard({
         onPlay={playCard}
         onLastTrick={() => setLastTrickOpen(true)}
         onDevSkip={onDevSkip}
+        onDevSkipRound={onDevSkipRound}
       />
 
       {lastTrickOpen && lastCompletedTrick && (

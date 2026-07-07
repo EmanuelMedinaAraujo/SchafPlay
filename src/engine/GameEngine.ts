@@ -464,6 +464,42 @@ export class GameEngine {
     }
   }
 
+  devSkipRound(): void {
+    if (import.meta.env.DEV && (this.state.status === "PLAYING" || this.state.status === "BIDDING") && !this.state.paused) {
+      this.clearTimer();
+      let safetyCount = 0;
+      while ((this.state.status === "PLAYING" || this.state.status === "BIDDING") && safetyCount < 200) {
+        safetyCount++;
+        if (this.state.status === "BIDDING") {
+          const active = this.activePlayer();
+          if (this.state.biddingState!.phase === "WILL_PHASE") {
+            const wantsToPlay = active.id === "p1";
+            this.processBidWill(active.id, wantsToPlay);
+          } else {
+            if (active.id === "p1") {
+              const calledSuit = [Suit.ACORNS, Suit.LEAVES, Suit.BELLS].find(s =>
+                !active.cards.some(c => c.suit === s && c.value === CardValue.ACE) &&
+                active.cards.some(c => c.suit === s)
+              ) ?? Suit.ACORNS;
+              this.processBidDeclare(active.id, { type: GameType.SAUSPIEL, calledSuit });
+            } else {
+              const declaration = getAIBid(active, this.state.biddingState!.highBid?.declaration ?? null);
+              this.processBidDeclare(active.id, declaration);
+            }
+          }
+        } else if (this.state.status === "PLAYING") {
+          const active = this.activePlayer();
+          const legal = getLegalCards(active.cards, this.state.currentTrick, this.state.currentContract);
+          if (legal.length === 0) break;
+          const card = active.isHuman
+            ? legal[0]
+            : getAICardPlay(active, this.state.currentTrick, this.state.currentContract, active.difficulty);
+          this.processCardPlay(active.id, card.id);
+        }
+      }
+    }
+  }
+
   private calledAceWasPlayed(): boolean {
     const calledSuit = this.state.currentContract?.calledSuit;
     if (!calledSuit) return true;

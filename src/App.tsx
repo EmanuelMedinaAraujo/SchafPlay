@@ -251,6 +251,7 @@ export default function App() {
           onReady={handleReady}
           onQuit={quitGame}
           onDevSkip={role === "host" ? () => engineRef.current?.devSkipTrick() : undefined}
+          onDevSkipRound={role === "host" ? () => engineRef.current?.devSkipRound() : undefined}
         />
       )}
 
