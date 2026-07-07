@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, Languages, PlugZap, Wifi } from "lucide-react";
 import GameBoard from "./components/GameBoard";
 import HomeScreen from "./components/HomeScreen";
 import PairingPanel from "./components/PairingPanel";
@@ -13,6 +12,28 @@ import { translations } from "./lib/i18n";
 const NAME_KEY = "schafplay.name";
 const LANG_KEY = "schafplay.language";
 
+/** Inline SVG icons — replaces lucide-react */
+const BookOpenIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+  </svg>
+);
+const LanguagesIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m5 8 6 6" /><path d="m4 14 6-6 2-3" /><path d="M2 5h12" /><path d="M7 2h1" /><path d="m22 22-5-10-5 10" /><path d="M14 18h6" />
+  </svg>
+);
+const WifiIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 12.55a11 11 0 0 1 14.08 0" /><path d="M1.42 9a16 16 0 0 1 21.16 0" /><path d="M8.53 16.11a6 6 0 0 1 6.95 0" /><line x1="12" y1="20" x2="12.01" y2="20" />
+  </svg>
+);
+const PlugZapIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z" /><path d="m2 22 3-3" /><path d="M7.5 13.5 10 11" /><path d="M10.5 16.5 13 14" /><path d="m18 3-4 4h6l-4 4" />
+  </svg>
+);
+
 export default function App() {
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem(LANG_KEY) as Language) || "de");
   const [playerName, setPlayerName] = useState(() => localStorage.getItem(NAME_KEY) || "Bazi");
@@ -21,6 +42,7 @@ export default function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [connectionState, setConnectionState] = useState<PeerConnectionState | "idle">("idle");
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [totalRounds, setTotalRounds] = useState<number>(8);
 
   const engineRef = useRef<GameEngine | null>(null);
   const peerRef = useRef<PeerConnection | null>(null);
@@ -83,10 +105,10 @@ export default function App() {
     setRole("host");
 
     if (!engineRef.current) {
-      const engine = new GameEngine(nameRef.current);
+      const engine = new GameEngine(nameRef.current, "Gast", totalRounds);
       engineRef.current = engine;
       engine.onStateChange((state) => {
-        setGameState(state);
+        setGameState(engine.getRedactedState("p1"));
         sendGuestState();
       });
     }
@@ -190,14 +212,14 @@ export default function App() {
         </button>
         <div className="topbar-actions">
           <button className="icon-button" onClick={() => setRulesOpen(true)} title={t.rules} type="button">
-            <BookOpen size={18} />
+            <BookOpenIcon />
           </button>
           <button className="text-button" onClick={() => setLanguage(language === "de" ? "en" : "de")} type="button">
-            <Languages size={16} />
+            <LanguagesIcon />
             {language.toUpperCase()}
           </button>
           <span className={`connection-pill ${connectionState}`}>
-            {connectionState === "connected" ? <Wifi size={14} /> : <PlugZap size={14} />}
+            {connectionState === "connected" ? <WifiIcon /> : <PlugZapIcon />}
             {connectionState === "connected"
               ? t.connected
               : connectionState === "connecting"
@@ -217,6 +239,8 @@ export default function App() {
           connectionState={connectionState}
           onHostPeer={attachHostPeer}
           onGuestPeer={attachGuestPeer}
+          totalRounds={totalRounds}
+          onTotalRoundsChange={setTotalRounds}
         />
       ) : (
         <GameBoard
@@ -226,6 +250,8 @@ export default function App() {
           onAction={handleAction}
           onReady={handleReady}
           onQuit={quitGame}
+          onDevSkip={role === "host" ? () => engineRef.current?.devSkipTrick() : undefined}
+          onDevSkipRound={role === "host" ? () => engineRef.current?.devSkipRound() : undefined}
         />
       )}
 

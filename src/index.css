@@ -222,11 +222,11 @@ button:not(:disabled):hover {
 .game-screen {
   width: min(1180px, 100%);
   margin: 0 auto;
-  padding: clamp(12px, 2.5vw, 28px);
+  padding: 8px clamp(12px, 2.5vw, 28px) 4px;
   /* Keep content clear of the notch (landscape) and home indicator. */
   padding-left: max(clamp(12px, 2.5vw, 28px), env(safe-area-inset-left, 0px));
   padding-right: max(clamp(12px, 2.5vw, 28px), env(safe-area-inset-right, 0px));
-  padding-bottom: max(clamp(12px, 2.5vw, 28px), env(safe-area-inset-bottom, 0px));
+  padding-bottom: max(4px, env(safe-area-inset-bottom, 0px));
 }
 
 .hero-panel {
@@ -392,6 +392,20 @@ button:not(:disabled):hover {
   gap: 6px;
 }
 
+.code-textarea {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  resize: none;
+  background: #0d0d12;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 10px;
+  width: 100%;
+  margin-bottom: 8px;
+  word-break: break-all;
+}
+
 .pairing-flow .primary-button,
 .pairing-flow .secondary-button {
   width: 100%;
@@ -444,6 +458,7 @@ button:not(:disabled):hover {
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 10px;
+  position: relative;
 }
 
 .toolbar-spacer {
@@ -464,12 +479,14 @@ button:not(:disabled):hover {
 /* ---------- Table & seats ---------- */
 
 .table {
-  min-height: 300px;
+  min-height: 290px;
   display: grid;
   grid-template-columns: minmax(120px, auto) minmax(200px, 1fr) minmax(120px, auto);
-  grid-template-rows: auto minmax(190px, 1fr) auto;
+  grid-template-rows: minmax(220px, 1fr);
   gap: 10px;
   align-items: stretch;
+  position: relative;
+  margin-top: 10px;
 }
 
 .seat {
@@ -560,40 +577,39 @@ button:not(:disabled):hover {
 }
 
 .seat-top {
-  grid-column: 2;
-  grid-row: 1;
-  justify-self: center;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
 }
 
 .seat-left {
   grid-column: 1;
-  grid-row: 2;
+  grid-row: 1;
   align-self: center;
 }
 
 .seat-right {
   grid-column: 3;
-  grid-row: 2;
+  grid-row: 1;
   align-self: center;
 }
 
-.seat-bottom {
-  grid-column: 2;
-  grid-row: 3;
-  justify-self: center;
-}
+
 
 /* ---------- Trick area ---------- */
 
 .trick-area {
   grid-column: 2;
-  grid-row: 2;
+  grid-row: 1;
   border-radius: 14px;
   border: 1px solid rgba(220, 38, 38, 0.28);
   background: radial-gradient(circle at center, var(--felt), #0d1510 78%);
   position: relative;
-  overflow: hidden;
-  min-height: 190px;
+  overflow: visible;
+  z-index: 15;
+  min-height: 220px;
 }
 
 .trick-felt {
@@ -608,15 +624,6 @@ button:not(:disabled):hover {
   align-items: center;
   gap: 3px;
   transition: transform 0.25s ease;
-}
-
-.trick-slot small {
-  color: rgba(244, 244, 245, 0.72);
-  font-size: 10px;
-  max-width: 74px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .slot-bottom {
@@ -643,54 +650,134 @@ button:not(:disabled):hover {
   transform: translateY(-50%) rotate(8deg);
 }
 
-/* Trick collection: the winning card lights up, then all four cards fly
-   towards the winner's seat before the engine clears the trick. */
-.trick-card.winner .card-face {
-  box-shadow: 0 0 0 2px var(--amber), 0 0 22px rgba(245, 158, 11, 0.45);
+.trick-card {
+  position: relative;
+  z-index: 20;
 }
 
-.trick-card.fly-bottom {
-  animation: fly-bottom 0.55s cubic-bezier(0.5, 0, 0.9, 0.6) 0.85s forwards;
+/* Two-stage trick collection animations */
+.slot-bottom.collecting.fly-top .trick-card { animation: gather-and-fly-bottom-to-top 1.3s ease-in-out forwards; }
+.slot-bottom.collecting.fly-bottom .trick-card { animation: gather-and-fly-bottom-to-bottom 1.3s ease-in-out forwards; }
+.slot-bottom.collecting.fly-left .trick-card { animation: gather-and-fly-bottom-to-left 1.3s ease-in-out forwards; }
+.slot-bottom.collecting.fly-right .trick-card { animation: gather-and-fly-bottom-to-right 1.3s ease-in-out forwards; }
+
+.slot-top.collecting.fly-top .trick-card { animation: gather-and-fly-top-to-top 1.3s ease-in-out forwards; }
+.slot-top.collecting.fly-bottom .trick-card { animation: gather-and-fly-top-to-bottom 1.3s ease-in-out forwards; }
+.slot-top.collecting.fly-left .trick-card { animation: gather-and-fly-top-to-left 1.3s ease-in-out forwards; }
+.slot-top.collecting.fly-right .trick-card { animation: gather-and-fly-top-to-right 1.3s ease-in-out forwards; }
+
+.slot-left.collecting.fly-top .trick-card { animation: gather-and-fly-left-to-top 1.3s ease-in-out forwards; }
+.slot-left.collecting.fly-bottom .trick-card { animation: gather-and-fly-left-to-bottom 1.3s ease-in-out forwards; }
+.slot-left.collecting.fly-left .trick-card { animation: gather-and-fly-left-to-left 1.3s ease-in-out forwards; }
+.slot-left.collecting.fly-right .trick-card { animation: gather-and-fly-left-to-right 1.3s ease-in-out forwards; }
+
+.slot-right.collecting.fly-top .trick-card { animation: gather-and-fly-right-to-top 1.3s ease-in-out forwards; }
+.slot-right.collecting.fly-bottom .trick-card { animation: gather-and-fly-right-to-bottom 1.3s ease-in-out forwards; }
+.slot-right.collecting.fly-left .trick-card { animation: gather-and-fly-right-to-left 1.3s ease-in-out forwards; }
+.slot-right.collecting.fly-right .trick-card { animation: gather-and-fly-right-to-right 1.3s ease-in-out forwards; }
+
+/* Keyframes for slot-bottom */
+@keyframes gather-and-fly-bottom-to-top {
+  0% { transform: translate(0, 0); }
+  30% { transform: translate(0, -60px) rotate(0deg); }
+  65% { transform: translate(0, -60px) rotate(0deg); }
+  100% { transform: translate(0, -320px) scale(0.35); opacity: 0; }
+}
+@keyframes gather-and-fly-bottom-to-bottom {
+  0% { transform: translate(0, 0); }
+  30% { transform: translate(0, -60px) rotate(0deg); }
+  65% { transform: translate(0, -60px) rotate(0deg); }
+  100% { transform: translate(0, 180px) scale(0.35); opacity: 0; }
+}
+@keyframes gather-and-fly-bottom-to-left {
+  0% { transform: translate(0, 0); }
+  30% { transform: translate(0, -60px) rotate(0deg); }
+  65% { transform: translate(0, -60px) rotate(0deg); }
+  100% { transform: translate(-300px, -60px) scale(0.35); opacity: 0; }
+}
+@keyframes gather-and-fly-bottom-to-right {
+  0% { transform: translate(0, 0); }
+  30% { transform: translate(0, -60px) rotate(0deg); }
+  65% { transform: translate(0, -60px) rotate(0deg); }
+  100% { transform: translate(300px, -60px) scale(0.35); opacity: 0; }
 }
 
-.trick-card.fly-top {
-  animation: fly-top 0.55s cubic-bezier(0.5, 0, 0.9, 0.6) 0.85s forwards;
+/* Keyframes for slot-top */
+@keyframes gather-and-fly-top-to-top {
+  0% { transform: translate(0, 0); }
+  30% { transform: translate(0, 60px) rotate(0deg); }
+  65% { transform: translate(0, 60px) rotate(0deg); }
+  100% { transform: translate(0, -220px) scale(0.35); opacity: 0; }
+}
+@keyframes gather-and-fly-top-to-bottom {
+  0% { transform: translate(0, 0); }
+  30% { transform: translate(0, 60px) rotate(0deg); }
+  65% { transform: translate(0, 60px) rotate(0deg); }
+  100% { transform: translate(0, 280px) scale(0.35); opacity: 0; }
+}
+@keyframes gather-and-fly-top-to-left {
+  0% { transform: translate(0, 0); }
+  30% { transform: translate(0, 60px) rotate(0deg); }
+  65% { transform: translate(0, 60px) rotate(0deg); }
+  100% { transform: translate(-300px, 60px) scale(0.35); opacity: 0; }
+}
+@keyframes gather-and-fly-top-to-right {
+  0% { transform: translate(0, 0); }
+  30% { transform: translate(0, 60px) rotate(0deg); }
+  65% { transform: translate(0, 60px) rotate(0deg); }
+  100% { transform: translate(300px, 60px) scale(0.35); opacity: 0; }
 }
 
-.trick-card.fly-left {
-  animation: fly-left 0.55s cubic-bezier(0.5, 0, 0.9, 0.6) 0.85s forwards;
+/* Keyframes for slot-left */
+@keyframes gather-and-fly-left-to-top {
+  0% { transform: translate(0, 0); }
+  30% { transform: translate(100px, 0) rotate(0deg); }
+  65% { transform: translate(100px, 0) rotate(0deg); }
+  100% { transform: translate(100px, -280px) scale(0.35); opacity: 0; }
+}
+@keyframes gather-and-fly-left-to-bottom {
+  0% { transform: translate(0, 0); }
+  30% { transform: translate(100px, 0) rotate(0deg); }
+  65% { transform: translate(100px, 0) rotate(0deg); }
+  100% { transform: translate(100px, 240px) scale(0.35); opacity: 0; }
+}
+@keyframes gather-and-fly-left-to-left {
+  0% { transform: translate(0, 0); }
+  30% { transform: translate(100px, 0) rotate(0deg); }
+  65% { transform: translate(100px, 0) rotate(0deg); }
+  100% { transform: translate(-200px, 0) scale(0.35); opacity: 0; }
+}
+@keyframes gather-and-fly-left-to-right {
+  0% { transform: translate(0, 0); }
+  30% { transform: translate(100px, 0) rotate(0deg); }
+  65% { transform: translate(100px, 0) rotate(0deg); }
+  100% { transform: translate(400px, 0) scale(0.35); opacity: 0; }
 }
 
-.trick-card.fly-right {
-  animation: fly-right 0.55s cubic-bezier(0.5, 0, 0.9, 0.6) 0.85s forwards;
+/* Keyframes for slot-right */
+@keyframes gather-and-fly-right-to-top {
+  0% { transform: translate(0, 0); }
+  30% { transform: translate(-100px, 0) rotate(0deg); }
+  65% { transform: translate(-100px, 0) rotate(0deg); }
+  100% { transform: translate(-100px, -280px) scale(0.35); opacity: 0; }
 }
-
-@keyframes fly-bottom {
-  to {
-    transform: translateY(240px) scale(0.35);
-    opacity: 0;
-  }
+@keyframes gather-and-fly-right-to-bottom {
+  0% { transform: translate(0, 0); }
+  30% { transform: translate(-100px, 0) rotate(0deg); }
+  65% { transform: translate(-100px, 0) rotate(0deg); }
+  100% { transform: translate(-100px, 240px) scale(0.35); opacity: 0; }
 }
-
-@keyframes fly-top {
-  to {
-    transform: translateY(-240px) scale(0.35);
-    opacity: 0;
-  }
+@keyframes gather-and-fly-right-to-left {
+  0% { transform: translate(0, 0); }
+  30% { transform: translate(-100px, 0) rotate(0deg); }
+  65% { transform: translate(-100px, 0) rotate(0deg); }
+  100% { transform: translate(-400px, 0) scale(0.35); opacity: 0; }
 }
-
-@keyframes fly-left {
-  to {
-    transform: translateX(-420px) scale(0.35);
-    opacity: 0;
-  }
-}
-
-@keyframes fly-right {
-  to {
-    transform: translateX(420px) scale(0.35);
-    opacity: 0;
-  }
+@keyframes gather-and-fly-right-to-right {
+  0% { transform: translate(0, 0); }
+  30% { transform: translate(-100px, 0) rotate(0deg); }
+  65% { transform: translate(-100px, 0) rotate(0deg); }
+  100% { transform: translate(200px, 0) scale(0.35); opacity: 0; }
 }
 
 /* ---------- Cards ---------- */
@@ -778,30 +865,77 @@ button:not(:disabled):hover {
 
 /* ---------- Player hand ---------- */
 
-.player-hand {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 0;
-  min-height: 118px;
-  padding: 16px 4px 8px;
-  /* Cards may be lifted or dragged out of the tray — never clip them. */
-  overflow: visible;
+.player-hand-container {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel);
   margin-top: 12px;
+  padding: 8px 16px;
+  position: relative;
+  min-height: 114px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.player-hand.my-turn {
+.player-hand-container.my-turn {
   border-color: rgba(34, 197, 94, 0.5);
   box-shadow: 0 0 18px rgba(34, 197, 94, 0.12);
 }
 
-/* Fanned hand: each card is slightly rotated (--fan-rot / --fan-lift come
-   from PlayerHand) so the card underneath stays identifiable. Cards are
-   never rendered transparent or dimmed — legality only shows as a green ring. */
+.player-hand-name {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.last-trick-btn {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  min-height: 32px !important;
+  font-size: 12px !important;
+  padding: 0 12px !important;
+}
+
+.dev-header-btn {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  font-size: 11px !important;
+  min-height: 26px !important;
+  padding: 0 8px !important;
+}
+
+.dev-trick-btn {
+  left: calc(50% - 150px);
+  border-color: rgba(245, 158, 11, 0.4) !important;
+  color: var(--amber) !important;
+}
+
+.dev-round-btn {
+  left: calc(50% + 150px);
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  color: var(--red-2) !important;
+}
+
+.player-hand-cards {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0;
+  min-height: 98px;
+  overflow: visible;
+  padding: 8px 0;
+}
+
 .playing-card {
   position: relative;
   flex: 0 0 auto;
@@ -812,7 +946,8 @@ button:not(:disabled):hover {
   margin-left: -22px;
   transform: rotate(var(--fan-rot, 0deg)) translateY(var(--fan-lift, 0px));
   transform-origin: 50% 130%;
-  transition: transform 0.18s ease;
+  transition: transform 0.18s ease, opacity 0.2s ease, filter 0.2s ease;
+  touch-action: none;
 }
 
 .playing-card:first-child {
@@ -824,19 +959,9 @@ button:not(:disabled):hover {
   cursor: default;
 }
 
-.playing-card.legal {
-  /* The card is a drag handle; don't let touch dragging scroll the page. */
-  touch-action: none;
-}
-
-.playing-card.legal:hover,
-.playing-card.legal:focus-visible {
-  transform: rotate(var(--fan-rot, 0deg)) translateY(calc(var(--fan-lift, 0px) - 14px));
-  z-index: 2;
-}
-
-.playing-card.legal .card-face {
-  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(34, 197, 94, 0.5);
+.playing-card.grayed-out {
+  opacity: 0.25 !important;
+  filter: grayscale(1);
 }
 
 .playing-card.dragging {
@@ -846,7 +971,7 @@ button:not(:disabled):hover {
 }
 
 .playing-card.dragging .card-face {
-  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(34, 197, 94, 0.7);
+  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.55);
 }
 
 /* ---------- Bidding ---------- */
@@ -1284,13 +1409,13 @@ html.compact .game-toolbar {
 }
 
 html.compact .table {
-  min-height: 140px;
-  grid-template-rows: auto minmax(90px, 1fr) auto;
+  min-height: 150px;
+  grid-template-rows: minmax(100px, 1fr);
   gap: 5px;
 }
 
 html.compact .trick-area {
-  min-height: 90px;
+  min-height: 100px;
 }
 
 /* Float the bidding dialog over the table so the hand stays visible. */
