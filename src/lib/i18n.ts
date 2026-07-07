@@ -6,6 +6,12 @@ export const translations = {
   de: {
     // Home / pairing
     playerName: "Spielername",
+    matchLength: "Spiellänge",
+    rounds: "Runden",
+    matchOver: "Match beendet",
+    rematch: "Revanche",
+    winner: "Gewinner",
+    devSkip: "Stich überspringen (Dev)",
     hostGame: "Spiel hosten",
     joinGame: "Spiel beitreten",
     hostIntro: "Kopiere den Einladungscode und schick ihn deinem Mitspieler. Er generiert einen Antwortcode, den du hier einfügst.",
@@ -87,6 +93,12 @@ export const translations = {
   },
   en: {
     playerName: "Player name",
+    matchLength: "Match length",
+    rounds: "rounds",
+    matchOver: "Match over",
+    rematch: "Rematch",
+    winner: "Winner",
+    devSkip: "Skip Trick (Dev)",
     hostGame: "Host game",
     joinGame: "Join game",
     hostIntro: "Copy the invite code and send it to your partner. They'll generate a reply code for you to paste here.",

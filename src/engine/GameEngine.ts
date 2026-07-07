@@ -48,7 +48,7 @@ export class GameEngine {
   private shuffleFn: (deck: Card[]) => Card[];
   private timer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(hostName: string, guestName = "Gast", options: EngineOptions = {}) {
+  constructor(hostName: string, guestName = "Gast", totalRounds = 8, options: EngineOptions = {}) {
     this.aiDelayMs = options.aiDelayMs ?? 900;
     this.trickHoldMs = options.trickHoldMs ?? 1600;
     this.shuffleFn = options.shuffleFn ?? shuffleDeck;
@@ -74,6 +74,7 @@ export class GameEngine {
       readyState: { p1: false, p3: false },
       scores: { p1: 0, p2: 0, p3: 0, p4: 0 },
       roundNumber: 0,
+      totalRounds,
       logs: [{ key: "log.lobby" }],
     };
   }
@@ -153,6 +154,7 @@ export class GameEngine {
     if (action.type === PlayerActionType.BID_RETREAT) this.processBidDeclare(action.playerId, null);
     if (action.type === PlayerActionType.PLAY_CARD && action.data?.cardId) this.processCardPlay(action.playerId, action.data.cardId);
     if (action.type === PlayerActionType.READY_NEXT) this.setReady(action.playerId, true);
+    if (action.type === PlayerActionType.REMATCH) this.processRematch();
   }
 
   processBidWill(playerId: string, wantsToPlay: boolean): void {
@@ -419,10 +421,47 @@ export class GameEngine {
     Object.entries(result.scoreChanges).forEach(([id, change]) => {
       state.scores[id] = (state.scores[id] ?? 0) + change;
     });
-    state.status = "ROUND_OVER";
+    if (state.roundNumber >= state.totalRounds) {
+      state.status = "MATCH_OVER";
+    } else {
+      state.status = "ROUND_OVER";
+    }
     state.currentTrick = null;
     state.readyState = { p1: false, p3: false };
     this.log(state, "log.roundOver", { names: result.winnerIds.map((id) => this.playerName(id)).join(", ") });
+  }
+
+  processRematch(): void {
+    this.clearTimer();
+    this.mutate((state) => {
+      state.readyState = { p1: false, p3: false };
+      state.scores = { p1: 0, p2: 0, p3: 0, p4: 0 };
+      state.roundNumber = 0;
+      state.dealerIdx = 3;
+      this.dealInto(state);
+      state.dealerIdx = (state.dealerIdx + 1) % 4;
+      state.activePlayerIdx = (state.dealerIdx + 1) % 4;
+      state.roundNumber += 1;
+      state.lastResult = undefined;
+      state.logs = [{ key: "log.deal", params: { round: state.roundNumber, dealer: state.players[state.dealerIdx].name } }];
+      this.resetBidding(state);
+    });
+    this.scheduleProgress();
+  }
+
+  devSkipTrick(): void {
+    if (import.meta.env.DEV && this.state.status === "PLAYING" && !this.state.collecting) {
+      this.clearTimer();
+      while (this.state.status === "PLAYING" && !this.state.collecting) {
+        const active = this.activePlayer();
+        const legal = getLegalCards(active.cards, this.state.currentTrick, this.state.currentContract);
+        if (legal.length === 0) break;
+        const card = active.isHuman
+          ? legal[0]
+          : getAICardPlay(active, this.state.currentTrick, this.state.currentContract, active.difficulty);
+        this.processCardPlay(active.id, card.id);
+      }
+    }
   }
 
   private calledAceWasPlayed(): boolean {

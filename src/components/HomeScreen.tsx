@@ -26,6 +26,8 @@ interface HomeScreenProps {
   onPlayerNameChange: (name: string) => void;
   onHostPeer: (peer: PeerConnection) => void;
   onGuestPeer: (peer: PeerConnection) => void;
+  totalRounds: number;
+  onTotalRoundsChange: (rounds: number) => void;
 }
 
 export default function HomeScreen(props: HomeScreenProps) {
@@ -91,6 +93,24 @@ export default function HomeScreen(props: HomeScreenProps) {
             {mode === "host" ? <UsersIcon /> : <RadioIcon />}
             {mode === "host" ? t.hostGame : t.joinGame}
           </h2>
+          {mode === "host" && (
+            <div style={{ marginBottom: "16px" }}>
+              <label className="field-label">{t.matchLength}</label>
+              <div className="mode-switch" role="group" style={{ marginTop: "4px" }}>
+                {[4, 8, 12].map((r) => (
+                  <button
+                    key={r}
+                    className={props.totalRounds === r ? "active" : ""}
+                    onClick={() => props.onTotalRoundsChange(r)}
+                    style={{ minHeight: "34px", fontSize: "13px" }}
+                    type="button"
+                  >
+                    {r} {t.rounds}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <PairingPanel
             key={mode}
             language={props.language}

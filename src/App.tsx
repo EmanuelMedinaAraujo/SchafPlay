@@ -42,6 +42,7 @@ export default function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [connectionState, setConnectionState] = useState<PeerConnectionState | "idle">("idle");
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [totalRounds, setTotalRounds] = useState<number>(8);
 
   const engineRef = useRef<GameEngine | null>(null);
   const peerRef = useRef<PeerConnection | null>(null);
@@ -104,7 +105,7 @@ export default function App() {
     setRole("host");
 
     if (!engineRef.current) {
-      const engine = new GameEngine(nameRef.current);
+      const engine = new GameEngine(nameRef.current, "Gast", totalRounds);
       engineRef.current = engine;
       engine.onStateChange((state) => {
         setGameState(state);
@@ -238,6 +239,8 @@ export default function App() {
           connectionState={connectionState}
           onHostPeer={attachHostPeer}
           onGuestPeer={attachGuestPeer}
+          totalRounds={totalRounds}
+          onTotalRoundsChange={setTotalRounds}
         />
       ) : (
         <GameBoard
