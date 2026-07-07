@@ -478,10 +478,10 @@ button:not(:disabled):hover {
 /* ---------- Table & seats ---------- */
 
 .table {
-  min-height: 300px;
+  min-height: 250px;
   display: grid;
   grid-template-columns: minmax(120px, auto) minmax(200px, 1fr) minmax(120px, auto);
-  grid-template-rows: auto minmax(190px, 1fr) auto;
+  grid-template-rows: auto minmax(190px, 1fr);
   gap: 10px;
   align-items: stretch;
 }
@@ -1378,7 +1378,7 @@ html.compact .game-toolbar {
 
 html.compact .table {
   min-height: 140px;
-  grid-template-rows: auto minmax(90px, 1fr) auto;
+  grid-template-rows: auto minmax(90px, 1fr);
   gap: 5px;
 }
 

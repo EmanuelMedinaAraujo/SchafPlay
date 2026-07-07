@@ -36,21 +36,6 @@ export default function HomeScreen(props: HomeScreenProps) {
 
   return (
     <main className="home-screen">
-      <section className="hero-panel">
-        <div className="hero-copy">
-          <span className="eyebrow">Offline-first PWA · WebRTC P2P</span>
-          <h1>SchafPlay</h1>
-          <p>{t.heroTagline}</p>
-          <p className="muted">{t.heroHint}</p>
-        </div>
-        <div className="hero-table" aria-hidden="true">
-          <span>🌰</span>
-          <span>🍃</span>
-          <span>❤️</span>
-          <span>🔔</span>
-        </div>
-      </section>
-
       <section className="home-grid">
         <div className="panel">
           <label className="field-label" htmlFor="player-name">
