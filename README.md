@@ -38,6 +38,41 @@ npm run build    # Production build (dist/)
 
 The output in `dist/` is a purely static site — deployable to any static host (GitHub Pages, Netlify, Cloudflare Pages, …). Installable as a PWA; both devices need to be on the same local network to establish the direct P2P WebRTC connection.
 
+## Hosting and Playing over Tailscale
+
+If you want to play with someone who is not on the same physical Wi-Fi/local network, you can securely connect and host the game over a [Tailscale](https://tailscale.com/) tailnet.
+
+### 1. Secure Context (HTTPS) Requirement
+WebRTC data channels and Service Workers (required for offline-first PWA features) require a **Secure Context** (HTTPS) when accessed over non-localhost network addresses. Because Vite runs locally on HTTP, we use **Tailscale Serve** to act as a secure proxy that provides automated, valid TLS/HTTPS certificates directly on your tailnet.
+
+### 2. Enable HTTPS in Tailscale Admin Console
+To allow Tailscale to generate HTTPS certificates for your devices:
+1. Log into your **Tailscale Admin Console**.
+2. Go to **Settings > DNS**.
+3. Scroll down to **HTTPS Certificates** and enable the feature.
+
+### 3. Vite Configuration
+Tailscale's local proxy forwards traffic to the local loopback address. This project is configured to support this out-of-the-box in [vite.config.ts](file:///d:/Emanuel/Projekte/SchafPlay/vite.config.ts#L35-L38):
+- Vite is forced to bind to IPv4 loopback (`host: '127.0.0.1'`) to match Tailscale Serve's default target.
+- The tailnet domain suffix (`.ts.net`) is added to Vite's `server.allowedHosts` configuration to prevent "Host header blocking" security errors when accessing it via Tailscale.
+
+### 4. Running the Game
+To run and serve the game on your tailnet, execute the following commands in separate terminals:
+
+1. **Start the Vite dev server**:
+   ```bash
+   npm run dev
+   ```
+2. **Start the Tailscale Serve proxy**:
+   ```bash
+   tailscale serve 5173
+   ```
+
+### 5. Accessing the Game URL
+Once Tailscale Serve is running, your tailnet peers can access the game using the HTTPS URL matching your device's tailnet domain:
+`https://[your-device-name].[your-tailnet-domain].ts.net/`
+
+
 ## Architecture
 
 ```
