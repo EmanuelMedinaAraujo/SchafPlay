@@ -458,6 +458,7 @@ button:not(:disabled):hover {
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 10px;
+  position: relative;
 }
 
 .toolbar-spacer {
@@ -577,9 +578,9 @@ button:not(:disabled):hover {
 
 .seat-top {
   position: absolute;
-  top: 10px;
   left: 50%;
-  transform: translateX(-50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
   z-index: 10;
 }
 

@@ -66,6 +66,7 @@ export default function GameBoard({
         <span className="muted">
           {t.round} {state.roundNumber}/{state.totalRounds}
         </span>
+        <PlayerSeat player={seatAt(2)} position="top" active={activePlayer?.id === seatAt(2).id} contract={state.currentContract} language={language} />
         <span className="toolbar-spacer" />
         <button className="icon-button" onClick={onQuit} title={t.quit} type="button">
           <DoorOpenIcon />
@@ -73,7 +74,6 @@ export default function GameBoard({
       </div>
 
       <section className="table">
-        <PlayerSeat player={seatAt(2)} position="top" active={activePlayer?.id === seatAt(2).id} contract={state.currentContract} language={language} />
         <PlayerSeat player={seatAt(1)} position="left" active={activePlayer?.id === seatAt(1).id} contract={state.currentContract} language={language} />
         <TrickArea trick={state.currentTrick} players={state.players} contract={state.currentContract} myIdx={myIdx} language={language} collecting={state.collecting} />
         <PlayerSeat player={seatAt(3)} position="right" active={activePlayer?.id === seatAt(3).id} contract={state.currentContract} language={language} />
