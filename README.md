@@ -1,64 +1,59 @@
-# Schafkopf Coach 🃏
+# SchafPlay 🃏
 
-A mobile-first Bavarian **Schafkopf** card game as a web app — optimized for phones held in **landscape**. Play against three AI opponents, locally with friends (Pass & Play) or online via lobby codes, and get AI-powered post-game coaching.
+Bayerischer **Schafkopf für zwei Spieler** als Offline-first PWA. Zwei Menschen (Platz 1 & 3) spielen über eine serverlose **WebRTC-Direktverbindung** gegeneinander, die Plätze 2 & 4 übernehmen KI-Mitspieler (Resi & Sepp).
 
-## Features
+## Wie funktioniert die Verbindung?
 
-- **Single player** — three AI opponents with three difficulty levels
-- **Pass & Play** — up to four humans on one device, with a hand-concealment shield between turns
-- **Online multiplayer** — host a table, share the 6-letter code, friends join over the network; empty seats are filled by AI. Server-side rule validation and hand redaction (nobody can read other hands from the wire)
-- **Full ruleset** — Sauspiel, Wenz (incl. suit Wenz & Tout), Suit Solos, Ramsch, Contra, Schneider/Schwarz tariffs, list play over configurable game counts
-- **KI-Trainer** — post-game trick-by-trick analysis powered by Gemini (optional, needs an API key)
-- **Statistics** — win rates by role, contract-type frequencies, persisted locally
-- **German & English** UI
+Kein Server, keine Anmeldung — Signaling per **Copy-Paste**:
 
-## Getting Started
+1. **Host**: „Spiel hosten" → Einladungs-Code erzeugen → per Messenger an den Mitspieler schicken
+2. **Gast**: Code einfügen → Antwort-Code erzeugen → zurückschicken
+3. **Host**: Antwort-Code einfügen → verbunden, Karten werden gegeben
 
-**Prerequisites:** Node.js 20+
+Bricht die Verbindung ab, **pausiert** das Spiel auf dem Host. Neue Codes austauschen — der komplette Spielstand bleibt erhalten.
+
+## Spielregeln
+
+- **Zweistufiges Reizen**: erst „Magst du spielen?" (I dad spuin / Weiter), dann „Was spielst du?" mit Überbieten nach Priorität: Sauspiel < Wenz < Solo < Wenz Tout < Solo Tout
+- **Alle weiter** → zusammenwerfen und neu geben (kein Ramsch)
+- **Zwischen den Runden** müssen beide Spieler „Bereit" tippen, dann rotiert der Geber
+
+### Turnierwertung (Plus/Minus, nullsummig)
+
+| Spiel | Basis | Schneider | Schwarz | Tout | Sie | pro Laufendem |
+|---|---|---|---|---|---|---|
+| Sauspiel (pro Spieler) | 1 | 2 | 3 | – | – | +1 |
+| Solo / Wenz (pro Gegenspieler) | 2 | 3 | 4 | 6 | 8 | +1 |
+
+Der Solist erhält/zahlt das **Dreifache** des Gegenspieler-Werts (z. B. Solo gewonnen: +6 / je −2). Laufende zählen ab 3 (Wenz ab 2), „mit" wie „ohne". Die Werte stehen zentral in `TARIFF` ([gameLogic.ts](src/utils/gameLogic.ts)).
+
+## Entwicklung
 
 ```bash
 npm install
-npm run dev          # dev server (Vite + WebSocket) on http://localhost:3000
+npm run dev      # Vite dev server auf http://localhost:5173
+npm test         # Engine-, Scoring- und WebRTC-Tests
+npm run lint     # TypeScript type-check
+npm run build    # Produktions-Build inkl. Service Worker (dist/)
 ```
 
-Optional: copy `.env.example` to `.env` and set `GEMINI_API_KEY` to enable the AI analysis feature. Everything else works without it.
+Das Ergebnis in `dist/` ist eine rein statische Site — auf jedem Static-Host (GitHub Pages, Netlify, Cloudflare Pages, …) deploybar. Als PWA installierbar, läuft offline (die WebRTC-Verbindung braucht natürlich Netz zwischen den Geräten).
 
-## Production
+## Architektur
 
-```bash
-npm run build        # builds the client (dist/) and the server bundle (dist/server.cjs)
-npm start            # NODE_ENV=production node dist/server.cjs
+```
+src/
+├── engine/GameEngine.ts   # Host-autoritative Spielzustandsmaschine (Reizen, Stiche, Wertung, KI-Pacing)
+├── net/PeerConnection.ts  # WebRTC-DataChannel-Wrapper (Copy-Paste-SDP, Heartbeat)
+├── net/protocol.ts        # P2P-Nachrichtenformat
+├── utils/gameLogic.ts     # Regeln: Trumpf, Legalität, Stichvergabe, KI, Turnierwertung
+├── components/            # GameBoard, PlayerHand, BiddingPanel, TrickArea, PairingPanel, …
+└── lib/i18n.ts            # Deutsch/Englisch inkl. strukturierter Spiel-Log-Einträge
 ```
 
-The single Node process serves the static client, the REST API, and the WebSocket multiplayer — deploy it anywhere a Node server runs (set `PORT` as needed).
+- **Host** (Spieler 1) führt die GameEngine aus, validiert jede Aktion und schickt dem Gast nur dessen **redigierten** Spielzustand — fremde Blätter sind nie auf der Leitung.
+- **Gast** (Spieler 3) rendert den empfangenen Zustand und schickt Aktionen (Reizen, Karte, Bereit) zurück.
 
-### Docker
+## Tech-Stack
 
-```bash
-docker build -t schafkopf .
-docker run -p 3000:3000 -e GEMINI_API_KEY=your_key schafkopf
-```
-
-## Scripts
-
-| Script | Purpose |
-| --- | --- |
-| `npm run dev` | Development server with HMR |
-| `npm run build` | Production build (client + server) |
-| `npm start` | Run the production build |
-| `npm run lint` | TypeScript type-check |
-| `npm test` | Unit/component tests |
-| `npm run test:e2e` | Multiplayer server e2e tests (lobby, bidding, gameplay, disconnects, stress) |
-| `npm run test:all` | Both suites |
-
-## Environment Variables
-
-| Variable | Required | Description |
-| --- | --- | --- |
-| `PORT` | no | HTTP/WebSocket port (default `3000`) |
-| `GEMINI_API_KEY` | no | Enables the KI-Trainer post-game analysis |
-| `HEARTBEAT_INTERVAL` | no | WebSocket ping interval in ms (default `30000`) |
-
-## Tech Stack
-
-React 19 · TypeScript · Vite · Tailwind CSS 4 · Motion · Express · ws · Vitest
+React 19 · TypeScript · Vite · vite-plugin-pwa · Vanilla CSS · WebRTC · Vitest

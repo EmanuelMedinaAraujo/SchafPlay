@@ -19,33 +19,30 @@ export default function RulesModal({ isOpen, onClose, language }: RulesModalProp
   const isDe = language === "de";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-      <div className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl border border-neutral-800 bg-[#121318] p-4 sm:p-6 shadow-2xl text-slate-100 transition-all text-left">
+    <div className="rules-modal-overlay">
+      <div className="rules-modal-container">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-neutral-800 pb-4 mb-6">
-          <div className="flex items-center gap-3">
-            <BookOpen className="h-6 w-6 text-emerald-500" />
-            <h2 className="text-xl font-bold tracking-tight text-white">
+        <div className="rules-modal-header">
+          <div className="rules-modal-title-container">
+            <BookOpen className="rules-modal-icon-red" />
+            <h2 className="rules-modal-title">
               {isDe ? "Schafkopf Spielregeln & Guide" : "Schafkopf Rules & Guide"}
             </h2>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-full p-1 text-slate-400 hover:bg-neutral-800 hover:text-slate-200 transition-colors cursor-pointer"
-          >
-            <X className="h-6 w-6" />
+          <button onClick={onClose} className="rules-modal-close-btn">
+            <X className="rules-modal-close-icon" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="space-y-6 text-sm leading-relaxed text-slate-300">
+        <div className="rules-modal-content">
           {/* Card Deck Section */}
-          <section className="space-y-2">
-            <h3 className="flex items-center gap-2 text-base font-bold text-emerald-400">
-              <Layers className="h-4 w-4" />
+          <section className="rules-modal-section">
+            <h3 className="rules-modal-section-title">
+              <Layers className="rules-modal-section-icon" />
               {isDe ? "1. Das bayerische Blatt (32 Karten)" : "1. The Bavarian Card Deck (32 Cards)"}
             </h3>
-            <p>
+            <p className="rules-modal-paragraph">
               {isDe ? (
                 <>
                   Schafkopf wird mit 32 Karten aus 4 Farben gespielt: <strong>Eichel <span className="inline-block rotate-180">🌰</span></strong>,{" "}
@@ -60,33 +57,33 @@ export default function RulesModal({ isOpen, onClose, language }: RulesModalProp
                 </>
               )}
             </p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#08080a] p-4 rounded-xl border border-neutral-800">
-              <div className="flex flex-col items-center p-2 border border-neutral-800 rounded-lg bg-[#111216]">
-                <span className="text-lg font-black text-white">{isDe ? "As / Sau" : "Ace"}</span>
-                <span className="text-xs text-slate-400">{isDe ? "11 Augen" : "11 Points"}</span>
+            <div className="rules-modal-grid">
+              <div className="rules-modal-grid-item">
+                <span className="rules-modal-grid-item-value">{isDe ? "As / Sau" : "Ace"}</span>
+                <span className="rules-modal-grid-item-label">{isDe ? "11 Augen" : "11 Points"}</span>
               </div>
-              <div className="flex flex-col items-center p-2 border border-neutral-800 rounded-lg bg-[#111216]">
-                <span className="text-lg font-black text-white">10</span>
-                <span className="text-xs text-slate-400">{isDe ? "10 Augen" : "10 Points"}</span>
+              <div className="rules-modal-grid-item">
+                <span className="rules-modal-grid-item-value">10</span>
+                <span className="rules-modal-grid-item-label">{isDe ? "10 Augen" : "10 Points"}</span>
               </div>
-              <div className="flex flex-col items-center p-2 border border-neutral-800 rounded-lg bg-[#111216]">
-                <span className="text-lg font-black text-white">{isDe ? "König" : "King"}</span>
-                <span className="text-xs text-slate-400">{isDe ? "4 Augen" : "4 Points"}</span>
+              <div className="rules-modal-grid-item">
+                <span className="rules-modal-grid-item-value">{isDe ? "König" : "King"}</span>
+                <span className="rules-modal-grid-item-label">{isDe ? "4 Augen" : "4 Points"}</span>
               </div>
-              <div className="flex flex-col items-center p-2 border border-neutral-800 rounded-lg bg-[#111216]">
-                <span className="text-lg font-black text-white">Ober</span>
-                <span className="text-xs text-slate-400">{isDe ? "3 Augen" : "3 Points"}</span>
+              <div className="rules-modal-grid-item">
+                <span className="rules-modal-grid-item-value">Ober</span>
+                <span className="rules-modal-grid-item-label">{isDe ? "3 Augen" : "3 Points"}</span>
               </div>
-              <div className="flex flex-col items-center p-2 border border-neutral-800 rounded-lg bg-[#111216] mt-2 sm:mt-0 col-span-2 sm:col-span-1">
-                <span className="text-lg font-black text-white">Unter</span>
-                <span className="text-xs text-slate-400">{isDe ? "2 Augen" : "2 Points"}</span>
+              <div className="rules-modal-grid-item">
+                <span className="rules-modal-grid-item-value">Unter</span>
+                <span className="rules-modal-grid-item-label">{isDe ? "2 Augen" : "2 Points"}</span>
               </div>
-              <div className="flex flex-col items-center p-2 border border-neutral-800 rounded-lg bg-[#111216] mt-2 sm:mt-0 col-span-2 sm:col-span-3">
-                <span className="text-lg font-black text-white">9, 8, 7</span>
-                <span className="text-xs text-slate-400">{isDe ? "0 Augen" : "0 Points"}</span>
+              <div className="rules-modal-grid-item rules-modal-grid-item-span">
+                <span className="rules-modal-grid-item-value">9, 8, 7</span>
+                <span className="rules-modal-grid-item-label">{isDe ? "0 Augen" : "0 Points"}</span>
               </div>
             </div>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="rules-modal-caption">
               {isDe ? (
                 <>
                   Im gesamten Spiel gibt es <strong>120 Augen</strong>. Um das Spiel zu gewinnen, muss die Spielerseite (der Ansager) mindestens <strong>61 Augen</strong> erzielen. Bei einem 60-60 Split gewinnen die Gegenspieler.
@@ -101,35 +98,35 @@ export default function RulesModal({ isOpen, onClose, language }: RulesModalProp
           </section>
 
           {/* Trump Hierarchy Section */}
-          <section className="space-y-2">
-            <h3 className="flex items-center gap-2 text-base font-bold text-emerald-400">
-              <Award className="h-4 w-4" />
+          <section className="rules-modal-section">
+            <h3 className="rules-modal-section-title">
+              <Award className="rules-modal-section-icon" />
               {isDe ? "2. Trumpf-Hierarchie" : "2. Trumps Hierarchy"}
             </h3>
-            <p>
+            <p className="rules-modal-paragraph">
               {isDe ? "Je nach angesagtem Spiel gelten andere Karten als Trumpf:" : "Depending on the active contract, different cards are defined as trumps:"}
             </p>
-            <div className="space-y-3">
-              <div className="border-l-2 border-emerald-500 pl-4 py-1">
-                <h4 className="font-bold text-white">{isDe ? "Normales Spiel (Sauspiel) & Herz-Solo" : "Normal Game (Sauspiel) & Heart Solo"}</h4>
-                <p className="text-xs mt-1">
+            <div className="rules-modal-hierarchy-list">
+              <div className="rules-modal-hierarchy-item rules-border-red">
+                <h4 className="rules-modal-hierarchy-title">{isDe ? "Normales Spiel (Sauspiel) & Herz-Solo" : "Normal Game (Sauspiel) & Heart Solo"}</h4>
+                <p className="rules-modal-hierarchy-subtitle">
                   <strong>{isDe ? "Trümpfe (Höchster bis Niedrigster):" : "Trumps (Highest to Lowest):"}</strong>
                 </p>
-                <p className="text-xs mt-1 text-slate-300 font-semibold tracking-wide">
+                <p className="rules-modal-hierarchy-text">
                   <span className="inline-block rotate-180">🌰</span> Ober &rarr; 🍃 Ober &rarr; ❤️ Ober &rarr; 🔔 Ober &rarr; <span className="inline-block rotate-180">🌰</span> Unter &rarr; 🍃 Unter &rarr; ❤️ Unter &rarr; 🔔 Unter &rarr; ❤️ As &rarr; ❤️ 10 &rarr; ❤️ König &rarr; ❤️ 9 &rarr; ❤️ 8 &rarr; ❤️ 7
                 </p>
               </div>
 
-              <div className="border-l-2 border-amber-500 pl-4 py-1">
-                <h4 className="font-bold text-white">{isDe ? "Wenz (Nur die Unter sind Trumpf)" : "Wenz (Only Unters are Trump)"}</h4>
-                <p className="text-xs mt-1 text-slate-300">
+              <div className="rules-modal-hierarchy-item rules-border-amber">
+                <h4 className="rules-modal-hierarchy-title">{isDe ? "Wenz (Nur die Unter sind Trumpf)" : "Wenz (Only Unters are Trump)"}</h4>
+                <p className="rules-modal-hierarchy-text">
                   <strong>{isDe ? "Trümpfe:" : "Trumps:"}</strong> <span className="inline-block rotate-180">🌰</span> Unter &rarr; 🍃 Unter &rarr; ❤️ Unter &rarr; 🔔 Unter. {isDe ? "Alle anderen Karten (einschließlich der Ober) sind normale Farbkarten." : "All other cards (including Obers) are non-trumps of their respective suits."}
                 </p>
               </div>
 
-              <div className="border-l-2 border-blue-400 pl-4 py-1">
-                <h4 className="font-bold text-white">{isDe ? "Farbsolo (Eichel, Gras oder Schellen)" : "Suit Solo (Acorns, Leaves, or Bells)"}</h4>
-                <p className="text-xs mt-1 text-slate-300">
+              <div className="rules-modal-hierarchy-item rules-border-blue">
+                <h4 className="rules-modal-hierarchy-title">{isDe ? "Farbsolo (Eichel, Gras oder Schellen)" : "Suit Solo (Acorns, Leaves, or Bells)"}</h4>
+                <p className="rules-modal-hierarchy-text">
                   <strong>{isDe ? "Trümpfe:" : "Trumps:"}</strong> {isDe ? "Ober & Unter (gleiche Reihenfolge wie beim Normalspiel), gefolgt von As, 10, König, 9, 8, 7 der angesagten Solo-Farbe." : "Obers & Unters (same order as normal game), followed by Ace, 10, King, 9, 8, 7 of the designated Solo suit."}
                 </p>
               </div>
@@ -137,15 +134,15 @@ export default function RulesModal({ isOpen, onClose, language }: RulesModalProp
           </section>
 
           {/* Contracts Section */}
-          <section className="space-y-2">
-            <h3 className="flex items-center gap-2 text-base font-bold text-emerald-400">
-              <BookOpen className="h-4 w-4" />
+          <section className="rules-modal-section">
+            <h3 className="rules-modal-section-title">
+              <BookOpen className="rules-modal-section-icon" />
               {isDe ? "3. Spielarten" : "3. Contract Types"}
             </h3>
-            <div className="space-y-3">
-              <div>
-                <strong className="text-white">{isDe ? "Sauspiel (Rufspiel - Partnerschaft):" : "Sauspiel (Normal Partnership Game):"}</strong>
-                <p className="text-xs text-slate-300 mt-1">
+            <div className="rules-modal-hierarchy-list">
+              <div className="rules-modal-contract-item">
+                <strong className="rules-modal-contract-title">{isDe ? "Sauspiel (Rufspiel - Partnerschaft):" : "Sauspiel (Normal Partnership Game):"}</strong>
+                <p className="rules-modal-contract-text">
                   {isDe ? (
                     "Der Ansager ruft ein Nicht-Trumpf-As (Eichel-As, Gras-As oder Schellen-As), von dessen Farbe er selbst mindestens eine Karte besitzt, aber nicht das As selbst hat. Wer das gerufene As besitzt, ist der geheime Partner des Ansagers. Erst wenn die gerufene Farbe ausgespielt wird, offenbart sich die Partnerschaft!"
                   ) : (
@@ -153,9 +150,9 @@ export default function RulesModal({ isOpen, onClose, language }: RulesModalProp
                   )}
                 </p>
               </div>
-              <div>
-                <strong className="text-white">{isDe ? "Solo (Einer gegen Drei):" : "Solo (Single against 3):"}</strong>
-                <p className="text-xs text-slate-300 mt-1">
+              <div className="rules-modal-contract-item">
+                <strong className="rules-modal-contract-title">{isDe ? "Solo (Einer gegen Drei):" : "Solo (Single against 3):"}</strong>
+                <p className="rules-modal-contract-text">
                   {isDe ? (
                     "Ein Spieler spielt alleine gegen die drei anderen Mitspieler und bestimmt eine beliebige Farbe als Trumpffarbe. Er muss mindestens 61 Augen sammeln, um zu gewinnen."
                   ) : (
@@ -163,9 +160,9 @@ export default function RulesModal({ isOpen, onClose, language }: RulesModalProp
                   )}
                 </p>
               </div>
-              <div>
-                <strong className="text-white">{isDe ? "Wenz (Einer gegen Drei):" : "Wenz (Single against 3):"}</strong>
-                <p className="text-xs text-slate-300 mt-1">
+              <div className="rules-modal-contract-item">
+                <strong className="rules-modal-contract-title">{isDe ? "Wenz (Einer gegen Drei):" : "Wenz (Single against 3):"}</strong>
+                <p className="rules-modal-contract-text">
                   {isDe ? (
                     "Ähnlich wie beim Solo, aber nur die vier Unter sind Trumpf. Alle anderen Karten (einschließlich der Ober) sind normale Farbkarten. Keine Trumpffarbe."
                   ) : (
@@ -177,33 +174,33 @@ export default function RulesModal({ isOpen, onClose, language }: RulesModalProp
           </section>
 
           {/* Card Following Section */}
-          <section className="space-y-2">
-            <h3 className="flex items-center gap-2 text-base font-bold text-emerald-400">
-              <ShieldAlert className="h-4 w-4" />
+          <section className="rules-modal-section">
+            <h3 className="rules-modal-section-title">
+              <ShieldAlert className="rules-modal-section-icon" />
               {isDe ? "4. Spielregeln & Spielzwang" : "4. Strict Play Restrictions"}
             </h3>
-            <ul className="list-disc pl-5 space-y-1 text-xs text-slate-300">
+            <ul className="rules-modal-list">
               {isDe ? (
                 <>
-                  <li>
+                  <li className="rules-modal-list-item">
                     <strong>Farbzwang:</strong> Wird eine Farbe angespielt, MUSST du diese Farbe bedienen, wenn du eine passende Karte auf der Hand hast. Wird ein Trumpf angespielt, MUSST du mit Trumpf bedienen!
                   </li>
-                  <li>
+                  <li className="rules-modal-list-item">
                     <strong>Ruf-As Regel (Sauspiel):</strong> Wenn du das gerufene As besitzt, MUSST du es spielen, sobald die gerufene Farbe das erste Mal angespielt wird. Du darfst das gerufene As nicht abwerfen, wenn du anderweitig bedienen kannst. Du darfst die gerufene Farbe auch nicht selbst anspielen, außer du spielst das Ruf-As direkt aus.
                   </li>
-                  <li>
+                  <li className="rules-modal-list-item">
                     <strong>Schmieren und Abwerfen:</strong> Wenn du eine angespielte Farbe nicht bedienen kannst (und keinen Trumpf zugeben willst/kannst), darfst du jede beliebige Karte abwerfen. Das ist die perfekte Gelegenheit, deinem Partner ein As oder eine 10 (hohe Augen) „zu schmieren“.
                   </li>
                 </>
               ) : (
                 <>
-                  <li>
+                  <li className="rules-modal-list-item">
                     <strong>Follow Suit (Farbzwang):</strong> If a suit is led, you MUST follow with that suit if you have it. If a trump card is led, you MUST follow with a trump card!
                   </li>
-                  <li>
+                  <li className="rules-modal-list-item">
                     <strong>Called Ace Rule (Sauspiel):</strong> If you hold the Called Ace, you MUST play it whenever the called suit is led. You cannot play the Called Ace as a discard on other suits if you have card following options. Furthermore, you cannot lead a non-Ace of the called suit if you possess the Called Ace.
                   </li>
-                  <li>
+                  <li className="rules-modal-list-item">
                     <strong>Discarding / Smearing:</strong> If you cannot follow suit or trump, you may play any card. This is a great opportunity to "schmieren" (grease/smear) an Ace or 10 (high points) to your partner.
                   </li>
                 </>
@@ -213,11 +210,8 @@ export default function RulesModal({ isOpen, onClose, language }: RulesModalProp
         </div>
 
         {/* Footer */}
-        <div className="mt-8 border-t border-neutral-800 pt-4 flex justify-end">
-          <button
-            onClick={onClose}
-            className="rounded-xl bg-emerald-600 hover:bg-emerald-550 text-white px-5 py-3 text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-lg"
-          >
+        <div className="rules-modal-footer">
+          <button onClick={onClose} className="rules-modal-action-btn">
             {isDe ? "Ois klar, packmas!" : "Got it, let's play!"}
           </button>
         </div>
@@ -225,3 +219,4 @@ export default function RulesModal({ isOpen, onClose, language }: RulesModalProp
     </div>
   );
 }
+
