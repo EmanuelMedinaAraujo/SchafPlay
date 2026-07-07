@@ -40,6 +40,7 @@ textarea {
 
 button {
   border: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .app-shell {
@@ -59,6 +60,10 @@ button {
   justify-content: space-between;
   gap: 12px;
   padding: 10px clamp(14px, 3vw, 32px);
+  /* Respect the iPhone notch / status bar (viewport-fit=cover). */
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+  padding-left: max(clamp(14px, 3vw, 32px), env(safe-area-inset-left, 0px));
+  padding-right: max(clamp(14px, 3vw, 32px), env(safe-area-inset-right, 0px));
   background: rgba(10, 10, 15, 0.88);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(16px);
@@ -174,6 +179,10 @@ button:not(:disabled):hover {
   width: min(1180px, 100%);
   margin: 0 auto;
   padding: clamp(12px, 2.5vw, 28px);
+  /* Keep content clear of the notch (landscape) and home indicator. */
+  padding-left: max(clamp(12px, 2.5vw, 28px), env(safe-area-inset-left, 0px));
+  padding-right: max(clamp(12px, 2.5vw, 28px), env(safe-area-inset-right, 0px));
+  padding-bottom: max(clamp(12px, 2.5vw, 28px), env(safe-area-inset-bottom, 0px));
 }
 
 .hero-panel {
@@ -1085,6 +1094,109 @@ button:not(:disabled):hover {
   }
 }
 
+/* Full-screen overlays clear the notch and home indicator too. */
+.round-over-overlay,
+.reconnect-overlay,
+.rules-modal-overlay {
+  padding-left: max(18px, env(safe-area-inset-left, 0px));
+  padding-right: max(18px, env(safe-area-inset-right, 0px));
+  padding-top: max(18px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(18px, env(safe-area-inset-bottom, 0px));
+}
+
+/* Touch devices (iPhone 12/12 Pro and friends) */
+@media (pointer: coarse) {
+  /* Apple HIG: 44pt minimum touch targets. */
+  .icon-button,
+  .text-button,
+  .secondary-button,
+  .primary-button,
+  .bid-grid button,
+  .tout-toggle,
+  .mode-switch button {
+    min-height: 44px;
+  }
+
+  .icon-button {
+    width: 44px;
+  }
+
+  /* iOS Safari auto-zooms focused inputs with fonts below 16px. */
+  .input,
+  .code-box {
+    font-size: 16px;
+  }
+}
+
+/* Narrow portrait phones (iPhone 12/12 Pro: 390px wide) */
+@media (max-width: 480px) {
+  .game-toolbar {
+    gap: 6px;
+  }
+
+  .turn-chip {
+    max-width: 40vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .table {
+    grid-template-columns: minmax(88px, auto) minmax(0, 1fr) minmax(88px, auto);
+    gap: 6px;
+    min-height: 260px;
+  }
+
+  .seat {
+    min-width: 88px;
+    padding: 6px 8px;
+    gap: 4px;
+  }
+
+  .seat-name {
+    font-size: 11px;
+  }
+
+  .seat-name strong {
+    max-width: 76px;
+  }
+
+  .seat-meta {
+    font-size: 11px;
+  }
+
+  .card-back {
+    width: 7px;
+    height: 11px;
+  }
+
+  /* Tighter fan so 8 cards fit a 390px screen without scrolling. */
+  .playing-card {
+    margin-left: -24px;
+  }
+
+  .card-face {
+    width: 58px;
+    height: 86px;
+  }
+
+  .card-face.small {
+    width: 46px;
+    height: 68px;
+  }
+
+  .trick-slot small {
+    max-width: 58px;
+  }
+
+  .slot-left {
+    left: 6%;
+  }
+
+  .slot-right {
+    right: 6%;
+  }
+}
+
 /* Compact landscape phones: keep everything on one screen */
 @media (orientation: landscape) and (max-height: 520px) {
   .topbar {
@@ -1093,17 +1205,24 @@ button:not(:disabled):hover {
   }
 
   .game-screen {
-    padding: 8px 12px;
+    padding: 6px 12px;
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
+    padding-bottom: max(6px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .game-toolbar {
+    margin-bottom: 6px;
   }
 
   .table {
-    min-height: 150px;
-    grid-template-rows: auto minmax(90px, 1fr) auto;
-    gap: 6px;
+    min-height: 136px;
+    grid-template-rows: auto minmax(84px, 1fr) auto;
+    gap: 5px;
   }
 
   .trick-area {
-    min-height: 90px;
+    min-height: 84px;
   }
 
   /* Float the bidding dialog over the table so the hand stays visible. */
@@ -1130,9 +1249,22 @@ button:not(:disabled):hover {
   }
 
   .player-hand {
-    min-height: 90px;
-    padding: 8px 4px 4px;
-    margin-top: 8px;
+    min-height: 86px;
+    padding: 6px 4px 4px;
+    margin-top: 6px;
+  }
+
+  .round-over {
+    padding: 14px 18px;
+  }
+
+  .round-over h3 {
+    margin: 10px 0 6px;
+  }
+
+  .score-grid div {
+    padding: 7px 9px;
+    gap: 2px;
   }
 
   .card-face {
