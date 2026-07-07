@@ -14,8 +14,6 @@ interface PlayerHandProps {
   language: Language;
   onPlay: (cardId: string) => void;
   onLastTrick: () => void;
-  onDevSkip?: () => void;
-  onDevSkipRound?: () => void;
 }
 
 const SUIT_ORDER: Record<Suit, number> = {
@@ -43,8 +41,6 @@ export default function PlayerHand({
   language,
   onPlay,
   onLastTrick,
-  onDevSkip,
-  onDevSkipRound,
 }: PlayerHandProps) {
   const t = translations[language];
   const gameType = contract?.type ?? GameType.SAUSPIEL;
@@ -156,26 +152,6 @@ export default function PlayerHand({
           );
         })}
       </div>
-
-      {import.meta.env.DEV && onDevSkip && (
-        <button
-          className="secondary-button dev-skip-btn"
-          onClick={onDevSkip}
-          type="button"
-        >
-          ⚡ {t.devSkip}
-        </button>
-      )}
-
-      {import.meta.env.DEV && onDevSkipRound && (
-        <button
-          className="secondary-button dev-skip-round-btn"
-          onClick={onDevSkipRound}
-          type="button"
-        >
-          ⚡ {t.devSkipRound}
-        </button>
-      )}
 
       <button
         className="secondary-button last-trick-btn"

@@ -68,7 +68,17 @@ export default function GameBoard({
         <span className="muted">
           {t.round} {state.roundNumber}/{state.totalRounds}
         </span>
+        {import.meta.env.DEV && state.status === "PLAYING" && onDevSkip && (
+          <button className="text-button dev-header-btn dev-trick-btn" onClick={onDevSkip} type="button">
+            ⚡ {t.devSkip}
+          </button>
+        )}
         <PlayerSeat player={seatAt(2)} position="top" active={activePlayer?.id === seatAt(2).id} contract={state.currentContract} language={language} />
+        {import.meta.env.DEV && (state.status === "PLAYING" || state.status === "BIDDING") && onDevSkipRound && (
+          <button className="text-button dev-header-btn dev-round-btn" onClick={onDevSkipRound} type="button">
+            ⚡ {t.devSkipRound}
+          </button>
+        )}
         <span className="toolbar-spacer" />
         <button className="icon-button" onClick={onQuit} title={t.quit} type="button">
           <DoorOpenIcon />
@@ -101,8 +111,6 @@ export default function GameBoard({
         language={language}
         onPlay={playCard}
         onLastTrick={() => setLastTrickOpen(true)}
-        onDevSkip={onDevSkip}
-        onDevSkipRound={onDevSkipRound}
       />
 
       {lastTrickOpen && lastCompletedTrick && (

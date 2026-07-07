@@ -904,26 +904,24 @@ button:not(:disabled):hover {
   padding: 0 12px !important;
 }
 
-.dev-skip-btn {
+.dev-header-btn {
   position: absolute;
-  right: 140px;
   top: 50%;
-  transform: translateY(-50%);
-  min-height: 32px !important;
-  font-size: 12px !important;
-  padding: 0 12px !important;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  font-size: 11px !important;
+  min-height: 26px !important;
+  padding: 0 8px !important;
+}
+
+.dev-trick-btn {
+  left: calc(50% - 150px);
   border-color: rgba(245, 158, 11, 0.4) !important;
   color: var(--amber) !important;
 }
 
-.dev-skip-round-btn {
-  position: absolute;
-  right: 275px;
-  top: 50%;
-  transform: translateY(-50%);
-  min-height: 32px !important;
-  font-size: 12px !important;
-  padding: 0 12px !important;
+.dev-round-btn {
+  left: calc(50% + 150px);
   border-color: rgba(239, 68, 68, 0.4) !important;
   color: var(--red-2) !important;
 }
