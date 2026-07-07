@@ -108,7 +108,7 @@ export default function App() {
       const engine = new GameEngine(nameRef.current, "Gast", totalRounds);
       engineRef.current = engine;
       engine.onStateChange((state) => {
-        setGameState(state);
+        setGameState(engine.getRedactedState("p1"));
         sendGuestState();
       });
     }
