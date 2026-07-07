@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { GameState, Language, PlayerAction, PlayerActionType } from "../types";
 import { gameLabel, translations } from "../lib/i18n";
 import BiddingPanel from "./BiddingPanel";
 import PlayerHand from "./PlayerHand";
 import PlayerSeat from "./PlayerSeat";
 import RoundOverScreen from "./RoundOverScreen";
+import MatchOverScreen from "./MatchOverScreen";
 import TrickArea from "./TrickArea";
+import LastTrickPopup from "./LastTrickPopup";
 
 /** Inline SVG icon — replaces lucide-react DoorOpen */
 const DoorOpenIcon = () => (
@@ -21,10 +24,21 @@ interface GameBoardProps {
   onAction: (action: PlayerAction) => void;
   onReady: () => void;
   onQuit: () => void;
+  onDevSkip?: () => void;
 }
 
-export default function GameBoard({ state, language, myPlayerId, onAction, onReady, onQuit }: GameBoardProps) {
+export default function GameBoard({
+  state,
+  language,
+  myPlayerId,
+  onAction,
+  onReady,
+  onQuit,
+  onDevSkip,
+}: GameBoardProps) {
   const t = translations[language];
+  const [lastTrickOpen, setLastTrickOpen] = useState(false);
+
   const myIdx = Math.max(
     0,
     state.players.findIndex((player) => player.id === myPlayerId),
@@ -43,13 +57,20 @@ export default function GameBoard({ state, language, myPlayerId, onAction, onRea
     ? gameLabel(language, state.currentContract.type, state.currentContract.calledSuit, state.currentContract.isTout)
     : t.bidding;
 
+  const lastCompletedTrick = state.tricks.length > 0 ? state.tricks[state.tricks.length - 1] : null;
+
   return (
     <main className="game-screen">
       <div className="game-toolbar">
         <span className="contract-chip">{contractLabel}</span>
         <span className="muted">
-          {t.round} {state.roundNumber} · {t.trick} {Math.min(state.tricks.length + 1, 8)}/8
+          {t.round} {state.roundNumber}/{state.totalRounds}
         </span>
+        {import.meta.env.DEV && state.status === "PLAYING" && onDevSkip && (
+          <button className="text-button" onClick={onDevSkip} type="button" style={{ marginLeft: "8px" }}>
+            ⚡ {t.devSkip}
+          </button>
+        )}
         <span className="toolbar-spacer" />
         <button className="icon-button" onClick={onQuit} title={t.quit} type="button">
           <DoorOpenIcon />
@@ -57,11 +78,10 @@ export default function GameBoard({ state, language, myPlayerId, onAction, onRea
       </div>
 
       <section className="table">
-        <PlayerSeat player={seatAt(2)} position="top" active={activePlayer?.id === seatAt(2).id} score={state.scores[seatAt(2).id]} contract={state.currentContract} language={language} />
-        <PlayerSeat player={seatAt(1)} position="left" active={activePlayer?.id === seatAt(1).id} score={state.scores[seatAt(1).id]} contract={state.currentContract} language={language} />
+        <PlayerSeat player={seatAt(2)} position="top" active={activePlayer?.id === seatAt(2).id} contract={state.currentContract} language={language} />
+        <PlayerSeat player={seatAt(1)} position="left" active={activePlayer?.id === seatAt(1).id} contract={state.currentContract} language={language} />
         <TrickArea trick={state.currentTrick} players={state.players} contract={state.currentContract} myIdx={myIdx} language={language} collecting={state.collecting} />
-        <PlayerSeat player={seatAt(3)} position="right" active={activePlayer?.id === seatAt(3).id} score={state.scores[seatAt(3).id]} contract={state.currentContract} language={language} />
-        <PlayerSeat player={me} position="bottom" active={activePlayer?.id === me.id} score={state.scores[me.id]} contract={state.currentContract} language={language} />
+        <PlayerSeat player={seatAt(3)} position="right" active={activePlayer?.id === seatAt(3).id} contract={state.currentContract} language={language} />
       </section>
 
       {state.status === "BIDDING" && <BiddingPanel state={state} language={language} myPlayerId={myPlayerId} onAction={onAction} />}
@@ -70,13 +90,31 @@ export default function GameBoard({ state, language, myPlayerId, onAction, onRea
         <RoundOverScreen state={state} language={language} myPlayerId={myPlayerId} onReady={onReady} />
       )}
 
+      {state.status === "MATCH_OVER" && (
+        <MatchOverScreen state={state} language={language} myPlayerId={myPlayerId} onAction={onAction} onQuit={onQuit} />
+      )}
+
       <PlayerHand
         hand={me.cards}
         currentTrick={state.currentTrick}
         contract={state.currentContract}
         disabled={state.status !== "PLAYING" || !isMyTurn}
+        playerName={me.name}
+        lastTrickDisabled={state.tricks.length === 0}
+        language={language}
         onPlay={playCard}
+        onLastTrick={() => setLastTrickOpen(true)}
       />
+
+      {lastTrickOpen && lastCompletedTrick && (
+        <LastTrickPopup
+          trick={lastCompletedTrick}
+          players={state.players}
+          contract={state.currentContract}
+          language={language}
+          onClose={() => setLastTrickOpen(false)}
+        />
+      )}
     </main>
   );
 }

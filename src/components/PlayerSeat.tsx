@@ -17,7 +17,6 @@ interface PlayerSeatProps {
   player: Player;
   position: "top" | "left" | "right" | "bottom";
   active: boolean;
-  score: number;
   contract: Contract | null;
   language: Language;
 }
@@ -26,7 +25,7 @@ interface PlayerSeatProps {
  * One compact box per player. When it's this player's turn the box itself
  * pulses — it doubles as the turn indicator, no separate chip needed.
  */
-export default function PlayerSeat({ player, position, active, score, contract, language }: PlayerSeatProps) {
+export default function PlayerSeat({ player, position, active, contract, language }: PlayerSeatProps) {
   const t = translations[language];
   const isDeclarer = contract?.declarerId === player.id;
   // partnerId is redacted by the host until the called Ace has been played.
@@ -39,15 +38,6 @@ export default function PlayerSeat({ player, position, active, score, contract, 
         <strong>{player.name}</strong>
         {isDeclarer && <span className="role-badge declarer">{t.caller}</span>}
         {isPartner && !isDeclarer && <span className="role-badge partner">{t.partner}</span>}
-      </div>
-      <div className="seat-meta">
-        <span>
-          {player.pointsCollected} {t.points}
-        </span>
-        <small className={score > 0 ? "pos" : score < 0 ? "neg" : ""}>
-          {score > 0 ? "+" : ""}
-          {score}
-        </small>
       </div>
     </div>
   );
