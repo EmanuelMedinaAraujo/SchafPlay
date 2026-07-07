@@ -11,15 +11,12 @@ SchafPlay: Bavarian Schafkopf for two human players as an offline-first PWA. Sea
 ```bash
 npm install
 npm run dev      # Vite dev server on http://localhost:5173
-npm test         # vitest run (tests/**/*.test.ts)
 npm run lint     # tsc --noEmit (this is the project's "lint")
 npm run build    # production build incl. service worker (dist/)
 npm run start    # vite preview of the built dist/
 ```
 
-Run a single test file: `npx vitest run tests/engine.test.ts`. Run a single test by name: `npx vitest run -t "test name"`.
-
-There is no separate lint tool (no ESLint config) — `npm run lint` is a TypeScript type-check.
+There is no separate lint tool (no ESLint config) — `npm run lint` is a TypeScript type-check. There is no `test` script — see Testing policy below.
 
 ## Architecture
 
@@ -57,7 +54,8 @@ There is no separate lint tool (no ESLint config) — `npm run lint` is a TypeSc
 - Landscape-only design: `src/App.tsx` rotates the whole app 90° via a `rotated` class on `<html>` when the viewport is portrait, and adds a `compact` class for short *effective* height (post-rotation) that plain CSS media queries can't detect on their own — both are driven by a `resize`/orientation-change listener, not CSS alone.
 - `src/components/` are presentational, one per screen/panel (`GameBoard`, `PlayerHand`, `BiddingPanel`, `TrickArea`, `PlayerSeat`, `RoundOverScreen`, `PairingPanel`, `HomeScreen`, `RulesModal`); they receive `GameState` and an `onAction`/`onReady` callback from `App.tsx` and don't talk to the engine or network directly.
 
-## Testing
+## Testing policy — NO CODE TESTS FOR NOW
 
-- `tests/engine.test.ts` and `tests/scoring.test.ts` run under vitest with `environment: "node"` (no DOM). Engine tests construct a `GameEngine` with `aiDelayMs: 0`/`trickHoldMs: 0` so AI turns and trick collection resolve synchronously instead of via real timers.
-- `TEST_INFRA.md` documents a much larger planned E2E suite (WebRTC, bidding, card play, scoring, reconnect flows) organized by category-partition/boundary-value methodology — useful as a spec of edge cases to consider, but the actual committed test files are only `engine.test.ts` and `scoring.test.ts`; don't assume other files it references (e.g. a `webrtc.test.ts`) exist without checking.
+**Do not add, run, or restore any automated tests (unit, integration, E2E) until the user explicitly says otherwise.** All tests (`tests/engine.test.ts`, `tests/scoring.test.ts`), `vitest.config.ts`, the `test` npm script, and the `vitest`/`jsdom`/`@testing-library/react` devDependencies have been deliberately removed. The user is testing the application manually themselves. If you notice test-shaped work to do, don't write it — mention it and move on.
+
+`TEST_INFRA.md` still documents a planned E2E suite (WebRTC, bidding, card play, scoring, reconnect flows) as a design/backlog reference — it's not something to implement right now.
