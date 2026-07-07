@@ -1,9 +1,23 @@
-import { Radio, Users } from "lucide-react";
 import { useState } from "react";
 import { PeerConnection, PeerConnectionState } from "../net/PeerConnection";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
 import PairingPanel from "./PairingPanel";
+
+/** Inline SVG icons — replaces lucide-react Radio/Users */
+const UsersIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </svg>
+);
+const RadioIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9" /><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.4" />
+    <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.4" /><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19" />
+    <circle cx="12" cy="12" r="2" />
+  </svg>
+);
 
 interface HomeScreenProps {
   language: Language;
@@ -56,7 +70,7 @@ export default function HomeScreen(props: HomeScreenProps) {
               aria-selected={mode === "host"}
               type="button"
             >
-              <Users size={16} />
+              <UsersIcon />
               {t.hostGame}
             </button>
             <button
@@ -66,7 +80,7 @@ export default function HomeScreen(props: HomeScreenProps) {
               aria-selected={mode === "join"}
               type="button"
             >
-              <Radio size={16} />
+              <RadioIcon />
               {t.joinGame}
             </button>
           </div>
@@ -74,7 +88,7 @@ export default function HomeScreen(props: HomeScreenProps) {
 
         <div className="panel">
           <h2>
-            {mode === "host" ? <Users size={18} /> : <Radio size={18} />}
+            {mode === "host" ? <UsersIcon /> : <RadioIcon />}
             {mode === "host" ? t.hostGame : t.joinGame}
           </h2>
           <PairingPanel

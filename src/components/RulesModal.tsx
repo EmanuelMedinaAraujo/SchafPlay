@@ -4,7 +4,6 @@
  */
 
 import React from "react";
-import { X, BookOpen, Layers, Award, ShieldAlert } from "lucide-react";
 import { Language } from "../lib/i18n";
 
 interface RulesModalProps {
@@ -12,6 +11,43 @@ interface RulesModalProps {
   onClose: () => void;
   language: Language;
 }
+
+const XIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="rules-modal-close-icon">
+    <line x1="18" y1="6" x2="6" y2="18"></line>
+    <line x1="6" y1="6" x2="18" y2="18"></line>
+  </svg>
+);
+
+const BookOpenIcon = ({ className }: { className?: string }) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+  </svg>
+);
+
+const LayersIcon = ({ className }: { className?: string }) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+    <polyline points="2 12 12 17 22 12"></polyline>
+    <polyline points="2 17 12 22 22 17"></polyline>
+  </svg>
+);
+
+const AwardIcon = ({ className }: { className?: string }) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="8" r="7"></circle>
+    <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
+  </svg>
+);
+
+const ShieldAlertIcon = ({ className }: { className?: string }) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+    <line x1="12" y1="8" x2="12" y2="12"></line>
+    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+  </svg>
+);
 
 export default function RulesModal({ isOpen, onClose, language }: RulesModalProps) {
   if (!isOpen) return null;
@@ -24,13 +60,13 @@ export default function RulesModal({ isOpen, onClose, language }: RulesModalProp
         {/* Header */}
         <div className="rules-modal-header">
           <div className="rules-modal-title-container">
-            <BookOpen className="rules-modal-icon-red" />
+            <BookOpenIcon className="rules-modal-icon-red" />
             <h2 className="rules-modal-title">
               {isDe ? "Schafkopf Spielregeln & Guide" : "Schafkopf Rules & Guide"}
             </h2>
           </div>
           <button onClick={onClose} className="rules-modal-close-btn">
-            <X className="rules-modal-close-icon" />
+            <XIcon />
           </button>
         </div>
 
@@ -39,7 +75,7 @@ export default function RulesModal({ isOpen, onClose, language }: RulesModalProp
           {/* Card Deck Section */}
           <section className="rules-modal-section">
             <h3 className="rules-modal-section-title">
-              <Layers className="rules-modal-section-icon" />
+              <LayersIcon className="rules-modal-section-icon" />
               {isDe ? "1. Das bayerische Blatt (32 Karten)" : "1. The Bavarian Card Deck (32 Cards)"}
             </h3>
             <p className="rules-modal-paragraph">
@@ -100,7 +136,7 @@ export default function RulesModal({ isOpen, onClose, language }: RulesModalProp
           {/* Trump Hierarchy Section */}
           <section className="rules-modal-section">
             <h3 className="rules-modal-section-title">
-              <Award className="rules-modal-section-icon" />
+              <AwardIcon className="rules-modal-section-icon" />
               {isDe ? "2. Trumpf-Hierarchie" : "2. Trumps Hierarchy"}
             </h3>
             <p className="rules-modal-paragraph">
@@ -136,7 +172,7 @@ export default function RulesModal({ isOpen, onClose, language }: RulesModalProp
           {/* Contracts Section */}
           <section className="rules-modal-section">
             <h3 className="rules-modal-section-title">
-              <BookOpen className="rules-modal-section-icon" />
+              <BookOpenIcon className="rules-modal-section-icon" />
               {isDe ? "3. Spielarten" : "3. Contract Types"}
             </h3>
             <div className="rules-modal-hierarchy-list">
@@ -176,7 +212,7 @@ export default function RulesModal({ isOpen, onClose, language }: RulesModalProp
           {/* Card Following Section */}
           <section className="rules-modal-section">
             <h3 className="rules-modal-section-title">
-              <ShieldAlert className="rules-modal-section-icon" />
+              <ShieldAlertIcon className="rules-modal-section-icon" />
               {isDe ? "4. Spielregeln & Spielzwang" : "4. Strict Play Restrictions"}
             </h3>
             <ul className="rules-modal-list">
@@ -219,4 +255,3 @@ export default function RulesModal({ isOpen, onClose, language }: RulesModalProp
     </div>
   );
 }
-

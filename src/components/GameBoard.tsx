@@ -1,4 +1,3 @@
-import { DoorOpen } from "lucide-react";
 import { GameState, Language, PlayerAction, PlayerActionType } from "../types";
 import { gameLabel, translations } from "../lib/i18n";
 import BiddingPanel from "./BiddingPanel";
@@ -6,6 +5,14 @@ import PlayerHand from "./PlayerHand";
 import PlayerSeat from "./PlayerSeat";
 import RoundOverScreen from "./RoundOverScreen";
 import TrickArea from "./TrickArea";
+
+/** Inline SVG icon — replaces lucide-react DoorOpen */
+const DoorOpenIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M13 4h3a2 2 0 0 1 2 2v14" /><path d="M2 20h3" /><path d="M13 20h9" /><path d="M10 12v.01" />
+    <path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z" />
+  </svg>
+);
 
 interface GameBoardProps {
   state: GameState;
@@ -45,7 +52,7 @@ export default function GameBoard({ state, language, myPlayerId, onAction, onRea
         </span>
         <span className="toolbar-spacer" />
         <button className="icon-button" onClick={onQuit} title={t.quit} type="button">
-          <DoorOpen size={18} />
+          <DoorOpenIcon />
         </button>
       </div>
 

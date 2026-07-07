@@ -1,34 +1,51 @@
-import Peer, { DataConnection } from "peerjs";
 import { P2PMessage, P2PMessageType } from "../types";
 
 export type PeerConnectionState = "connecting" | "connected" | "disconnected" | "failed";
 
-/** Unambiguous alphabet: no 0/O, 1/I/L. */
-const CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
-const CODE_LENGTH = 5;
-/** Namespace so short codes can't collide with other apps on the public broker. */
-const ID_PREFIX = "schafplay-7f3a-";
-
-export function generateGameCode(): string {
-  const values = new Uint32Array(CODE_LENGTH);
-  crypto.getRandomValues(values);
-  return Array.from(values, (v) => CODE_ALPHABET[v % CODE_ALPHABET.length]).join("");
+/**
+ * Compress an SDP + ICE-candidates bundle into a short-ish URL-safe string.
+ * JSON → deflate → base64url. The browser's CompressionStream API handles
+ * the heavy lifting; no extra dependency needed.
+ */
+async function compressSDP(obj: object): Promise<string> {
+  const json = JSON.stringify(obj);
+  const input = new Blob([json]);
+  const cs = new CompressionStream("deflate");
+  const compressed = input.stream().pipeThrough(cs);
+  const buf = await new Response(compressed).arrayBuffer();
+  // base64url (no padding) so the blob is safe to paste anywhere.
+  return btoa(String.fromCharCode(...new Uint8Array(buf)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 }
 
-export function normalizeGameCode(raw: string): string {
-  return raw.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+async function decompressSDP<T>(encoded: string): Promise<T> {
+  // Undo base64url → standard base64
+  let b64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
+  while (b64.length % 4) b64 += "=";
+  const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  const input = new Blob([raw]);
+  const ds = new DecompressionStream("deflate");
+  const decompressed = input.stream().pipeThrough(ds);
+  const text = await new Response(decompressed).text();
+  return JSON.parse(text) as T;
 }
 
-const peerIdFor = (code: string) => ID_PREFIX + normalizeGameCode(code).toLowerCase();
+interface SDPBundle {
+  sdp: string;
+  type: RTCSdpType;
+  candidates: RTCIceCandidateInit[];
+}
 
 /**
- * One game link. Signaling runs over the public PeerJS broker (the host
- * registers a short code, the guest dials it) — all game traffic afterwards
- * is a direct P2P WebRTC data channel.
+ * One game link. Signaling runs via copy-paste of compressed SDP blobs
+ * (no broker, no STUN, LAN-only). All game traffic afterwards is a
+ * direct P2P WebRTC data channel (DTLS-encrypted by the browser).
  */
 export class PeerConnection {
-  private peer: Peer | null = null;
-  private conn: DataConnection | null = null;
+  private pc: RTCPeerConnection | null = null;
+  private dc: RTCDataChannel | null = null;
   private isHost = false;
   private closed = false;
   private heartbeatIntervalId: ReturnType<typeof setInterval> | null = null;
@@ -36,63 +53,101 @@ export class PeerConnection {
   private messageHandlers = new Set<(message: P2PMessage) => void>();
   private stateHandlers = new Set<(state: PeerConnectionState) => void>();
 
-  /** Register `code` with the broker and wait for a guest to dial in. */
-  host(code: string): Promise<void> {
+  /**
+   * Host side: create an offer and collect ICE candidates.
+   * Returns the compressed invite code string to display / copy.
+   */
+  async host(): Promise<string> {
     this.isHost = true;
     this.emitState("connecting");
-    return new Promise((resolve, reject) => {
-      const peer = new Peer(peerIdFor(code));
-      this.peer = peer;
-      peer.on("open", () => resolve());
-      peer.on("connection", (conn) => {
-        // One guest only; a second dial-in replaces a dead first attempt.
-        this.conn?.close();
-        this.setupConnection(conn);
-      });
-      peer.on("error", (error) => {
-        reject(error);
-        this.fail();
-      });
-      peer.on("disconnected", () => {
-        // Broker link dropped. The data channel (if open) keeps working;
-        // reconnect to the broker so a re-pairing guest can still find us.
-        if (!this.closed) peer.reconnect();
-      });
+
+    const pc = new RTCPeerConnection({ iceServers: [] });
+    this.pc = pc;
+
+    // Create the data channel before creating the offer so it's included in SDP.
+    const dc = pc.createDataChannel("game", { ordered: true });
+    this.setupDataChannel(dc);
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    // Gather all ICE candidates (LAN-only, so they arrive quickly).
+    const candidates = await this.gatherCandidates(pc);
+
+    return compressSDP({
+      sdp: pc.localDescription!.sdp,
+      type: pc.localDescription!.type,
+      candidates,
     });
   }
 
-  /** Dial the host's code. Resolves once the data channel is open. */
-  join(code: string): Promise<void> {
+  /**
+   * Host side, step 2: paste the guest's reply code to complete the handshake.
+   */
+  async acceptAnswer(replyCode: string): Promise<void> {
+    const pc = this.pc;
+    if (!pc) throw new Error("Call host() first");
+
+    const bundle = await decompressSDP<SDPBundle>(replyCode.trim());
+    await pc.setRemoteDescription({ type: bundle.type, sdp: bundle.sdp });
+    for (const c of bundle.candidates) {
+      await pc.addIceCandidate(c);
+    }
+  }
+
+  /**
+   * Guest side: accept the host's invite code, create an answer.
+   * Returns the compressed reply code string.
+   */
+  async join(inviteCode: string): Promise<string> {
     this.isHost = false;
     this.emitState("connecting");
-    return new Promise((resolve, reject) => {
-      const peer = new Peer();
-      this.peer = peer;
-      peer.on("open", () => {
-        const conn = peer.connect(peerIdFor(code), { reliable: true });
-        this.setupConnection(conn);
-        conn.on("open", () => resolve());
-      });
-      peer.on("error", (error) => {
-        reject(error);
-        this.fail();
-      });
+
+    const pc = new RTCPeerConnection({ iceServers: [] });
+    this.pc = pc;
+
+    // The host's data channel arrives via ondatachannel.
+    pc.ondatachannel = (event) => {
+      this.setupDataChannel(event.channel);
+    };
+
+    const bundle = await decompressSDP<SDPBundle>(inviteCode.trim());
+    await pc.setRemoteDescription({ type: bundle.type, sdp: bundle.sdp });
+
+    for (const c of bundle.candidates) {
+      await pc.addIceCandidate(c);
+    }
+
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+
+    const candidates = await this.gatherCandidates(pc);
+
+    return compressSDP({
+      sdp: pc.localDescription!.sdp,
+      type: pc.localDescription!.type,
+      candidates,
     });
   }
 
-  private setupConnection(conn: DataConnection) {
-    this.conn = conn;
-    conn.on("open", () => {
+  private setupDataChannel(dc: RTCDataChannel) {
+    this.dc = dc;
+    dc.onopen = () => {
       if (this.closed) return;
       this.emitState("connected");
       this.startHeartbeat();
-    });
-    conn.on("data", (data) => {
+    };
+    dc.onmessage = (event) => {
       if (this.closed) return;
-      const message = data as P2PMessage;
+      let message: P2PMessage;
+      try {
+        message = JSON.parse(event.data) as P2PMessage;
+      } catch {
+        return;
+      }
       if (message?.type === P2PMessageType.PING) {
         try {
-          conn.send({ type: P2PMessageType.PONG });
+          dc.send(JSON.stringify({ type: P2PMessageType.PONG }));
         } catch {
           // Channel died mid-ping; the heartbeat timeout will notice.
         }
@@ -104,12 +159,34 @@ export class PeerConnection {
         return;
       }
       this.messageHandlers.forEach((handler) => handler(message));
-    });
-    conn.on("close", () => {
+    };
+    dc.onclose = () => {
       this.stopHeartbeat();
       if (!this.closed) this.emitState("disconnected");
+    };
+    dc.onerror = () => this.fail();
+  }
+
+  /**
+   * Gather ICE candidates until gathering is complete.
+   * With iceServers: [] on a LAN this resolves almost instantly.
+   */
+  private gatherCandidates(pc: RTCPeerConnection): Promise<RTCIceCandidateInit[]> {
+    return new Promise((resolve) => {
+      const candidates: RTCIceCandidateInit[] = [];
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          candidates.push(event.candidate.toJSON());
+        } else {
+          // null candidate = gathering complete.
+          resolve(candidates);
+        }
+      };
+      // Safety: if gathering is already complete by the time we attach.
+      if (pc.iceGatheringState === "complete") {
+        resolve(candidates);
+      }
     });
-    conn.on("error", () => this.fail());
   }
 
   private fail() {
@@ -123,7 +200,7 @@ export class PeerConnection {
     if (this.isHost) {
       this.heartbeatIntervalId = setInterval(() => {
         try {
-          this.conn?.send({ type: P2PMessageType.PING });
+          this.dc?.send(JSON.stringify({ type: P2PMessageType.PING }));
         } catch {
           this.stopHeartbeat();
           this.emitState("disconnected");
@@ -152,8 +229,8 @@ export class PeerConnection {
   }
 
   send(message: P2PMessage): void {
-    if (!this.conn || !this.conn.open) throw new Error("Data channel is not open");
-    this.conn.send(message);
+    if (!this.dc || this.dc.readyState !== "open") throw new Error("Data channel is not open");
+    this.dc.send(JSON.stringify(message));
   }
 
   onMessage(callback: (message: P2PMessage) => void): () => void {
@@ -170,16 +247,16 @@ export class PeerConnection {
     this.closed = true;
     this.stopHeartbeat();
     try {
-      this.conn?.close();
+      this.dc?.close();
     } catch {
       // Already closed.
     }
     try {
-      this.peer?.destroy();
+      this.pc?.close();
     } catch {
-      // Already destroyed.
+      // Already closed.
     }
-    this.conn = null;
-    this.peer = null;
+    this.dc = null;
+    this.pc = null;
   }
 }
