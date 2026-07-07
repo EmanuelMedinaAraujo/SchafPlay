@@ -5,26 +5,13 @@
 
 import React from "react";
 import { Language } from "../lib/i18n";
+import { XIcon, BookOpenIcon } from "./icons";
 
 interface RulesModalProps {
   isOpen: boolean;
   onClose: () => void;
   language: Language;
 }
-
-const XIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="rules-modal-close-icon">
-    <line x1="18" y1="6" x2="6" y2="18"></line>
-    <line x1="6" y1="6" x2="18" y2="18"></line>
-  </svg>
-);
-
-const BookOpenIcon = ({ className }: { className?: string }) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
-  </svg>
-);
 
 const LayersIcon = ({ className }: { className?: string }) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -66,7 +53,7 @@ export default function RulesModal({ isOpen, onClose, language }: RulesModalProp
             </h2>
           </div>
           <button onClick={onClose} className="rules-modal-close-btn">
-            <XIcon />
+            <XIcon className="rules-modal-close-icon" />
           </button>
         </div>
 

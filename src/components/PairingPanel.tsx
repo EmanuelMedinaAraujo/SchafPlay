@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { PeerConnection, PeerConnectionState } from "../net/PeerConnection";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
+import { CopyIcon, CheckIcon, LoaderIcon, LinkIcon } from "./icons";
 
 interface PairingPanelProps {
   language: Language;
@@ -10,28 +11,6 @@ interface PairingPanelProps {
   /** Called with every freshly created PeerConnection so the app can attach handlers. */
   onPeer: (peer: PeerConnection) => void;
 }
-
-/** Inline SVG icons — replaces lucide-react. */
-const CopyIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-  </svg>
-);
-const CheckIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
-);
-const LoaderIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="spin">
-    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-  </svg>
-);
-const LinkIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-  </svg>
-);
 
 /**
  * Two-way copy-paste pairing via compressed SDP blobs.

@@ -8,16 +8,12 @@ import { PeerConnection, PeerConnectionState } from "./net/PeerConnection";
 import { createMessage } from "./net/protocol";
 import { GameState, Language, P2PMessageType, PlayerAction, PlayerActionType } from "./types";
 import { translations } from "./lib/i18n";
+import { BookOpenIcon } from "./components/icons";
 
 const NAME_KEY = "schafplay.name";
 const LANG_KEY = "schafplay.language";
 
 /** Inline SVG icons — replaces lucide-react */
-const BookOpenIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-  </svg>
-);
 const LanguagesIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="m5 8 6 6" /><path d="m4 14 6-6 2-3" /><path d="M2 5h12" /><path d="M7 2h1" /><path d="m22 22-5-10-5 10" /><path d="M14 18h6" />
@@ -48,6 +44,8 @@ export default function App() {
   const peerRef = useRef<PeerConnection | null>(null);
   const nameRef = useRef(playerName);
   nameRef.current = playerName;
+  const totalRoundsRef = useRef(totalRounds);
+  totalRoundsRef.current = totalRounds;
 
   useEffect(() => {
     localStorage.setItem(NAME_KEY, playerName);
@@ -104,17 +102,19 @@ export default function App() {
     peerRef.current = peer;
     setRole("host");
 
-    if (!engineRef.current) {
-      const engine = new GameEngine(nameRef.current, "Gast", totalRounds);
-      engineRef.current = engine;
-      engine.onStateChange((state) => {
-        setGameState(engine.getRedactedState("p1"));
-        sendGuestState();
-      });
-    }
-
     peer.onConnectionStateChange((state) => {
       setConnectionState(state);
+      if (state === "connected" && !engineRef.current) {
+        // Constructed lazily at the moment the connection actually succeeds,
+        // not at mount time, so it picks up whatever round count the user
+        // last selected before the game actually starts.
+        const engine = new GameEngine(nameRef.current, "Gast", totalRoundsRef.current);
+        engineRef.current = engine;
+        engine.onStateChange((updatedState) => {
+          setGameState(engine.getRedactedState("p1"));
+          sendGuestState();
+        });
+      }
       const engine = engineRef.current;
       if (!engine) return;
       if (state === "connected") {
