@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { PeerConnection, PeerConnectionState } from "../net/PeerConnection";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
-import { CopyIcon, CheckIcon, LoaderIcon, LinkIcon } from "./icons";
+import { CopyIcon, CheckIcon, LoaderIcon, LinkIcon, ShareIcon } from "./icons";
 
 interface PairingPanelProps {
   language: Language;
@@ -139,6 +139,16 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
       .catch(() => undefined);
   }
 
+  function shareText(text: string) {
+    if (navigator.share) {
+      navigator.share({
+        text: text,
+      }).catch(() => undefined);
+    } else {
+      copyText(text);
+    }
+  }
+
   if (mode === "host") {
     return (
       <div className="pairing-flow">
@@ -159,9 +169,23 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
                 rows={2}
                 onClick={(e) => (e.target as HTMLTextAreaElement).select()}
               />
-              <button className="secondary-button" onClick={() => copyText(inviteCode)} type="button">
+              <button
+                className="secondary-button"
+                onClick={() => copyText(inviteCode)}
+                type="button"
+                title={copied ? t.copied : t.copy}
+                aria-label={copied ? t.copied : t.copy}
+              >
                 {copied ? <CheckIcon /> : <CopyIcon />}
-                {copied ? t.copied : t.copy}
+              </button>
+              <button
+                className="secondary-button"
+                onClick={() => shareText(inviteCode)}
+                type="button"
+                title={t.share}
+                aria-label={t.share}
+              >
+                <ShareIcon />
               </button>
             </div>
 
@@ -240,9 +264,23 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
               rows={2}
               onClick={(e) => (e.target as HTMLTextAreaElement).select()}
             />
-            <button className="secondary-button" onClick={() => copyText(replyCode)} type="button">
+            <button
+              className="secondary-button"
+              onClick={() => copyText(replyCode)}
+              type="button"
+              title={copied ? t.copied : t.copy}
+              aria-label={copied ? t.copied : t.copy}
+            >
               {copied ? <CheckIcon /> : <CopyIcon />}
-              {copied ? t.copied : t.copy}
+            </button>
+            <button
+              className="secondary-button"
+              onClick={() => shareText(replyCode)}
+              type="button"
+              title={t.share}
+              aria-label={t.share}
+            >
+              <ShareIcon />
             </button>
           </div>
         </>
