@@ -83,6 +83,19 @@ export const translations = {
     reconnectHint: "Erstelle einen neuen Einladungscode und tausche ihn mit deinem Mitspieler. Der Spielstand bleibt erhalten.",
     rules: "Regeln",
 
+    // Statistics
+    home: "Startseite",
+    stats: "Statistik",
+    statsPlayed: "Spiele",
+    statsWon: "Gewonnen",
+    statsLost: "Verloren",
+    statsWinRate: "Siegquote",
+    statsAll: "Alle",
+    statsMultiplayer: "Mehrspieler",
+    statsRecent: "Letzte Spiele",
+    statsEmpty: "Noch keine beendeten Spiele – fertig gespielte Partien erscheinen hier automatisch.",
+    statsSoloOpponent: "KI-Runde",
+
     gameTypes: {
       [GameType.SAUSPIEL]: "Sauspiel",
       [GameType.WENZ]: "Wenz",
@@ -173,6 +186,19 @@ export const translations = {
     paused: "Game paused – connection lost",
     reconnectHint: "Create a new invite code and exchange it with your partner. The game state is preserved.",
     rules: "Rules",
+
+    // Statistics
+    home: "Home",
+    stats: "Statistics",
+    statsPlayed: "Played",
+    statsWon: "Won",
+    statsLost: "Lost",
+    statsWinRate: "Win rate",
+    statsAll: "All",
+    statsMultiplayer: "Multiplayer",
+    statsRecent: "Recent games",
+    statsEmpty: "No finished games yet — completed matches show up here automatically.",
+    statsSoloOpponent: "AI table",
 
     gameTypes: {
       [GameType.SAUSPIEL]: "Sauspiel",

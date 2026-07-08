@@ -82,11 +82,22 @@ src/
 ├── net/protocol.ts        # P2P message format
 ├── utils/gameLogic.ts     # Rules: trump, legality, trick evaluation, AI, tournament scoring
 ├── components/            # GameBoard, PlayerHand, BiddingPanel, TrickArea, PairingPanel, …
+├── lib/stats.ts           # Versioned localStorage store for finished games
+├── lib/MatchRecorder.ts   # Observes game state snapshots and records finished matches
 └── lib/i18n.ts            # German/English incl. structured game log entries
 ```
 
 - **Host** (player 1) runs the GameEngine, validates every action, and sends the guest only their **redacted** game state — other players' hands are never on the wire.
 - **Guest** (player 3) renders the received state and sends actions (bidding, card, ready) back.
+
+## Statistics
+
+The statistics page (chart icon in the header) shows how many matches you have played, won and lost, split by multiplayer and solo.
+
+- **Fully local, per device.** Statistics never leave the device — there is no backend to send them to. Each player's device records its own view of the match, so both players keep their own history.
+- **A game counts once a match is finished.** Matches you quit or abandon are not recorded at all.
+- Alongside the summary, the full raw data of every round is stored — the hand you were dealt, the contract, every trick in play order and the scoring result — so richer analysis can be added later without losing history.
+- Stored under the localStorage key `schafplay.stats`. Clearing the site data (or the browser's storage for the PWA) clears the statistics.
 
 ## Tech stack
 
