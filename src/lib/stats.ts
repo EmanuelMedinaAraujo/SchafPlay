@@ -9,8 +9,9 @@ import { Contract, RoundResult } from "../types";
  * - Loading must never throw and never delete user data: unparseable or
  *   newer-versioned payloads are copied to the backup key before starting
  *   fresh.
- * - `totals` are the authoritative lifetime counters; `games` entries (and
- *   their `rounds` detail) may be pruned under quota pressure, totals never.
+ * - `totals` are the authoritative lifetime counters, never pruned.
+ * - `games` are pruned to MAX_GAMES (newest first) under quota pressure.
+ *   All games keep their full per-round `rounds` detail.
  * - All reads/writes of the storage key go through this module.
  */
 
@@ -18,11 +19,8 @@ const STORE_KEY = "schafplay.stats";
 const BACKUP_KEY = "schafplay.stats.backup";
 const STATS_VERSION = 1;
 
-/** At most this many game records are kept (newest first). */
-const MAX_GAMES = 200;
-/** Only the newest records keep their full per-round detail. */
-const MAX_DETAILED = 50;
-
+/** At most this many game records are kept (newest first). All games retain full round detail. */
+const MAX_GAMES = 2000;
 export type StatsMode = "solo" | "multiplayer";
 /** Compact card reference: `"${Suit}-${CardValue}"`, e.g. "ACORNS-A". */
 export type CardId = string;
@@ -60,8 +58,8 @@ export interface GameRecord {
   finalScores: Record<string, number>;
   /** A shared top score counts as a win. */
   won: boolean;
-  /** Rich per-round data for future analysis; prunable under quota pressure. */
-  rounds?: RoundRecord[];
+  /** Full per-round data: the dealt hand, contract, tricks in play order, and scoring result. */
+  rounds: RoundRecord[];
 }
 
 /** Lifetime counters — incremented at record time, never pruned. */
@@ -139,8 +137,9 @@ function loadStore(): StatsStore {
 
   let store = parsed as { version: number } & Record<string, unknown>;
   if (store.version > STATS_VERSION) {
-    // App was downgraded: keep the newer payload safe, read what we understand.
+    // App was downgraded: keep the newer payload safe, and start fresh (fall back to defaults).
     backupRaw(raw);
+    return emptyStore();
   } else {
     for (let v = store.version; v < STATS_VERSION; v++) {
       const migrate = MIGRATIONS[v];
@@ -155,33 +154,16 @@ function loadStore(): StatsStore {
   };
 }
 
-function stripRounds(game: GameRecord): GameRecord {
-  const { rounds: _rounds, ...rest } = game;
-  return rest;
-}
-
 function saveStore(store: StatsStore): void {
-  let games = store.games
-    .slice(0, MAX_GAMES)
-    .map((game, index) => (index < MAX_DETAILED ? game : stripRounds(game)));
+  let games = store.games.slice(0, MAX_GAMES);
 
-  // On quota errors, shed round detail oldest-first, then whole records.
+  // On quota errors, drop oldest games until it fits (or give up silently if private mode).
   for (;;) {
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify({ ...store, games }));
       return;
     } catch {
-      let oldestDetailed = -1;
-      for (let i = games.length - 1; i >= 0; i--) {
-        if (games[i].rounds) {
-          oldestDetailed = i;
-          break;
-        }
-      }
-      if (oldestDetailed >= 0) {
-        games = games.slice();
-        games[oldestDetailed] = stripRounds(games[oldestDetailed]);
-      } else if (games.length > 0) {
+      if (games.length > 0) {
         games = games.slice(0, -1);
       } else {
         // Storage entirely unavailable (e.g. private mode) — give up silently.

@@ -58,9 +58,9 @@ There is no separate lint tool (no ESLint config) — `npm run lint` is a TypeSc
 - **Storage**: localStorage key `schafplay.stats` holds `{ version, totals, games }`. Binding stability rules:
   1. Never remove or repurpose a stored field without bumping `STATS_VERSION` **and** adding a `MIGRATIONS` entry.
   2. `loadStore` must never throw and never delete user data — unparseable payloads, and payloads written by a *newer* app version, are copied to `schafplay.stats.backup` before falling back to defaults.
-  3. `totals` are the authoritative lifetime counters, incremented at record time. `games` (and their per-round `rounds` detail) are prunable under quota pressure; `totals` are not — which is why they are duplicated rather than derived.
-  4. All reads and writes of the key go through `stats.ts`.
-- Each `RoundRecord` keeps the raw material for later analysis: the dealt hand, the contract, every trick in play order (compact `"${Suit}-${CardValue}"` card ids) and the scoring result.
+  3. `totals` are the authoritative lifetime counters, incremented at record time and never pruned. `games` are pruned to `MAX_GAMES=2000` (newest first) under quota pressure.
+  4. All games keep their full per-round `rounds` detail — no stripping. A `RoundRecord` contains the raw material for later analysis: the dealt hand, the contract, every trick in play order (compact card ids), and the scoring result.
+  5. All reads and writes of the key go through `stats.ts`.
 
 ### UI
 
