@@ -157,18 +157,16 @@ function loadStore(): StatsStore {
 function saveStore(store: StatsStore): void {
   let games = store.games.slice(0, MAX_GAMES);
 
-  // On quota errors, drop oldest games until it fits (or give up silently if private mode).
+  // On quota errors, the store is at capacity — do not record the new game.
+  // Oldest games are preserved; new games are silently dropped.
   for (;;) {
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify({ ...store, games }));
       return;
     } catch {
-      if (games.length > 0) {
-        games = games.slice(0, -1);
-      } else {
-        // Storage entirely unavailable (e.g. private mode) — give up silently.
-        return;
-      }
+      // Already at MAX_GAMES and still failing (e.g., private mode, other data using quota).
+      // Give up silently — oldest games are preserved, new game is not recorded.
+      return;
     }
   }
 }
