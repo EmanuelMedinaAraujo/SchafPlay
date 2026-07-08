@@ -43,8 +43,16 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* The page itself never scrolls; each screen scrolls internally, and only
+   when its content genuinely doesn't fit the viewport. */
+html,
+body {
+  height: 100dvh;
+  overflow: hidden;
+}
+
 .app-shell {
-  min-height: 100dvh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -75,7 +83,7 @@ html.rotated #root {
 }
 
 html.rotated .app-shell {
-  min-height: 100%;
+  height: 100%;
 }
 
 /* Physical top (notch) is the rotated UI's left edge; the physical bottom
@@ -218,6 +226,13 @@ button:not(:disabled):hover {
 
 /* ---------- Home ---------- */
 
+.home-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 .home-screen,
 .game-screen {
   width: min(1180px, 100%);
@@ -227,6 +242,45 @@ button:not(:disabled):hover {
   padding-left: max(clamp(12px, 2.5vw, 28px), env(safe-area-inset-left, 0px));
   padding-right: max(clamp(12px, 2.5vw, 28px), env(safe-area-inset-right, 0px));
   padding-bottom: max(4px, env(safe-area-inset-bottom, 0px));
+}
+
+/* ---------- In-game: fit the viewport, no page scrolling ----------
+   html.in-game is set by App.tsx while the game screen is shown. The page
+   itself never scrolls; the game screen is a flex column sized to the
+   viewport and only scrolls internally if the content truly doesn't fit. */
+
+html.in-game,
+html.in-game body {
+  overflow: hidden;
+  height: 100dvh;
+}
+
+html.in-game .app-shell {
+  height: 100dvh;
+  min-height: 0;
+}
+
+html.rotated.in-game #root {
+  overflow: hidden;
+}
+
+html.rotated.in-game .app-shell {
+  height: 100%;
+}
+
+html.in-game .game-screen {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+html.in-game .table {
+  flex: 1;
+  min-height: 170px;
+  grid-template-rows: minmax(150px, 1fr);
 }
 
 .hero-panel {
@@ -286,7 +340,24 @@ button:not(:disabled):hover {
   display: grid;
   grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.2fr);
   gap: 16px;
-  margin-top: 16px;
+}
+
+/* Match-length picker: label and round buttons share one line. */
+.match-length-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.match-length-row .field-label {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.match-length-row .mode-switch {
+  flex: 1;
+  margin-top: 0;
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .panel {
@@ -409,6 +480,25 @@ button:not(:disabled):hover {
 .pairing-flow .primary-button,
 .pairing-flow .secondary-button {
   width: 100%;
+}
+
+/* Code textarea with its copy button beside it on the same line. */
+.code-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.code-row .code-textarea {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.pairing-flow .code-row .secondary-button {
+  width: auto;
+  height: auto;
+  flex-shrink: 0;
 }
 
 .error-text {
@@ -655,129 +745,41 @@ button:not(:disabled):hover {
   z-index: 20;
 }
 
-/* Two-stage trick collection animations */
-.slot-bottom.collecting.fly-top .trick-card { animation: gather-and-fly-bottom-to-top 1.3s ease-in-out forwards; }
-.slot-bottom.collecting.fly-bottom .trick-card { animation: gather-and-fly-bottom-to-bottom 1.3s ease-in-out forwards; }
-.slot-bottom.collecting.fly-left .trick-card { animation: gather-and-fly-bottom-to-left 1.3s ease-in-out forwards; }
-.slot-bottom.collecting.fly-right .trick-card { animation: gather-and-fly-bottom-to-right 1.3s ease-in-out forwards; }
+/* Trick collection: TrickArea.tsx measures per-card vectors and sets
+   --gather-x/y (to the felt center) and --fly-x/y (to the winner's name)
+   as inline CSS vars. All cards first meet in the center, pause, then fly
+   together to the same point. */
 
-.slot-top.collecting.fly-top .trick-card { animation: gather-and-fly-top-to-top 1.3s ease-in-out forwards; }
-.slot-top.collecting.fly-bottom .trick-card { animation: gather-and-fly-top-to-bottom 1.3s ease-in-out forwards; }
-.slot-top.collecting.fly-left .trick-card { animation: gather-and-fly-top-to-left 1.3s ease-in-out forwards; }
-.slot-top.collecting.fly-right .trick-card { animation: gather-and-fly-top-to-right 1.3s ease-in-out forwards; }
-
-.slot-left.collecting.fly-top .trick-card { animation: gather-and-fly-left-to-top 1.3s ease-in-out forwards; }
-.slot-left.collecting.fly-bottom .trick-card { animation: gather-and-fly-left-to-bottom 1.3s ease-in-out forwards; }
-.slot-left.collecting.fly-left .trick-card { animation: gather-and-fly-left-to-left 1.3s ease-in-out forwards; }
-.slot-left.collecting.fly-right .trick-card { animation: gather-and-fly-left-to-right 1.3s ease-in-out forwards; }
-
-.slot-right.collecting.fly-top .trick-card { animation: gather-and-fly-right-to-top 1.3s ease-in-out forwards; }
-.slot-right.collecting.fly-bottom .trick-card { animation: gather-and-fly-right-to-bottom 1.3s ease-in-out forwards; }
-.slot-right.collecting.fly-left .trick-card { animation: gather-and-fly-right-to-left 1.3s ease-in-out forwards; }
-.slot-right.collecting.fly-right .trick-card { animation: gather-and-fly-right-to-right 1.3s ease-in-out forwards; }
-
-/* Keyframes for slot-bottom */
-@keyframes gather-and-fly-bottom-to-top {
-  0% { transform: translate(0, 0); }
-  30% { transform: translate(0, -60px) rotate(0deg); }
-  65% { transform: translate(0, -60px) rotate(0deg); }
-  100% { transform: translate(0, -320px) scale(0.35); opacity: 0; }
-}
-@keyframes gather-and-fly-bottom-to-bottom {
-  0% { transform: translate(0, 0); }
-  30% { transform: translate(0, -60px) rotate(0deg); }
-  65% { transform: translate(0, -60px) rotate(0deg); }
-  100% { transform: translate(0, 180px) scale(0.35); opacity: 0; }
-}
-@keyframes gather-and-fly-bottom-to-left {
-  0% { transform: translate(0, 0); }
-  30% { transform: translate(0, -60px) rotate(0deg); }
-  65% { transform: translate(0, -60px) rotate(0deg); }
-  100% { transform: translate(-300px, -60px) scale(0.35); opacity: 0; }
-}
-@keyframes gather-and-fly-bottom-to-right {
-  0% { transform: translate(0, 0); }
-  30% { transform: translate(0, -60px) rotate(0deg); }
-  65% { transform: translate(0, -60px) rotate(0deg); }
-  100% { transform: translate(300px, -60px) scale(0.35); opacity: 0; }
+/* Straighten the slots while collecting so the card translations run in
+   unrotated coordinates and the stacked cards sit parallel. */
+.slot-top.collecting {
+  transform: translateX(-50%);
 }
 
-/* Keyframes for slot-top */
-@keyframes gather-and-fly-top-to-top {
-  0% { transform: translate(0, 0); }
-  30% { transform: translate(0, 60px) rotate(0deg); }
-  65% { transform: translate(0, 60px) rotate(0deg); }
-  100% { transform: translate(0, -220px) scale(0.35); opacity: 0; }
-}
-@keyframes gather-and-fly-top-to-bottom {
-  0% { transform: translate(0, 0); }
-  30% { transform: translate(0, 60px) rotate(0deg); }
-  65% { transform: translate(0, 60px) rotate(0deg); }
-  100% { transform: translate(0, 280px) scale(0.35); opacity: 0; }
-}
-@keyframes gather-and-fly-top-to-left {
-  0% { transform: translate(0, 0); }
-  30% { transform: translate(0, 60px) rotate(0deg); }
-  65% { transform: translate(0, 60px) rotate(0deg); }
-  100% { transform: translate(-300px, 60px) scale(0.35); opacity: 0; }
-}
-@keyframes gather-and-fly-top-to-right {
-  0% { transform: translate(0, 0); }
-  30% { transform: translate(0, 60px) rotate(0deg); }
-  65% { transform: translate(0, 60px) rotate(0deg); }
-  100% { transform: translate(300px, 60px) scale(0.35); opacity: 0; }
+.slot-left.collecting {
+  transform: translateY(-50%);
 }
 
-/* Keyframes for slot-left */
-@keyframes gather-and-fly-left-to-top {
-  0% { transform: translate(0, 0); }
-  30% { transform: translate(100px, 0) rotate(0deg); }
-  65% { transform: translate(100px, 0) rotate(0deg); }
-  100% { transform: translate(100px, -280px) scale(0.35); opacity: 0; }
-}
-@keyframes gather-and-fly-left-to-bottom {
-  0% { transform: translate(0, 0); }
-  30% { transform: translate(100px, 0) rotate(0deg); }
-  65% { transform: translate(100px, 0) rotate(0deg); }
-  100% { transform: translate(100px, 240px) scale(0.35); opacity: 0; }
-}
-@keyframes gather-and-fly-left-to-left {
-  0% { transform: translate(0, 0); }
-  30% { transform: translate(100px, 0) rotate(0deg); }
-  65% { transform: translate(100px, 0) rotate(0deg); }
-  100% { transform: translate(-200px, 0) scale(0.35); opacity: 0; }
-}
-@keyframes gather-and-fly-left-to-right {
-  0% { transform: translate(0, 0); }
-  30% { transform: translate(100px, 0) rotate(0deg); }
-  65% { transform: translate(100px, 0) rotate(0deg); }
-  100% { transform: translate(400px, 0) scale(0.35); opacity: 0; }
+.slot-right.collecting {
+  transform: translateY(-50%);
 }
 
-/* Keyframes for slot-right */
-@keyframes gather-and-fly-right-to-top {
-  0% { transform: translate(0, 0); }
-  30% { transform: translate(-100px, 0) rotate(0deg); }
-  65% { transform: translate(-100px, 0) rotate(0deg); }
-  100% { transform: translate(-100px, -280px) scale(0.35); opacity: 0; }
+.trick-slot.collecting .trick-card {
+  animation: gather-and-fly 1.3s ease-in-out forwards;
 }
-@keyframes gather-and-fly-right-to-bottom {
-  0% { transform: translate(0, 0); }
-  30% { transform: translate(-100px, 0) rotate(0deg); }
-  65% { transform: translate(-100px, 0) rotate(0deg); }
-  100% { transform: translate(-100px, 240px) scale(0.35); opacity: 0; }
-}
-@keyframes gather-and-fly-right-to-left {
-  0% { transform: translate(0, 0); }
-  30% { transform: translate(-100px, 0) rotate(0deg); }
-  65% { transform: translate(-100px, 0) rotate(0deg); }
-  100% { transform: translate(-400px, 0) scale(0.35); opacity: 0; }
-}
-@keyframes gather-and-fly-right-to-right {
-  0% { transform: translate(0, 0); }
-  30% { transform: translate(-100px, 0) rotate(0deg); }
-  65% { transform: translate(-100px, 0) rotate(0deg); }
-  100% { transform: translate(200px, 0) scale(0.35); opacity: 0; }
+
+@keyframes gather-and-fly {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  35%,
+  62% {
+    transform: translate(var(--gather-x, 0px), var(--gather-y, 0px)) rotate(var(--stack-rot, 0deg));
+  }
+  100% {
+    transform: translate(var(--fly-x, 0px), var(--fly-y, 0px)) rotate(var(--stack-rot, 0deg)) scale(0.3);
+    opacity: 0;
+  }
 }
 
 /* ---------- Cards ---------- */
@@ -872,10 +874,10 @@ button:not(:disabled):hover {
   margin-top: 12px;
   padding: 8px 16px;
   position: relative;
-  min-height: 114px;
   display: flex;
   justify-content: center;
-  align-items: flex-end;
+  align-items: stretch;
+  flex-shrink: 0;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -926,32 +928,43 @@ button:not(:disabled):hover {
   color: var(--red-2) !important;
 }
 
+/* Cards sit in a straight line and fill the box height. */
 .player-hand-cards {
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
   justify-content: center;
   gap: 0;
-  min-height: 98px;
+  height: 104px;
   overflow: visible;
-  padding: 8px 0;
 }
 
 .playing-card {
   position: relative;
   flex: 0 0 auto;
+  height: 100%;
   padding: 0;
   background: transparent;
   border-radius: 8px;
   cursor: pointer;
   margin-left: -22px;
-  transform: rotate(var(--fan-rot, 0deg)) translateY(var(--fan-lift, 0px));
-  transform-origin: 50% 130%;
   transition: transform 0.18s ease, opacity 0.2s ease, filter 0.2s ease;
   touch-action: none;
 }
 
 .playing-card:first-child {
   margin-left: 0;
+}
+
+.playing-card .card-face {
+  width: auto;
+  height: 100%;
+  aspect-ratio: 62 / 92;
+}
+
+/* The global hover lift replaces the card transform and made cards look
+   shifted (sticky :hover on touch) — hand cards are exempt. */
+button.playing-card:not(:disabled):hover {
+  transform: none;
 }
 
 .playing-card:disabled {
@@ -1191,12 +1204,18 @@ button:not(:disabled):hover {
 
 .rules-modal-container {
   width: min(720px, 100%);
-  max-height: 88vh;
-  overflow: auto;
+  max-height: calc(100dvh - 36px);
+  overflow-y: auto;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel);
   padding: 20px;
+}
+
+/* In forced-landscape mode the effective screen height is the physical
+   width — vh/dvh would overshoot and make the modal unscrollably tall. */
+html.rotated .rules-modal-container {
+  max-height: calc(100dvw - 36px);
 }
 
 .rules-modal-header,
@@ -1298,37 +1317,40 @@ button:not(:disabled):hover {
 
 /* ---------- Responsive ---------- */
 
-@media (max-width: 820px) {
-  .hero-panel,
-  .home-grid {
-    grid-template-columns: 1fr;
-  }
+/* Narrow phone layout. Driven by html.narrow (set in App.tsx from the
+   *effective* landscape width) instead of a max-width media query, so the
+   layout is identical whether the phone is held in landscape or in portrait
+   with the UI rotated — a plain media query would flip when the device
+   rotates even though the effective width stays the same. */
+html.narrow .hero-panel,
+html.narrow .home-grid {
+  grid-template-columns: 1fr;
+}
 
-  .hero-table {
-    display: none;
-  }
+html.narrow .hero-table {
+  display: none;
+}
 
-  .bid-status,
-  .score-grid {
-    grid-template-columns: 1fr 1fr;
-  }
+html.narrow .bid-status,
+html.narrow .score-grid {
+  grid-template-columns: 1fr 1fr;
+}
 
-  .rules-modal-grid {
-    grid-template-columns: 1fr 1fr;
-  }
+html.narrow .rules-modal-grid {
+  grid-template-columns: 1fr 1fr;
+}
 
-  .table {
-    grid-template-columns: minmax(100px, auto) minmax(140px, 1fr) minmax(100px, auto);
-  }
+html.narrow .table {
+  grid-template-columns: minmax(100px, auto) minmax(140px, 1fr) minmax(100px, auto);
+}
 
-  .seat {
-    min-width: 100px;
-    padding: 8px;
-  }
+html.narrow .seat {
+  min-width: 100px;
+  padding: 8px;
+}
 
-  .seat-name {
-    font-size: 12px;
-  }
+html.narrow .seat-name {
+  font-size: 12px;
 }
 
 /* Full-screen overlays clear the notch and home indicator too. */
@@ -1450,14 +1472,23 @@ html.compact .seat-meta {
   font-size: 11px;
 }
 
-html.compact .player-hand {
-  min-height: 92px;
-  padding: 6px 4px 4px;
+html.compact .player-hand-container {
+  padding: 6px 12px;
   margin-top: 4px;
+}
+
+html.compact .player-hand-cards {
+  height: 86px;
 }
 
 html.compact .playing-card {
   margin-left: -26px;
+}
+
+/* Beat the fixed compact card size — hand cards scale with the box. */
+html.compact .playing-card .card-face {
+  width: auto;
+  height: 100%;
 }
 
 html.compact .round-over {

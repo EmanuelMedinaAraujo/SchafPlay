@@ -26,8 +26,12 @@ async function compressSDP(obj: object): Promise<string> {
 }
 
 async function decompressSDP<T>(encoded: string): Promise<T> {
+  // Codes travel through messengers/clipboards that like to inject line
+  // breaks, spaces or invisible characters — strip everything that can't
+  // be part of a base64url string before decoding.
+  const cleaned = encoded.replace(/[^A-Za-z0-9_-]/g, "");
   // Undo base64url → standard base64
-  let b64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
+  let b64 = cleaned.replace(/-/g, "+").replace(/_/g, "/");
   while (b64.length % 4) b64 += "=";
   const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
   const input = new Blob([raw]);
@@ -68,6 +72,7 @@ export class PeerConnection {
 
     const pc = new RTCPeerConnection({ iceServers: [] });
     this.pc = pc;
+    this.watchConnection(pc);
 
     // Create the data channel before creating the offer so it's included in SDP.
     const dc = pc.createDataChannel("game", { ordered: true });
@@ -94,7 +99,14 @@ export class PeerConnection {
     const pc = this.pc;
     if (!pc) throw new Error("Call host() first");
 
-    const bundle = await decompressSDP<SDPBundle>(replyCode.trim());
+    let bundle: SDPBundle;
+    try {
+      bundle = await decompressSDP<SDPBundle>(replyCode.trim());
+    } catch {
+      // The paste itself is garbage — the connection is still usable,
+      // the user can simply paste again.
+      throw new Error("INVALID_CODE");
+    }
     await pc.setRemoteDescription({ type: bundle.type, sdp: bundle.sdp });
     for (const c of bundle.candidates) {
       await pc.addIceCandidate(c);
@@ -111,6 +123,7 @@ export class PeerConnection {
 
     const pc = new RTCPeerConnection({ iceServers: [] });
     this.pc = pc;
+    this.watchConnection(pc);
 
     // The host's data channel arrives via ondatachannel.
     pc.ondatachannel = (event) => {
@@ -213,6 +226,18 @@ export class PeerConnection {
   private fail() {
     this.stopHeartbeat();
     if (!this.closed) this.emitState("failed");
+  }
+
+  /**
+   * Surface ICE-level failures. Without this, a handshake whose ICE never
+   * connects (wrong network, stale code) sits in "connecting" forever.
+   */
+  private watchConnection(pc: RTCPeerConnection) {
+    pc.onconnectionstatechange = () => {
+      if (this.closed || this.pc !== pc) return;
+      if (pc.connectionState === "failed") this.fail();
+      if (pc.connectionState === "closed") this.emitState("disconnected");
+    };
   }
 
   private startHeartbeat() {

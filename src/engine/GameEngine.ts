@@ -482,6 +482,14 @@ export class GameEngine {
       let safetyCount = 0;
       while ((this.state.status === "PLAYING" || this.state.status === "BIDDING") && safetyCount < 200) {
         safetyCount++;
+        if (this.state.collecting) {
+          // Don't wait for the trick-hold timer — resolve the trick right away,
+          // otherwise processCardPlay ignores every further play and the loop
+          // would only ever finish the current trick.
+          this.clearTimer();
+          this.collectTrick();
+          continue;
+        }
         if (this.state.status === "BIDDING") {
           const active = this.activePlayer();
           if (this.state.biddingState!.phase === "WILL_PHASE") {

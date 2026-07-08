@@ -15,8 +15,15 @@ export default defineConfig(() => {
             let content = fs.readFileSync(swPath, 'utf8');
             const version = `schafplay-v-${Date.now()}`;
             content = content.replace(/const CACHE_NAME = 'schafplay-v1';/, `const CACHE_NAME = '${version}';`);
+            // Precache every built asset so the PWA is fully usable offline.
+            const assetsDir = path.resolve(__dirname, 'dist/assets');
+            const assets = fs.existsSync(assetsDir)
+              ? fs.readdirSync(assetsDir).map((file) => `/assets/${file}`)
+              : [];
+            const precache = ['/', '/index.html', '/icon-192.png', '/icon-512.png', '/manifest.json', ...assets];
+            content = content.replace(/const PRECACHE = \[[^\]]*\];/, `const PRECACHE = ${JSON.stringify(precache)};`);
             fs.writeFileSync(swPath, content, 'utf8');
-            console.log(`[sw-version-injector] Injected dynamic cache version: ${version}`);
+            console.log(`[sw-version-injector] Injected cache version ${version} and ${precache.length} precache entries`);
           }
         }
       }

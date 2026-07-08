@@ -31,6 +31,7 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
   const [replyCode, setReplyCode] = useState("");
   const [pastedCode, setPastedCode] = useState("");
   const [busy, setBusy] = useState(false);
+  const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const peerRef = useRef<PeerConnection | null>(null);
@@ -46,26 +47,45 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
     };
   }, []);
 
+  async function createHostInvite() {
+    const peer = new PeerConnection();
+    peerRef.current = peer;
+    onPeerRef.current(peer);
+    try {
+      const code = await peer.host();
+      if (peerRef.current === peer) setInviteCode(code);
+    } catch {
+      if (peerRef.current === peer) setError(t.failed);
+    }
+  }
+
   // Host: create offer on mount.
   useEffect(() => {
     if (mode !== "host") return;
-    let cancelled = false;
-    (async () => {
-      const peer = new PeerConnection();
-      peerRef.current = peer;
-      onPeerRef.current(peer);
-      try {
-        const code = await peer.host();
-        if (!cancelled) setInviteCode(code);
-      } catch {
-        if (!cancelled) setError(t.failed);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    createHostInvite();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
+
+  // A WebRTC session whose handshake failed can never recover — the offer is
+  // consumed. When ICE fails, start over: the host mints a fresh invite code,
+  // the guest goes back to the paste field.
+  const prevStateRef = useRef(connectionState);
+  useEffect(() => {
+    const prev = prevStateRef.current;
+    prevStateRef.current = connectionState;
+    if (connectionState !== "failed" || prev === "failed") return;
+    setPastedCode("");
+    setAccepted(false);
+    if (mode === "host") {
+      setInviteCode("");
+      setError(t.codeExpired);
+      createHostInvite();
+    } else {
+      setReplyCode("");
+      setError(t.failed);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connectionState, mode]);
 
   async function hostAcceptReply() {
     const peer = peerRef.current;
@@ -74,8 +94,18 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
     setError("");
     try {
       await peer.acceptAnswer(pastedCode.trim());
-    } catch {
-      setError(t.invalidCode);
+      setAccepted(true);
+    } catch (err) {
+      if (err instanceof Error && err.message === "INVALID_CODE") {
+        setError(t.invalidCode);
+      } else {
+        // The answer couldn't be applied (usually a stale reply already
+        // consumed the offer). This peer is dead — mint a fresh code.
+        setPastedCode("");
+        setInviteCode("");
+        setError(t.codeExpired);
+        createHostInvite();
+      }
     } finally {
       setBusy(false);
     }
@@ -121,17 +151,19 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
         {inviteCode && (
           <>
             <label className="field-label">{t.inviteCode}</label>
-            <textarea
-              className="input code-textarea"
-              readOnly
-              value={inviteCode}
-              rows={2}
-              onClick={(e) => (e.target as HTMLTextAreaElement).select()}
-            />
-            <button className="secondary-button" onClick={() => copyText(inviteCode)} type="button">
-              {copied ? <CheckIcon /> : <CopyIcon />}
-              {copied ? t.copied : t.copy}
-            </button>
+            <div className="code-row">
+              <textarea
+                className="input code-textarea"
+                readOnly
+                value={inviteCode}
+                rows={2}
+                onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+              />
+              <button className="secondary-button" onClick={() => copyText(inviteCode)} type="button">
+                {copied ? <CheckIcon /> : <CopyIcon />}
+                {copied ? t.copied : t.copy}
+              </button>
+            </div>
 
             {connectionState !== "connected" && (
               <>
@@ -157,6 +189,12 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
 
             {connectionState === "connected" && (
               <p className="muted" style={{ color: "var(--green)" }}>✓ {t.connected}</p>
+            )}
+
+            {accepted && connectionState === "connecting" && (
+              <p className="muted pulse-soft">
+                <LoaderIcon /> {t.connecting}
+              </p>
             )}
           </>
         )}
@@ -194,17 +232,19 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
       {replyCode && (
         <>
           <label className="field-label">{t.replyCode}</label>
-          <textarea
-            className="input code-textarea"
-            readOnly
-            value={replyCode}
-            rows={2}
-            onClick={(e) => (e.target as HTMLTextAreaElement).select()}
-          />
-          <button className="secondary-button" onClick={() => copyText(replyCode)} type="button">
-            {copied ? <CheckIcon /> : <CopyIcon />}
-            {copied ? t.copied : t.copy}
-          </button>
+          <div className="code-row">
+            <textarea
+              className="input code-textarea"
+              readOnly
+              value={replyCode}
+              rows={2}
+              onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+            />
+            <button className="secondary-button" onClick={() => copyText(replyCode)} type="button">
+              {copied ? <CheckIcon /> : <CopyIcon />}
+              {copied ? t.copied : t.copy}
+            </button>
+          </div>
         </>
       )}
 

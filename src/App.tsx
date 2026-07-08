@@ -52,16 +52,18 @@ export default function App() {
   }, [playerName]);
 
   // Landscape-only UI: on portrait screens the whole app is rotated 90°
-  // via CSS (html.rotated). html.compact drives the one-screen phone layout
-  // based on the *effective* height, which media queries can't see once
-  // the UI is rotated.
+  // via CSS (html.rotated). html.compact / html.narrow drive the phone
+  // layout based on the *effective* landscape height/width, which media
+  // queries can't see once the UI is rotated.
   useEffect(() => {
     const root = document.documentElement;
     const update = () => {
       const portrait = window.innerHeight > window.innerWidth;
       const effectiveHeight = portrait ? window.innerWidth : window.innerHeight;
+      const effectiveWidth = portrait ? window.innerHeight : window.innerWidth;
       root.classList.toggle("rotated", portrait);
       root.classList.toggle("compact", effectiveHeight <= 520);
+      root.classList.toggle("narrow", effectiveWidth <= 820);
     };
     update();
     window.addEventListener("resize", update);
@@ -71,13 +73,21 @@ export default function App() {
     return () => {
       window.removeEventListener("resize", update);
       orientation.removeEventListener("change", update);
-      root.classList.remove("rotated", "compact");
+      root.classList.remove("rotated", "compact", "narrow");
     };
   }, []);
 
   useEffect(() => {
     localStorage.setItem(LANG_KEY, language);
   }, [language]);
+
+  // In-game the whole UI fits the viewport; page scrolling is disabled and
+  // only the game screen itself may scroll if it genuinely doesn't fit.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle("in-game", screen === "game");
+    return () => root.classList.remove("in-game");
+  }, [screen]);
 
   const t = translations[language];
   const myPlayerId = role === "guest" ? "p3" : "p1";
