@@ -12,6 +12,7 @@
   --red-2: #ef4444;
   --amber: #f59e0b;
   --green: #22c55e;
+  --blue: #3b82f6;
   --felt: #14371f;
 }
 
@@ -222,6 +223,11 @@ button:not(:disabled):hover {
 .connection-pill.failed {
   color: var(--red-2);
   border-color: rgba(239, 68, 68, 0.4);
+}
+
+.connection-pill.solo {
+  color: var(--blue);
+  border-color: rgba(59, 130, 246, 0.35);
 }
 
 /* ---------- Home ---------- */
@@ -437,6 +443,10 @@ html.in-game .table {
   border: 1px solid var(--line);
   border-radius: 10px;
   background: #0d0d12;
+}
+
+.home-screen [role="tablist"].mode-switch {
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .mode-switch button {

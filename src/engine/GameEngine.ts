@@ -35,6 +35,8 @@ export interface EngineOptions {
   trickHoldMs?: number;
   /** Deck arrangement, injectable for deterministic tests. */
   shuffleFn?: (deck: Card[]) => Card[];
+  /** Solo mode: seat p3 is a third AI instead of the remote human. */
+  soloMode?: boolean;
 }
 
 const MAX_LOGS = 30;
@@ -56,7 +58,7 @@ export class GameEngine {
     const players: Player[] = [
       makePlayer("p1", hostName || "Host", true, 0),
       makePlayer("p2", "Resi (KI)", false, 1),
-      makePlayer("p3", guestName || "Gast", true, 2),
+      options.soloMode ? makePlayer("p3", "Zenzi (KI)", false, 2) : makePlayer("p3", guestName || "Gast", true, 2),
       makePlayer("p4", "Sepp (KI)", false, 3),
     ];
 
@@ -71,7 +73,7 @@ export class GameEngine {
       collecting: false,
       paused: false,
       biddingState: null,
-      readyState: { p1: false, p3: false },
+      readyState: { p1: false, p3: !players[2].isHuman },
       scores: { p1: 0, p2: 0, p3: 0, p4: 0 },
       roundNumber: 0,
       totalRounds,
@@ -139,7 +141,7 @@ export class GameEngine {
       state.dealerIdx = (state.dealerIdx + 1) % 4;
       state.activePlayerIdx = (state.dealerIdx + 1) % 4;
       state.roundNumber += 1;
-      state.readyState = { p1: false, p3: false };
+      state.readyState = { p1: false, p3: !state.players[2].isHuman };
       state.lastResult = undefined;
       state.logs = [{ key: "log.deal", params: { round: state.roundNumber, dealer: state.players[state.dealerIdx].name } }];
       this.resetBidding(state);
@@ -427,7 +429,7 @@ export class GameEngine {
       state.status = "ROUND_OVER";
     }
     state.currentTrick = null;
-    state.readyState = { p1: false, p3: false };
+    state.readyState = { p1: false, p3: !state.players[2].isHuman };
     this.log(state, "log.roundOver", { names: result.winnerIds.map((id) => this.playerName(id)).join(", ") });
   }
 
@@ -446,7 +448,7 @@ export class GameEngine {
   processRematch(): void {
     this.clearTimer();
     this.mutate((state) => {
-      state.readyState = { p1: false, p3: false };
+      state.readyState = { p1: false, p3: !state.players[2].isHuman };
       state.scores = { p1: 0, p2: 0, p3: 0, p4: 0 };
       state.roundNumber = 0;
       state.dealerIdx = 3;

@@ -3,7 +3,7 @@ import { PeerConnection, PeerConnectionState } from "../net/PeerConnection";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
 import PairingPanel from "./PairingPanel";
-import { UsersIcon, RadioIcon } from "./icons";
+import { UsersIcon, RadioIcon, BotIcon, PlayIcon } from "./icons";
 
 interface HomeScreenProps {
   language: Language;
@@ -14,11 +14,12 @@ interface HomeScreenProps {
   onGuestPeer: (peer: PeerConnection) => void;
   totalRounds: number;
   onTotalRoundsChange: (rounds: number) => void;
+  onSoloStart: () => void;
 }
 
 export default function HomeScreen(props: HomeScreenProps) {
   const t = translations[props.language];
-  const [mode, setMode] = useState<"host" | "join">("host");
+  const [mode, setMode] = useState<"host" | "join" | "solo">("host");
 
   return (
     <main className="home-screen">
@@ -37,7 +38,7 @@ export default function HomeScreen(props: HomeScreenProps) {
             />
           </div>
 
-          {mode === "host" && (
+          {(mode === "host" || mode === "solo") && (
             <div className="match-length-row">
               <label className="field-label">
                 {t.matchLength} ({t.rounds})
@@ -80,18 +81,42 @@ export default function HomeScreen(props: HomeScreenProps) {
                 <RadioIcon />
                 {t.joinGame}
               </button>
+              <button
+                className={mode === "solo" ? "active" : ""}
+                onClick={() => setMode("solo")}
+                role="tab"
+                aria-selected={mode === "solo"}
+                type="button"
+              >
+                <BotIcon />
+                {t.soloGame}
+              </button>
             </div>
           </div>
         </div>
 
         <div className="panel">
-          <PairingPanel
-            key={mode}
-            language={props.language}
-            mode={mode}
-            connectionState={props.connectionState}
-            onPeer={mode === "host" ? props.onHostPeer : props.onGuestPeer}
-          />
+          {mode === "solo" ? (
+            <div className="pairing-flow">
+              <h2>
+                <BotIcon size={18} />
+                {t.soloGame}
+              </h2>
+              <p className="muted" style={{ marginBottom: "12px" }}>{t.soloIntro}</p>
+              <button className="primary-button" onClick={props.onSoloStart} type="button">
+                <PlayIcon />
+                {t.startGame}
+              </button>
+            </div>
+          ) : (
+            <PairingPanel
+              key={mode}
+              language={props.language}
+              mode={mode}
+              connectionState={props.connectionState}
+              onPeer={mode === "host" ? props.onHostPeer : props.onGuestPeer}
+            />
+          )}
         </div>
       </section>
     </main>

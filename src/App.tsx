@@ -8,7 +8,7 @@ import { PeerConnection, PeerConnectionState } from "./net/PeerConnection";
 import { createMessage } from "./net/protocol";
 import { GameState, Language, P2PMessageType, PlayerAction, PlayerActionType } from "./types";
 import { translations } from "./lib/i18n";
-import { BookOpenIcon } from "./components/icons";
+import { BookOpenIcon, BotIcon, PlayIcon } from "./components/icons";
 
 const NAME_KEY = "schafplay.name";
 const LANG_KEY = "schafplay.language";
@@ -34,7 +34,7 @@ export default function App() {
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem(LANG_KEY) as Language) || "de");
   const [playerName, setPlayerName] = useState(() => localStorage.getItem(NAME_KEY) || "Bazi");
   const [screen, setScreen] = useState<"home" | "game">("home");
-  const [role, setRole] = useState<"host" | "guest" | null>(null);
+  const [role, setRole] = useState<"host" | "guest" | "solo" | null>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [connectionState, setConnectionState] = useState<PeerConnectionState | "idle">("idle");
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -156,6 +156,26 @@ export default function App() {
     });
   }
 
+  /**
+   * Solo: 100% offline against three AI seats. Any peer created on the home
+   * screen (hosting registers with the broker eagerly) is torn down — no
+   * WebRTC connection or broker socket stays open.
+   */
+  function startSoloGame() {
+    peerRef.current?.disconnect();
+    peerRef.current = null;
+    engineRef.current?.destroy();
+
+    const engine = new GameEngine(nameRef.current, "Zenzi (KI)", totalRoundsRef.current, { soloMode: true });
+    engineRef.current = engine;
+    engine.onStateChange(setGameState);
+
+    setRole("solo");
+    setConnectionState("idle");
+    setScreen("game");
+    engine.dealCards();
+  }
+
   /** Guest side: thin client rendering the host's redacted state. */
   function attachGuestPeer(peer: PeerConnection) {
     peerRef.current?.disconnect();
@@ -182,7 +202,7 @@ export default function App() {
   }
 
   function handleAction(action: PlayerAction) {
-    if (role === "host") {
+    if (role === "host" || role === "solo") {
       engineRef.current?.processAction(action);
       return;
     }
@@ -211,7 +231,7 @@ export default function App() {
   const inGame = screen === "game" && gameState;
   // Keep the overlay up during the whole re-pairing flow ("connecting"
   // included) — it only closes once the peer is actually back.
-  const needsReconnect = Boolean(inGame && connectionState !== "connected");
+  const needsReconnect = Boolean(inGame && role !== "solo" && connectionState !== "connected");
 
   return (
     <div className="app-shell">
@@ -228,15 +248,17 @@ export default function App() {
             <LanguagesIcon />
             {language.toUpperCase()}
           </button>
-          <span className={`connection-pill ${connectionState}`}>
-            {connectionState === "connected" ? <WifiIcon /> : <PlugZapIcon />}
-            {connectionState === "connected"
-              ? t.connected
-              : connectionState === "connecting"
-                ? t.connecting
-                : connectionState === "idle"
-                  ? "—"
-                  : t.disconnected}
+          <span className={`connection-pill ${role === "solo" ? "solo" : connectionState}`}>
+            {role === "solo" ? <BotIcon size={14} /> : connectionState === "connected" ? <WifiIcon /> : <PlugZapIcon />}
+            {role === "solo" && inGame
+              ? t.soloOffline
+              : connectionState === "connected"
+                ? t.connected
+                : connectionState === "connecting"
+                  ? t.connecting
+                  : connectionState === "idle"
+                    ? "—"
+                    : t.disconnected}
           </span>
         </div>
       </header>
@@ -251,6 +273,7 @@ export default function App() {
           onGuestPeer={attachGuestPeer}
           totalRounds={totalRounds}
           onTotalRoundsChange={setTotalRounds}
+          onSoloStart={startSoloGame}
         />
       ) : (
         <GameBoard
@@ -260,8 +283,8 @@ export default function App() {
           onAction={handleAction}
           onReady={handleReady}
           onQuit={quitGame}
-          onDevSkip={role === "host" ? () => engineRef.current?.devSkipTrick() : undefined}
-          onDevSkipRound={role === "host" ? () => engineRef.current?.devSkipRound() : undefined}
+          onDevSkip={role === "host" || role === "solo" ? () => engineRef.current?.devSkipTrick() : undefined}
+          onDevSkipRound={role === "host" || role === "solo" ? () => engineRef.current?.devSkipRound() : undefined}
         />
       )}
 

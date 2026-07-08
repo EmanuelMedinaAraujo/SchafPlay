@@ -13,7 +13,7 @@ interface TrickAreaProps {
 
 /** Where the winner's name lives on screen, per table position. */
 const FLY_TARGETS: Record<string, string> = {
-  bottom: ".player-hand-name",
+  bottom: ".player-hand-container",
   left: ".seat-left .seat-name",
   top: ".seat-top .seat-name",
   right: ".seat-right .seat-name",
