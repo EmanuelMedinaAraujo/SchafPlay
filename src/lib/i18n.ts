@@ -35,6 +35,7 @@ export const translations = {
     disconnected: "Getrennt",
     failed: "Fehlgeschlagen",
     invalidCode: "Ungültiger Code. Bitte prüfen und erneut versuchen.",
+    codeExpired: "Verbindung fehlgeschlagen. Neuer Einladungscode wurde erzeugt – bitte erneut teilen.",
     heroTagline: "Bayerischer Schafkopf für zwei – serverlos, offline installierbar, mit zwei KI-Mitspielern.",
     heroHint: "Du sitzt auf Platz 1, dein Mitspieler auf Platz 3. Die Plätze 2 und 4 übernehmen Resi und Sepp (KI).",
 
@@ -123,6 +124,7 @@ export const translations = {
     disconnected: "Disconnected",
     failed: "Failed",
     invalidCode: "Invalid code. Please check it and try again.",
+    codeExpired: "Connection failed. A new invite code was created — please share it again.",
     heroTagline: "Bavarian Schafkopf for two – serverless, installable offline, with two AI seats.",
     heroHint: "You sit on seat 1, your partner on seat 3. Seats 2 and 4 are played by Resi and Sepp (AI).",
 

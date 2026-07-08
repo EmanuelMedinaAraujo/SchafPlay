@@ -42,7 +42,10 @@ export default function RulesModal({ isOpen, onClose, language }: RulesModalProp
   const isDe = language === "de";
 
   return (
-    <div className="rules-modal-overlay">
+    <div
+      className="rules-modal-overlay"
+      onClick={(event) => event.target === event.currentTarget && onClose()}
+    >
       <div className="rules-modal-container">
         {/* Header */}
         <div className="rules-modal-header">

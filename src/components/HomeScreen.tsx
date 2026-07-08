@@ -38,9 +38,11 @@ export default function HomeScreen(props: HomeScreenProps) {
           </div>
 
           {mode === "host" && (
-            <div>
-              <label className="field-label">{t.matchLength}</label>
-              <div className="mode-switch" role="group" style={{ marginTop: "4px" }}>
+            <div className="match-length-row">
+              <label className="field-label">
+                {t.matchLength} ({t.rounds})
+              </label>
+              <div className="mode-switch" role="group">
                 {[4, 8, 12].map((r) => (
                   <button
                     key={r}
@@ -49,7 +51,7 @@ export default function HomeScreen(props: HomeScreenProps) {
                     style={{ minHeight: "34px", fontSize: "13px" }}
                     type="button"
                   >
-                    {r} {t.rounds}
+                    {r}
                   </button>
                 ))}
               </div>
@@ -84,10 +86,6 @@ export default function HomeScreen(props: HomeScreenProps) {
         </div>
 
         <div className="panel">
-          <h2>
-            {mode === "host" ? <UsersIcon /> : <RadioIcon />}
-            {mode === "host" ? t.hostGame : t.joinGame}
-          </h2>
           <PairingPanel
             key={mode}
             language={props.language}

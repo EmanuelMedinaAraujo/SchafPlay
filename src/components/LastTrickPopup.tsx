@@ -16,7 +16,11 @@ export default function LastTrickPopup({ trick, players, contract, language, onC
   const winner = players.find((p) => p.id === trick.winnerId);
 
   return (
-    <div className="rules-modal-overlay" style={{ zIndex: 70 }}>
+    <div
+      className="rules-modal-overlay"
+      style={{ zIndex: 70 }}
+      onClick={(event) => event.target === event.currentTarget && onClose()}
+    >
       <div className="rules-modal-container" style={{ width: "min(400px, 92%)" }}>
         <div className="rules-modal-header" style={{ paddingBottom: "8px" }}>
           <h3 style={{ margin: 0 }}>{t.lastTrick}</h3>

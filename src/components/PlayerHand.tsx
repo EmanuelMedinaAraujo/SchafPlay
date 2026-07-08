@@ -1,4 +1,4 @@
-import { CSSProperties, PointerEvent, useEffect, useRef, useState } from "react";
+import { PointerEvent, useEffect, useRef, useState } from "react";
 import { Card, Contract, GameType, Language, Suit, Trick } from "../types";
 import { getCardRank, getLegalCards, isTrump } from "../utils/gameLogic";
 import { translations } from "../lib/i18n";
@@ -10,7 +10,7 @@ interface PlayerHandProps {
   contract: Contract | null;
   disabled: boolean;
   playerName: string;
-  lastTrickDisabled: boolean;
+  showLastTrick: boolean;
   language: Language;
   onPlay: (cardId: string) => void;
   onLastTrick: () => void;
@@ -38,7 +38,7 @@ export default function PlayerHand({
   contract,
   disabled,
   playerName,
-  lastTrickDisabled,
+  showLastTrick,
   language,
   onPlay,
   onLastTrick,
@@ -124,27 +124,19 @@ export default function PlayerHand({
     if (!drag.moved || overTable) onPlay(drag.id);
   }
 
-  const center = (sorted.length - 1) / 2;
-
   return (
     <div className={`player-hand-container ${disabled ? "" : "my-turn"}`}>
       <span className="player-hand-name">{playerName}</span>
 
       <div className="player-hand-cards">
-        {sorted.map((card, index) => {
+        {sorted.map((card) => {
           const isLegal = legalCards.some((candidate) => candidate.id === card.id);
           const isGrayed = showIllegal && !isLegal;
-          const arc = center * center - (index - center) * (index - center);
-          const fan = {
-            "--fan-rot": `${(index - center) * 3.5}deg`,
-            "--fan-lift": `${-arc * 1.1}px`,
-          } as CSSProperties;
 
           return (
             <button
               key={card.id}
               className={`playing-card ${isGrayed ? "grayed-out" : ""}`}
-              style={fan}
               onPointerDown={(event) => startDrag(event, card.id, isLegal)}
               onPointerMove={moveDrag}
               onPointerUp={(event) => endDrag(event)}
@@ -159,14 +151,11 @@ export default function PlayerHand({
         })}
       </div>
 
-      <button
-        className="secondary-button last-trick-btn"
-        onClick={onLastTrick}
-        disabled={lastTrickDisabled}
-        type="button"
-      >
-        {t.lastTrick}
-      </button>
+      {showLastTrick && (
+        <button className="secondary-button last-trick-btn" onClick={onLastTrick} type="button">
+          {t.lastTrick}
+        </button>
+      )}
     </div>
   );
 }

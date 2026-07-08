@@ -100,7 +100,7 @@ export default function GameBoard({
         contract={state.currentContract}
         disabled={state.status !== "PLAYING" || !isMyTurn}
         playerName={me.name}
-        lastTrickDisabled={state.tricks.length === 0}
+        showLastTrick={state.tricks.length > 0}
         language={language}
         onPlay={playCard}
         onLastTrick={() => setLastTrickOpen(true)}

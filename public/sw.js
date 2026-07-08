@@ -1,16 +1,19 @@
 const CACHE_NAME = 'schafplay-v1';
 
+// The build (vite.config.ts, sw-version-injector) replaces this list with
+// the full set of hashed assets so the app works offline even if a file
+// was never fetched while online.
+const PRECACHE = [
+  '/',
+  '/index.html',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/manifest.json',
+];
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) =>
-      cache.addAll([
-        '/',
-        '/index.html',
-        '/icon-192.png',
-        '/icon-512.png',
-        '/manifest.json',
-      ])
-    )
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE))
   );
   self.skipWaiting();
 });
