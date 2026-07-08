@@ -59,7 +59,6 @@ export default function HomeScreen(props: HomeScreenProps) {
           )}
 
           <div>
-            <label className="field-label">{mode === "host" ? t.hostGame : t.joinGame}</label>
             <div className="mode-switch" role="tablist">
               <button
                 className={mode === "host" ? "active" : ""}
