@@ -3,12 +3,14 @@ import GameBoard from "./components/GameBoard";
 import HomeScreen from "./components/HomeScreen";
 import PairingPanel from "./components/PairingPanel";
 import RulesModal from "./components/RulesModal";
+import StatsScreen from "./components/StatsScreen";
 import { GameEngine } from "./engine/GameEngine";
+import { MatchRecorder } from "./lib/MatchRecorder";
 import { PeerConnection, PeerConnectionState } from "./net/PeerConnection";
 import { createMessage } from "./net/protocol";
 import { GameState, Language, P2PMessageType, PlayerAction, PlayerActionType } from "./types";
 import { translations } from "./lib/i18n";
-import { BookOpenIcon, BotIcon, PlayIcon } from "./components/icons";
+import { BookOpenIcon, BotIcon, ChartColumnIcon, HomeIcon } from "./components/icons";
 
 const NAME_KEY = "schafplay.name";
 const LANG_KEY = "schafplay.language";
@@ -33,7 +35,7 @@ const PlugZapIcon = () => (
 export default function App() {
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem(LANG_KEY) as Language) || "de");
   const [playerName, setPlayerName] = useState(() => localStorage.getItem(NAME_KEY) || "Bazi");
-  const [screen, setScreen] = useState<"home" | "game">("home");
+  const [screen, setScreen] = useState<"home" | "game" | "stats">("home");
   const [role, setRole] = useState<"host" | "guest" | "solo" | null>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [connectionState, setConnectionState] = useState<PeerConnectionState | "idle">("idle");
@@ -41,6 +43,7 @@ export default function App() {
   const [totalRounds, setTotalRounds] = useState<number>(8);
 
   const engineRef = useRef<GameEngine | null>(null);
+  const recorderRef = useRef<MatchRecorder | null>(null);
   const peerRef = useRef<PeerConnection | null>(null);
   const nameRef = useRef(playerName);
   nameRef.current = playerName;
@@ -120,8 +123,11 @@ export default function App() {
         // last selected before the game actually starts.
         const engine = new GameEngine(nameRef.current, "Gast", totalRoundsRef.current);
         engineRef.current = engine;
-        engine.onStateChange((updatedState) => {
-          setGameState(engine.getRedactedState("p1"));
+        recorderRef.current = new MatchRecorder("multiplayer", "host", "p1");
+        engine.onStateChange(() => {
+          const redacted = engine.getRedactedState("p1");
+          recorderRef.current?.observe(redacted);
+          setGameState(redacted);
           sendGuestState();
         });
       }
@@ -168,7 +174,11 @@ export default function App() {
 
     const engine = new GameEngine(nameRef.current, "Zenzi (KI)", totalRoundsRef.current, { soloMode: true });
     engineRef.current = engine;
-    engine.onStateChange(setGameState);
+    recorderRef.current = new MatchRecorder("solo", "solo", "p1");
+    engine.onStateChange((updatedState) => {
+      recorderRef.current?.observe(updatedState);
+      setGameState(updatedState);
+    });
 
     setRole("solo");
     setConnectionState("idle");
@@ -181,6 +191,9 @@ export default function App() {
     peerRef.current?.disconnect();
     peerRef.current = peer;
     setRole("guest");
+    // Guarded: re-pairing after a drop keeps the in-progress recording,
+    // while a fresh join after quitGame() starts a new one.
+    if (!recorderRef.current) recorderRef.current = new MatchRecorder("multiplayer", "guest", "p3");
 
     peer.onConnectionStateChange((state) => {
       setConnectionState(state);
@@ -196,7 +209,9 @@ export default function App() {
 
     peer.onMessage((message) => {
       if (message.type === P2PMessageType.GAME_STATE_UPDATE) {
-        setGameState((message.payload as { state: GameState }).state);
+        const state = (message.payload as { state: GameState }).state;
+        recorderRef.current?.observe(state);
+        setGameState(state);
       }
     });
   }
@@ -222,6 +237,8 @@ export default function App() {
     peerRef.current = null;
     engineRef.current?.destroy();
     engineRef.current = null;
+    // An aborted match leaves no trace in the statistics.
+    recorderRef.current = null;
     setGameState(null);
     setRole(null);
     setConnectionState("idle");
@@ -241,6 +258,16 @@ export default function App() {
           <span>SchafPlay</span>
         </button>
         <div className="topbar-actions">
+          {!inGame && (
+            <>
+              <button className="icon-button" onClick={() => setScreen("home")} title={t.home} type="button">
+                <HomeIcon />
+              </button>
+              <button className="icon-button" onClick={() => setScreen("stats")} title={t.stats} type="button">
+                <ChartColumnIcon />
+              </button>
+            </>
+          )}
           <button className="icon-button" onClick={() => setRulesOpen(true)} title={t.rules} type="button">
             <BookOpenIcon />
           </button>
@@ -263,7 +290,9 @@ export default function App() {
         </div>
       </header>
 
-      {!inGame ? (
+      {!inGame && screen === "stats" ? (
+        <StatsScreen language={language} />
+      ) : !inGame ? (
         <HomeScreen
           language={language}
           playerName={playerName}

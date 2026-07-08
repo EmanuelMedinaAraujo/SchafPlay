@@ -250,6 +250,134 @@ button:not(:disabled):hover {
   padding-bottom: max(4px, env(safe-area-inset-bottom, 0px));
 }
 
+/* ---------- Stats screen ---------- */
+
+.stats-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stats-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.stats-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 17px;
+}
+
+.stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  padding: 10px 12px;
+}
+
+.stat-tile small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.stat-tile strong {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-tile.won strong {
+  color: var(--green);
+}
+
+.stat-tile.lost strong {
+  color: var(--red-2);
+}
+
+.stats-games-panel {
+  padding: 14px 16px;
+}
+
+.stats-game-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.stats-game-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.stats-game-row:last-child {
+  border-bottom: none;
+}
+
+.stats-date {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.stats-mode-icon {
+  display: flex;
+  color: var(--muted);
+}
+
+.stats-opponent {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-score {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.stats-score.positive {
+  color: var(--green);
+}
+
+.stats-score.negative {
+  color: var(--red-2);
+}
+
+.stats-result {
+  width: 22px;
+  text-align: center;
+  font-weight: 800;
+}
+
+.stats-result.won {
+  color: var(--green);
+}
+
+.stats-result.lost {
+  color: var(--red-2);
+}
+
 /* ---------- In-game: fit the viewport, no page scrolling ----------
    html.in-game is set by App.tsx while the game screen is shown. The page
    itself never scrolls; the game screen is a flex column sized to the
@@ -1415,6 +1543,18 @@ html.compact .game-toolbar .icon-button {
 html.compact .topbar .icon-button,
 html.compact .game-toolbar .icon-button {
   width: 34px;
+}
+
+html.compact .stat-tile {
+  padding: 8px 10px;
+}
+
+html.compact .stat-tile strong {
+  font-size: 17px;
+}
+
+html.compact .stats-game-row {
+  min-height: 30px;
 }
 
 html.compact .contract-chip {
