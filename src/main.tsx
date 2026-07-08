@@ -11,9 +11,21 @@ createRoot(document.getElementById('root')!).render(
 
 if ('serviceWorker' in navigator) {
   if (import.meta.env.PROD) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
-    });
+    const registerSW = () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then((reg) => {
+          console.log('[SW] Registered successfully with scope:', reg.scope);
+        })
+        .catch((err) => {
+          console.error('[SW] Registration failed:', err);
+        });
+    };
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      registerSW();
+    } else {
+      window.addEventListener('load', registerSW);
+    }
   } else {
     // Unregister active service workers in dev mode to prevent caching conflicts
     navigator.serviceWorker.getRegistrations().then((registrations) => {

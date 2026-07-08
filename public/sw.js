@@ -11,9 +11,27 @@ const PRECACHE = [
   '/manifest.json',
 ];
 
+// Helper to fetch with timeout to prevent hanging on slow/unreachable networks
+function fetchWithTimeout(request, timeoutMs = 1500) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(request, { signal: controller.signal })
+    .then((response) => {
+      clearTimeout(id);
+      return response;
+    })
+    .catch((err) => {
+      clearTimeout(id);
+      throw err;
+    });
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE))
+    caches.open(CACHE_NAME).then((cache) => {
+      const requests = PRECACHE.map((url) => new Request(url, { cache: 'reload' }));
+      return cache.addAll(requests);
+    })
   );
   self.skipWaiting();
 });
@@ -30,9 +48,29 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   // Navigation: network-first, fall back to cache.
+  // IMPORTANT: an error response (e.g. a 502 from a reverse proxy whose
+  // upstream is down) counts as a failure too — otherwise the proxy's error
+  // page replaces the app shell and the PWA white-screens when the dev
+  // server is off but the network is still up.
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(() => caches.match('/index.html'))
+      (async () => {
+        let networkResponse = null;
+        try {
+          networkResponse = await fetchWithTimeout(request, 3000);
+          if (networkResponse.ok) return networkResponse;
+        } catch {
+          // Offline / aborted — fall through to cache.
+        }
+        const exactMatch = await caches.match(request, { ignoreVary: true });
+        if (exactMatch) return exactMatch;
+        const indexFallback = await caches.match('/index.html', { ignoreVary: true });
+        if (indexFallback) return indexFallback;
+        const rootFallback = await caches.match('/', { ignoreVary: true });
+        if (rootFallback) return rootFallback;
+        // Nothing cached — surface whatever the network said rather than nothing.
+        return networkResponse || Response.error();
+      })()
     );
     return;
   }
@@ -43,7 +81,7 @@ self.addEventListener('fetch', (event) => {
 
   if (isSameOrigin && isGet) {
     event.respondWith(
-      caches.match(request).then((cached) => {
+      caches.match(request, { ignoreVary: true, ignoreSearch: true }).then((cached) => {
         if (cached) return cached;
         return fetch(request).then((response) => {
           // If response is valid, cache it dynamically
