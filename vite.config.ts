@@ -44,5 +44,8 @@ export default defineConfig(() => {
       // Allow Tailscale subdomains to access the development server
       allowedHosts: ['.ts.net'],
     },
+    preview: {
+      allowedHosts: true,
+    },
   };
 });
