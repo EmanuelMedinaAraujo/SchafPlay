@@ -228,16 +228,20 @@ export function getCardLabel(card: Card): string {
 /**
  * Tournament tariff (plus/minus scoring), zero-sum per round.
  *
+ * Kept deliberately small so the numbers stay in the single digits — the
+ * common casual convention is "a solo counts roughly three times a normal
+ * game" (issue #21).
+ *
  * Normal game (Rufspiel): value per PLAYER (2 vs 2) —
  *   base 1, Schneider 2, Schwarz 3, plus 1 per Laufendem.
  * Solo/Wenz: value per DEFENDER; the soloist receives/pays 3x —
- *   base 2, Schneider 3, Schwarz 4, Tout 6, Sie 8, plus 1 per Laufendem.
- *   Soloist totals: 6 / 9 / 12 / 18 / 24 (+3 per Laufendem).
+ *   base 1, Schneider 2, Schwarz 3, Tout 4, Sie 6, plus 1 per Laufendem.
+ *   Soloist totals: 3 / 6 / 9 / 12 / 18 (+3 per Laufendem).
  * Laufende count from 3 upwards (Wenz from 2), "mit" and "ohne" alike.
  */
 export const TARIFF = {
   rufspiel: { base: 1, schneider: 2, schwarz: 3, perLaufendem: 1 },
-  solo: { base: 2, schneider: 3, schwarz: 4, tout: 6, sie: 8, perLaufendem: 1 },
+  solo: { base: 1, schneider: 2, schwarz: 3, tout: 4, sie: 6, perLaufendem: 1 },
   minLaufende: 3,
   minLaufendeWenz: 2,
   maxLaufende: 8,
