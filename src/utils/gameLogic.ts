@@ -181,12 +181,24 @@ export function canOverrideBid(existing: GameDeclaration | null, incoming: GameD
 }
 
 export function getAIWillBid(player: Player): boolean {
-  // Only announce interest when there is actually a declarable game, so the
-  // AI never has to retreat immediately after saying "I would".
-  return getAIBid(player, null) !== null;
+  // Only announce interest when there is actually a declarable game. Since a
+  // "will" can no longer be taken back once a Sauspiel stands ("Doch passen",
+  // #24) — the player would be forced up to a Wenz/Solo — the AI commits only
+  // when it genuinely holds a game worth playing.
+  return getAIBid(player, null, true) !== null;
 }
 
-export function getAIBid(player: Player, existingDeclaration?: GameDeclaration | null): GameDeclaration | null {
+/**
+ * Pick the AI's declaration. `canRetreat` reflects the "Doch passen" rule
+ * (#24): a player who said "I'd play" may only bow out once a Wenz or Solo
+ * already stands. When it cannot retreat and holds no game worth calling it is
+ * forced to top the Sauspiel with the least-bad higher game.
+ */
+export function getAIBid(
+  player: Player,
+  existingDeclaration?: GameDeclaration | null,
+  canRetreat = true,
+): GameDeclaration | null {
   const hand = player.cards;
   const unters = hand.filter((card) => card.value === CardValue.UNTER);
   const obers = hand.filter((card) => card.value === CardValue.OBER);
@@ -220,9 +232,22 @@ export function getAIBid(player: Player, existingDeclaration?: GameDeclaration |
 
   // Prefer the lowest-ranking viable game (Sauspiel before Wenz before Solo);
   // a higher game is only reached for when it is needed to overbid.
-  return declarations
+  const chosen = declarations
     .sort((a, b) => getGamePriority(a.type, a.isTout) - getGamePriority(b.type, b.isTout))
-    .find((declaration) => canOverrideBid(existingDeclaration ?? null, declaration)) ?? null;
+    .find((declaration) => canOverrideBid(existingDeclaration ?? null, declaration));
+  if (chosen) return chosen;
+
+  // "Doch passen" (#24): with no viable game the AI would rather pass, but it
+  // may only do so when a Wenz/Solo already stands. Otherwise it said "will"
+  // over a Sauspiel and is now committed to topping it — pick the least-bad
+  // higher game (a Wenz when it has Unter, else a Solo in its longest suit).
+  if (!canRetreat) return forcedHigherGame(player);
+  return null;
+}
+
+function forcedHigherGame(player: Player): GameDeclaration {
+  const unters = player.cards.filter((card) => card.value === CardValue.UNTER);
+  return unters.length >= 2 ? { type: GameType.WENZ } : { type: bestSoloType(player.cards) };
 }
 
 function bestSoloType(hand: Card[]): GameType {

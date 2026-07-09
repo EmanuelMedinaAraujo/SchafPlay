@@ -252,6 +252,9 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      {/* The header is hidden in-game to free up vertical space (#26); the
+          in-game toolbar carries the contract, round and quit controls. */}
+      {!inGame && (
       <header className="topbar">
         <button className="brand" onClick={() => !inGame && setScreen("home")} type="button">
           <span className="brand-mark">S</span>
@@ -289,6 +292,7 @@ export default function App() {
           </span>
         </div>
       </header>
+      )}
 
       {!inGame && screen === "stats" ? (
         <StatsScreen language={language} />

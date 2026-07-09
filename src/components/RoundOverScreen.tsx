@@ -21,6 +21,9 @@ export default function RoundOverScreen({ state, language, myPlayerId, onReady }
   const otherName = state.players.find((player) => player.id === otherId)?.name ?? "";
   const iAmReady = Boolean(state.readyState[myPlayerId]);
   const otherReady = Boolean(state.readyState[otherId]);
+  // The last round shows its summary first; readying up then reveals the list
+  // summary rather than dealing a new round (#27).
+  const isLastRound = state.roundNumber >= state.totalRounds;
 
   const sortedByScore = [...state.players].sort((a, b) => (state.scores[b.id] ?? 0) - (state.scores[a.id] ?? 0));
 
@@ -67,7 +70,7 @@ export default function RoundOverScreen({ state, language, myPlayerId, onReady }
         </button>
         <button className="primary-button" onClick={onReady} disabled={iAmReady} type="button">
           {iAmReady ? <CheckIcon size={18} /> : null}
-          {iAmReady ? t.readyWaiting : t.ready}
+          {iAmReady ? t.readyWaiting : isLastRound ? t.toFinalStandings : t.ready}
         </button>
         <p className="muted">
           {otherName}: {otherReady ? `✓ ${t.isReady}` : `… ${t.notReady}`}

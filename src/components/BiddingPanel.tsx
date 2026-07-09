@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { CardValue, GameState, GameType, Language, PlayerAction, PlayerActionType, Suit } from "../types";
-import { canOverrideBid } from "../utils/gameLogic";
+import { CardValue, GamePriority, GameState, GameType, Language, PlayerAction, PlayerActionType, Suit } from "../types";
+import { canOverrideBid, getGamePriority } from "../utils/gameLogic";
 import { gameLabel, translations } from "../lib/i18n";
 
 interface BiddingPanelProps {
@@ -61,6 +61,9 @@ export default function BiddingPanel({ state, language, myPlayerId, onAction }: 
   const high = bidding.highBid?.declaration ?? null;
   const iAmInterested = bidding.interestedPlayerIds.includes(myPlayerId);
   const iHoldHighBid = bidding.highBid?.playerId === myPlayerId;
+  // "Doch passen" (#24): retreat is only offered once a Wenz or Solo stands.
+  // Over a Sauspiel (or with no bid yet) the player must top it, not bow out.
+  const canRetreat = !!high && getGamePriority(high.type, Boolean(high.isTout)) >= GamePriority.WENZ;
   const activeName = state.players[state.activePlayerIdx]?.name ?? "";
 
   // A suit is callable when I hold a plain card of it but not its Ace.
@@ -119,7 +122,7 @@ export default function BiddingPanel({ state, language, myPlayerId, onAction }: 
               <input type="checkbox" checked={tout} onChange={(event) => setTout(event.target.checked)} />
               🏆 {t.tout}
             </label>
-            {!iHoldHighBid && (
+            {!iHoldHighBid && canRetreat && (
               <button
                 className="secondary-button"
                 onClick={() => onAction({ type: PlayerActionType.BID_RETREAT, playerId: myPlayerId })}
