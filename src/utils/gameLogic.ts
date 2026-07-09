@@ -214,15 +214,79 @@ function bestSoloType(hand: Card[]): GameType {
 export function getAICardPlay(player: Player, currentTrick: Trick | null, contract: Contract | null, difficulty = Difficulty.MEDIUM): Card {
   const legalCards = getLegalCards(player.cards, currentTrick, contract);
   if (legalCards.length === 1 || difficulty === Difficulty.EASY) return legalCards[0];
+  const gameType = contract?.type ?? GameType.SAUSPIEL;
+
+  // Leading the trick: the declaring side pulls trumps, defenders open safely.
   if (!contract || !currentTrick || currentTrick.playedCards.length === 0) {
-    return [...legalCards].sort((a, b) => getCardRank(b, contract?.type ?? GameType.SAUSPIEL) - getCardRank(a, contract?.type ?? GameType.SAUSPIEL))[0];
+    return chooseLead(player, legalCards, contract, gameType);
   }
 
-  const winningCards = legalCards.filter((card) => determineTrickWinner([...currentTrick.playedCards, { playerId: player.id, card }], contract.type) === player.id);
-  if (winningCards.length > 0 && countPoints(currentTrick.playedCards.map((played) => played.card)) >= 10) {
-    return winningCards.sort((a, b) => getCardRank(a, contract.type) - getCardRank(b, contract.type))[0];
+  const played = currentTrick.playedCards;
+  const currentWinnerId = determineTrickWinner(played, gameType);
+  const partnerIsWinning = onSameTeam(player.id, currentWinnerId, contract);
+  const trickPoints = countPoints(played.map((entry) => entry.card));
+  const isLastToPlay = played.length === 3;
+  const winners = legalCards.filter(
+    (card) => determineTrickWinner([...played, { playerId: player.id, card }], gameType) === player.id,
+  );
+
+  if (partnerIsWinning) {
+    // Our side already holds the trick. As the last player it is safe to
+    // schmier the highest-value card onto it; otherwise stay low so an
+    // opponent still to play can't scoop up the points.
+    return isLastToPlay ? highestValueCard(legalCards) : lowestValueCard(legalCards, gameType);
   }
-  return [...legalCards].sort((a, b) => a.points - b.points || getCardRank(a, contract.type) - getCardRank(b, contract.type))[0];
+
+  // An opponent is winning. Take the trick when it is worth it, using the
+  // cheapest card that still wins; otherwise throw the least valuable card.
+  const worthTaking = trickPoints >= 10 || (isLastToPlay && trickPoints >= 4);
+  if (winners.length > 0 && worthTaking) {
+    return [...winners].sort((a, b) => getCardRank(a, gameType) - getCardRank(b, gameType))[0];
+  }
+  return lowestValueCard(legalCards, gameType);
+}
+
+/** True when both players sit on the same side of the current contract. */
+function onSameTeam(a: string, b: string, contract: Contract | null): boolean {
+  if (!contract) return false;
+  const onDeclaringSide = (id: string) => id === contract.declarerId || id === contract.partnerId;
+  return onDeclaringSide(a) === onDeclaringSide(b);
+}
+
+/** Highest-point card — used to schmier an Ace or Ten to a winning partner. */
+function highestValueCard(cards: Card[]): Card {
+  return [...cards].sort((a, b) => b.points - a.points)[0];
+}
+
+/** Least valuable throwaway: fewest points, then lowest rank. */
+function lowestValueCard(cards: Card[], gameType: GameType): Card {
+  return [...cards].sort((a, b) => a.points - b.points || getCardRank(a, gameType) - getCardRank(b, gameType))[0];
+}
+
+/**
+ * Opening lead. The declaring side (declarer or called partner) leads a high
+ * trump to draw out the opponents' trumps; a defender opens with a safe
+ * non-trump Ace, otherwise a low side card — keeping Tens back instead of
+ * exposing them.
+ */
+function chooseLead(player: Player, legal: Card[], contract: Contract | null, gameType: GameType): Card {
+  const trumps = legal.filter((card) => isTrump(card, gameType));
+  const nonTrumps = legal.filter((card) => !isTrump(card, gameType));
+  const onDeclaringSide = Boolean(contract && (player.id === contract.declarerId || player.id === contract.partnerId));
+
+  if (onDeclaringSide && trumps.length > 0) {
+    return [...trumps].sort((a, b) => getCardRank(b, gameType) - getCardRank(a, gameType))[0];
+  }
+
+  const aces = nonTrumps.filter((card) => card.value === CardValue.ACE);
+  if (aces.length > 0) {
+    return [...aces].sort((a, b) => getCardRank(b, gameType) - getCardRank(a, gameType))[0];
+  }
+
+  const withoutTens = nonTrumps.filter((card) => card.value !== CardValue.TEN);
+  if (withoutTens.length > 0) return lowestValueCard(withoutTens, gameType);
+  if (nonTrumps.length > 0) return lowestValueCard(nonTrumps, gameType);
+  return lowestValueCard(trumps, gameType);
 }
 
 export function getSuitEmoji(suit: Suit): string {
