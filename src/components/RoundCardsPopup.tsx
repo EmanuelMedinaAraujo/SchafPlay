@@ -1,6 +1,6 @@
 import { Card, Contract, GameType, Language, Player, Trick } from "../types";
 import { translations } from "../lib/i18n";
-import { getCardRank, isTrump } from "../utils/gameLogic";
+import { sortCardsForHand } from "../utils/gameLogic";
 import CardFace from "./CardFace";
 import { XIcon } from "./icons";
 
@@ -28,14 +28,6 @@ export default function RoundCardsPopup({ players, tricks, contract, language, o
       (handByPlayer[played.playerId] ??= []).push(played.card);
     }
   }
-
-  const sortHand = (cards: Card[]) =>
-    [...cards].sort((a, b) => {
-      const aTrump = isTrump(a, gameType);
-      const bTrump = isTrump(b, gameType);
-      if (aTrump !== bTrump) return aTrump ? -1 : 1;
-      return getCardRank(b, gameType) - getCardRank(a, gameType);
-    });
 
   return (
     <div
@@ -66,7 +58,7 @@ export default function RoundCardsPopup({ players, tricks, contract, language, o
                 {player.name}
               </span>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", flex: 1 }}>
-                {sortHand(handByPlayer[player.id] ?? []).map((card) => (
+                {sortCardsForHand(handByPlayer[player.id] ?? [], gameType).map((card) => (
                   <CardFace key={card.id} card={card} contract={contract} small />
                 ))}
               </div>

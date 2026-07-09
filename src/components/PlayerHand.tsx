@@ -1,6 +1,6 @@
 import { PointerEvent, useEffect, useRef, useState } from "react";
-import { Card, Contract, GameType, Language, Suit, Trick } from "../types";
-import { getCardRank, getLegalCards, isTrump } from "../utils/gameLogic";
+import { Card, Contract, GameType, Language, Trick } from "../types";
+import { getLegalCards, sortCardsForHand } from "../utils/gameLogic";
 import { translations } from "../lib/i18n";
 import CardFace from "./CardFace";
 
@@ -15,13 +15,6 @@ interface PlayerHandProps {
   onPlay: (cardId: string) => void;
   onLastTrick: () => void;
 }
-
-const SUIT_ORDER: Record<Suit, number> = {
-  [Suit.ACORNS]: 0,
-  [Suit.LEAVES]: 1,
-  [Suit.HEARTS]: 2,
-  [Suit.BELLS]: 3,
-};
 
 interface DragState {
   id: string;
@@ -55,13 +48,7 @@ export default function PlayerHand({
   }, [hand.length, disabled]);
 
   // Trumps first (highest left), then plain suits grouped Acorns/Leaves/Hearts/Bells.
-  const sorted = [...hand].sort((a, b) => {
-    const aTrump = isTrump(a, gameType);
-    const bTrump = isTrump(b, gameType);
-    if (aTrump !== bTrump) return aTrump ? -1 : 1;
-    if (!aTrump && a.suit !== b.suit) return SUIT_ORDER[a.suit] - SUIT_ORDER[b.suit];
-    return getCardRank(b, gameType) - getCardRank(a, gameType);
-  });
+  const sorted = sortCardsForHand(hand, gameType);
 
   function handleCardTap(cardId: string, isLegal: boolean) {
     if (disabled) return;

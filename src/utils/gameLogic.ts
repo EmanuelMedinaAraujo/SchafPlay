@@ -102,6 +102,28 @@ function plainSuitRank(value: CardValue): number {
   }[value];
 }
 
+const HAND_SUIT_ORDER: Record<Suit, number> = {
+  [Suit.ACORNS]: 0,
+  [Suit.LEAVES]: 1,
+  [Suit.HEARTS]: 2,
+  [Suit.BELLS]: 3,
+};
+
+/**
+ * Order a hand the way it is laid out during play: trumps first (highest on
+ * the left), then the plain suits grouped Acorns/Leaves/Hearts/Bells, each
+ * from high to low.
+ */
+export function sortCardsForHand(cards: Card[], gameType: GameType): Card[] {
+  return [...cards].sort((a, b) => {
+    const aTrump = isTrump(a, gameType);
+    const bTrump = isTrump(b, gameType);
+    if (aTrump !== bTrump) return aTrump ? -1 : 1;
+    if (!aTrump && a.suit !== b.suit) return HAND_SUIT_ORDER[a.suit] - HAND_SUIT_ORDER[b.suit];
+    return getCardRank(b, gameType) - getCardRank(a, gameType);
+  });
+}
+
 export function getLegalCards(hand: Card[], currentTrick: Trick | null, contract: Contract | null): Card[] {
   if (!contract || !currentTrick || currentTrick.playedCards.length === 0) {
     if (contract?.type === GameType.SAUSPIEL && contract.calledSuit) {
@@ -180,7 +202,11 @@ export function getAIBid(player: Player, existingDeclaration?: GameDeclaration |
     const hasAce = hand.some((card) => card.suit === suit && card.value === CardValue.ACE);
     return hasSuitCard && !hasAce;
   });
-  if (trumpsInNormal.length >= 4 && callableSuit) declarations.push({ type: GameType.SAUSPIEL, calledSuit: callableSuit });
+  // A weak hand (few trumps, or four low trumps without an Ober) should pass
+  // rather than call a Sauspiel it can't carry: need an Ober with four trumps,
+  // or five-plus trumps.
+  const goodSauspielHand = (trumpsInNormal.length >= 4 && obers.length >= 1) || trumpsInNormal.length >= 5;
+  if (goodSauspielHand && callableSuit) declarations.push({ type: GameType.SAUSPIEL, calledSuit: callableSuit });
 
   // Wenz: only with genuine Unter strength backed by a high card — at least
   // two Unter plus an Ace, or three Unter. Kept intentionally rare (#19).
