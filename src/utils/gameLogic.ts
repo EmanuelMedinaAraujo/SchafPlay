@@ -168,12 +168,13 @@ export function getAIBid(player: Player, existingDeclaration?: GameDeclaration |
   const hand = player.cards;
   const unters = hand.filter((card) => card.value === CardValue.UNTER);
   const obers = hand.filter((card) => card.value === CardValue.OBER);
+  const aces = hand.filter((card) => card.value === CardValue.ACE);
   const trumpsInNormal = hand.filter((card) => isTrump(card, GameType.SAUSPIEL));
 
   const declarations: GameDeclaration[] = [];
-  if (unters.length >= 3) declarations.push({ type: GameType.WENZ, isTout: unters.length === 4 });
-  if (obers.length >= 2 && trumpsInNormal.length >= 5) declarations.push({ type: bestSoloType(hand), isTout: obers.length >= 3 && trumpsInNormal.length >= 6 });
 
+  // Sauspiel is the everyday game: a solid trump holding plus a suit whose
+  // Ace can be called (a plain card of it, but not its Ace).
   const callableSuit = [Suit.ACORNS, Suit.LEAVES, Suit.BELLS].find((suit) => {
     const hasSuitCard = hand.some((card) => card.suit === suit && card.value !== CardValue.OBER && card.value !== CardValue.UNTER);
     const hasAce = hand.some((card) => card.suit === suit && card.value === CardValue.ACE);
@@ -181,8 +182,20 @@ export function getAIBid(player: Player, existingDeclaration?: GameDeclaration |
   });
   if (trumpsInNormal.length >= 4 && callableSuit) declarations.push({ type: GameType.SAUSPIEL, calledSuit: callableSuit });
 
+  // Wenz: only with genuine Unter strength backed by a high card — at least
+  // two Unter plus an Ace, or three Unter. Kept intentionally rare (#19).
+  const wenzWorthy = (unters.length >= 3 && aces.length >= 1) || (unters.length >= 2 && aces.length >= 2);
+  if (wenzWorthy) declarations.push({ type: GameType.WENZ, isTout: unters.length === 4 && aces.length >= 2 });
+
+  // Solo: the AI should basically never go solo — only when the hand is almost
+  // nothing but trump (three-plus Ober and seven-plus trumps).
+  const soloWorthy = obers.length >= 3 && trumpsInNormal.length >= 7;
+  if (soloWorthy) declarations.push({ type: bestSoloType(hand), isTout: obers.length >= 4 && trumpsInNormal.length >= 8 });
+
+  // Prefer the lowest-ranking viable game (Sauspiel before Wenz before Solo);
+  // a higher game is only reached for when it is needed to overbid.
   return declarations
-    .sort((a, b) => getGamePriority(b.type, b.isTout) - getGamePriority(a.type, a.isTout))
+    .sort((a, b) => getGamePriority(a.type, a.isTout) - getGamePriority(b.type, b.isTout))
     .find((declaration) => canOverrideBid(existingDeclaration ?? null, declaration)) ?? null;
 }
 
