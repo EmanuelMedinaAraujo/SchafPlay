@@ -55,7 +55,7 @@ export enum DealSpeed {
 export type Language = "de" | "en";
 export type SeatId = "p1" | "p2" | "p3" | "p4";
 export type BiddingPhase = "WILL_PHASE" | "DECLARE_PHASE" | "RESOLVED";
-export type GameStatus = "LOBBY" | "BIDDING" | "PLAYING" | "ROUND_OVER" | "MATCH_OVER";
+export type GameStatus = "LOBBY" | "BIDDING" | "PLAYING" | "ROUND_OVER" | "LIST_OVER";
 
 /** Structured log entry rendered client-side in the viewer's language. */
 export interface LogEntry {

@@ -5,7 +5,7 @@ import PairingPanel from "./components/PairingPanel";
 import RulesModal from "./components/RulesModal";
 import StatsScreen from "./components/StatsScreen";
 import { GameEngine } from "./engine/GameEngine";
-import { MatchRecorder } from "./lib/MatchRecorder";
+import { ListRecorder } from "./lib/ListRecorder";
 import { PeerConnection, PeerConnectionState } from "./net/PeerConnection";
 import { createMessage } from "./net/protocol";
 import { GameState, Language, P2PMessageType, PlayerAction, PlayerActionType } from "./types";
@@ -43,7 +43,7 @@ export default function App() {
   const [totalRounds, setTotalRounds] = useState<number>(8);
 
   const engineRef = useRef<GameEngine | null>(null);
-  const recorderRef = useRef<MatchRecorder | null>(null);
+  const recorderRef = useRef<ListRecorder | null>(null);
   const peerRef = useRef<PeerConnection | null>(null);
   const nameRef = useRef(playerName);
   nameRef.current = playerName;
@@ -123,7 +123,7 @@ export default function App() {
         // last selected before the game actually starts.
         const engine = new GameEngine(nameRef.current, "Gast", totalRoundsRef.current);
         engineRef.current = engine;
-        recorderRef.current = new MatchRecorder("multiplayer", "host", "p1");
+        recorderRef.current = new ListRecorder("multiplayer", "host", "p1");
         engine.onStateChange(() => {
           const redacted = engine.getRedactedState("p1");
           recorderRef.current?.observe(redacted);
@@ -174,7 +174,7 @@ export default function App() {
 
     const engine = new GameEngine(nameRef.current, "Zenzi (KI)", totalRoundsRef.current, { soloMode: true });
     engineRef.current = engine;
-    recorderRef.current = new MatchRecorder("solo", "solo", "p1");
+    recorderRef.current = new ListRecorder("solo", "solo", "p1");
     engine.onStateChange((updatedState) => {
       recorderRef.current?.observe(updatedState);
       setGameState(updatedState);
@@ -193,7 +193,7 @@ export default function App() {
     setRole("guest");
     // Guarded: re-pairing after a drop keeps the in-progress recording,
     // while a fresh join after quitGame() starts a new one.
-    if (!recorderRef.current) recorderRef.current = new MatchRecorder("multiplayer", "guest", "p3");
+    if (!recorderRef.current) recorderRef.current = new ListRecorder("multiplayer", "guest", "p3");
 
     peer.onConnectionStateChange((state) => {
       setConnectionState(state);
@@ -237,7 +237,7 @@ export default function App() {
     peerRef.current = null;
     engineRef.current?.destroy();
     engineRef.current = null;
-    // An aborted match leaves no trace in the statistics.
+    // An aborted list leaves no trace in the statistics.
     recorderRef.current = null;
     setGameState(null);
     setRole(null);

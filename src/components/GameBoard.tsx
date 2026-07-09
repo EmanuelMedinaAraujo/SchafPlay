@@ -5,7 +5,7 @@ import BiddingPanel from "./BiddingPanel";
 import PlayerHand from "./PlayerHand";
 import PlayerSeat from "./PlayerSeat";
 import RoundOverScreen from "./RoundOverScreen";
-import MatchOverScreen from "./MatchOverScreen";
+import ListOverScreen from "./ListOverScreen";
 import TrickArea from "./TrickArea";
 import LastTrickPopup from "./LastTrickPopup";
 import { DoorOpenIcon } from "./icons";
@@ -90,8 +90,8 @@ export default function GameBoard({
         <RoundOverScreen state={state} language={language} myPlayerId={myPlayerId} onReady={onReady} />
       )}
 
-      {state.status === "MATCH_OVER" && (
-        <MatchOverScreen state={state} language={language} myPlayerId={myPlayerId} onAction={onAction} onQuit={onQuit} />
+      {state.status === "LIST_OVER" && (
+        <ListOverScreen state={state} language={language} myPlayerId={myPlayerId} onAction={onAction} onQuit={onQuit} />
       )}
 
       <PlayerHand

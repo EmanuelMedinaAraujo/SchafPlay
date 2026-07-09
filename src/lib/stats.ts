@@ -39,13 +39,13 @@ export interface RoundRecord {
   contract: Contract | null;
   tricks: TrickRecord[];
   result: RoundResult;
-  /** Cumulative match scores after this round. */
+  /** Cumulative list scores after this round. */
   scoresAfter: Record<string, number>;
 }
 
 export interface GameRecord {
   id: string;
-  /** ISO timestamp of when the match finished. */
+  /** ISO timestamp of when the list finished. */
   finishedAt: string;
   mode: StatsMode;
   role: "host" | "guest" | "solo";

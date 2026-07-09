@@ -83,7 +83,7 @@ src/
 ├── utils/gameLogic.ts     # Rules: trump, legality, trick evaluation, AI, tournament scoring
 ├── components/            # GameBoard, PlayerHand, BiddingPanel, TrickArea, PairingPanel, …
 ├── lib/stats.ts           # Versioned localStorage store for finished games
-├── lib/MatchRecorder.ts   # Observes game state snapshots and records finished matches
+├── lib/ListRecorder.ts    # Observes game state snapshots and records finished lists (sessions)
 └── lib/i18n.ts            # German/English incl. structured game log entries
 ```
 

@@ -2,15 +2,16 @@ import { GameState, GameStatus, Trick } from "../types";
 import { CardId, RoundRecord, StatsMode, TrickRecord, recordGame } from "./stats";
 
 /**
- * Snapshot-driven match recorder: a pure observer of GameState snapshots
- * that persists a finished match via recordGame exactly once.
+ * Snapshot-driven list recorder: a pure observer of GameState snapshots
+ * that persists a finished list via recordGame exactly once. (A list is a
+ * whole session of rounds; each round is a series of tricks.)
  *
  * It never mutates game state and has no engine or network dependency, so
  * it works identically for the host (redacted p1 view), solo (full state)
  * and the guest (redacted wire state) — each device records its own view.
- * A quit mid-match simply drops the recorder, leaving no trace.
+ * A quit mid-list simply drops the recorder, leaving no trace.
  */
-export class MatchRecorder {
+export class ListRecorder {
   private prevStatus: GameStatus | null = null;
   private draftHand: CardId[] | null = null;
   private rounds: RoundRecord[] = [];
@@ -34,7 +35,7 @@ export class MatchRecorder {
     const me = state.players.find((player) => player.id === this.localId);
     if (!me) return;
 
-    // Rematch: MATCH_OVER deals straight into BIDDING — start a fresh record.
+    // Rematch: LIST_OVER deals straight into BIDDING — start a fresh record.
     if (state.status === "BIDDING" && this.finalized) {
       this.rounds = [];
       this.finalized = false;
@@ -53,10 +54,10 @@ export class MatchRecorder {
     }
 
     // Round completion: only on the status *edge*, since ROUND_OVER /
-    // MATCH_OVER re-emit on every ready toggle and pause/resume. The
+    // LIST_OVER re-emit on every ready toggle and pause/resume. The
     // draftHand guard makes a double push impossible either way.
     if (
-      (state.status === "ROUND_OVER" || state.status === "MATCH_OVER") &&
+      (state.status === "ROUND_OVER" || state.status === "LIST_OVER") &&
       this.prevStatus !== state.status &&
       state.lastResult &&
       this.draftHand
@@ -72,8 +73,8 @@ export class MatchRecorder {
       this.draftHand = null;
     }
 
-    // Match completion — record exactly once.
-    if (state.status === "MATCH_OVER" && !this.finalized) {
+    // List completion — record exactly once.
+    if (state.status === "LIST_OVER" && !this.finalized) {
       this.finalized = true;
       const top = Math.max(...state.players.map((player) => state.scores[player.id] ?? 0));
       const opponent =

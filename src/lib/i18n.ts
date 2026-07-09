@@ -6,9 +6,9 @@ export const translations = {
   de: {
     // Home / pairing
     playerName: "Spielername",
-    matchLength: "Spiellänge",
+    listLength: "Listenlänge",
     rounds: "Runden",
-    matchOver: "Match beendet",
+    listOver: "Liste beendet",
     rematch: "Revanche",
     winner: "Gewinner",
     devSkip: "Stich überspringen (Dev)",
@@ -113,9 +113,9 @@ export const translations = {
   },
   en: {
     playerName: "Player name",
-    matchLength: "Match length",
+    listLength: "List length",
     rounds: "rounds",
-    matchOver: "Match over",
+    listOver: "List over",
     rematch: "Rematch",
     winner: "Winner",
     devSkip: "Skip Trick (Dev)",
@@ -197,7 +197,7 @@ export const translations = {
     statsAll: "All",
     statsMultiplayer: "Multiplayer",
     statsRecent: "Recent games",
-    statsEmpty: "No finished games yet — completed matches show up here automatically.",
+    statsEmpty: "No finished games yet — completed lists show up here automatically.",
     statsSoloOpponent: "AI table",
 
     gameTypes: {
