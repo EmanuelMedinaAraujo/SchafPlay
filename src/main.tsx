@@ -1,6 +1,7 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
+import {UPDATE_CHECK_KEY} from './lib/pwa';
 import './index.css';
 
 createRoot(document.getElementById('root')!).render(
@@ -15,8 +16,8 @@ if ('serviceWorker' in navigator) {
     // serves the whole app from cache, so the only thing that ever pulls from
     // the network is the update check the browser runs when we (re-)register.
     // We throttle that to at most once every 24h via localStorage, so opening,
-    // closing and reopening the app within a day never hits the network.
-    const UPDATE_CHECK_KEY = 'schafplay.lastUpdateCheck';
+    // closing and reopening the app within a day never hits the network. The
+    // settings page offers a manual "check now" that bypasses this throttle.
     const DAY_MS = 24 * 60 * 60 * 1000;
     const swUrl = `${import.meta.env.BASE_URL}sw.js`;
 

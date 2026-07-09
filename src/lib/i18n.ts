@@ -99,6 +99,17 @@ export const translations = {
     statsEmpty: "Noch keine beendeten Spiele – fertig gespielte Partien erscheinen hier automatisch.",
     statsSoloOpponent: "KI-Runde",
 
+    // Settings
+    settings: "Einstellungen",
+    settingsLanguage: "Sprache",
+    settingsUpdates: "App-Aktualisierung",
+    settingsUpdatesHint: "Die App läuft offline und sucht höchstens einmal täglich nach einer neuen Version. Hier kannst du sofort danach suchen.",
+    checkForUpdate: "Jetzt nach Update suchen",
+    updateChecking: "Suche nach Update …",
+    updateUpToDate: "Du hast die neueste Version.",
+    updateInstalling: "Update gefunden – wird geladen …",
+    updateUnsupported: "Updates gibt es nur in der veröffentlichten App.",
+
     gameTypes: {
       [GameType.SAUSPIEL]: "Sauspiel",
       [GameType.WENZ]: "Wenz",
@@ -205,6 +216,17 @@ export const translations = {
     statsRecent: "Recent games",
     statsEmpty: "No finished games yet — completed lists show up here automatically.",
     statsSoloOpponent: "AI table",
+
+    // Settings
+    settings: "Settings",
+    settingsLanguage: "Language",
+    settingsUpdates: "App update",
+    settingsUpdatesHint: "The app runs offline and checks for a new version at most once a day. You can check right now here.",
+    checkForUpdate: "Check for update now",
+    updateChecking: "Checking for update …",
+    updateUpToDate: "You have the latest version.",
+    updateInstalling: "Update found – reloading …",
+    updateUnsupported: "Updates are only available in the published app.",
 
     gameTypes: {
       [GameType.SAUSPIEL]: "Sauspiel",

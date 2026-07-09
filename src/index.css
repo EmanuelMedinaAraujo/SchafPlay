@@ -378,6 +378,39 @@ button:not(:disabled):hover {
   color: var(--red-2);
 }
 
+/* ---------- Settings screen ---------- */
+
+.settings-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-panel h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.settings-panel .mode-switch {
+  margin-top: 0;
+  grid-template-columns: 1fr 1fr;
+}
+
+.settings-update-btn {
+  align-self: flex-start;
+}
+
+.settings-update-status {
+  margin: 0;
+  font-size: 13px;
+}
+
 /* ---------- In-game: fit the viewport, no page scrolling ----------
    html.in-game is set by App.tsx while the game screen is shown. The page
    itself never scrolls; the game screen is a flex column sized to the
