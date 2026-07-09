@@ -38,6 +38,15 @@ npm run build    # Production build (dist/)
 
 The output in `dist/` is a purely static site — deployable to any static host (GitHub Pages, Netlify, Cloudflare Pages, …). Installable as a PWA; both devices need to be on the same local network to establish the direct P2P WebRTC connection.
 
+## Deployment (GitHub Pages)
+
+The repo ships a workflow ([.github/workflows/deploy.yml](.github/workflows/deploy.yml)) that type-checks, builds and publishes `dist/` to GitHub Pages on every push to `main` (and via manual dispatch).
+
+One-time setup: in **Settings → Pages → Build and deployment**, set the source to **GitHub Actions**. The site is then served at `https://<user>.github.io/SchafPlay/`.
+
+- **Base path**: production builds use `base: '/SchafPlay/'` (the project-site sub-path). Override it with the `BASE_PATH` env var when deploying to a custom domain or a different repo name; `npm run dev` always runs at `/`.
+- **Offline-first with a once-a-day online check**: the service worker serves the whole app from cache, so opening it never depends on the network. The app checks for a new version **at most once every 24 hours** — the last check time is stored in `localStorage` (`schafplay.lastUpdateCheck`), so closing and reopening the app within a day never pulls online.
+
 ## Hosting and Playing over Tailscale
 
 If you want to play with someone who is not on the same physical Wi-Fi/local network, you can securely connect and host the game over a [Tailscale](https://tailscale.com/) tailnet.

@@ -3,6 +3,7 @@ import GameBoard from "./components/GameBoard";
 import HomeScreen from "./components/HomeScreen";
 import PairingPanel from "./components/PairingPanel";
 import RulesModal from "./components/RulesModal";
+import SettingsScreen from "./components/SettingsScreen";
 import StatsScreen from "./components/StatsScreen";
 import { GameEngine } from "./engine/GameEngine";
 import { ListRecorder } from "./lib/ListRecorder";
@@ -10,17 +11,12 @@ import { PeerConnection, PeerConnectionState } from "./net/PeerConnection";
 import { createMessage } from "./net/protocol";
 import { GameState, Language, P2PMessageType, PlayerAction, PlayerActionType } from "./types";
 import { translations } from "./lib/i18n";
-import { BookOpenIcon, BotIcon, ChartColumnIcon, HomeIcon } from "./components/icons";
+import { BookOpenIcon, BotIcon, ChartColumnIcon, HomeIcon, SettingsIcon } from "./components/icons";
 
 const NAME_KEY = "schafplay.name";
 const LANG_KEY = "schafplay.language";
 
 /** Inline SVG icons — replaces lucide-react */
-const LanguagesIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m5 8 6 6" /><path d="m4 14 6-6 2-3" /><path d="M2 5h12" /><path d="M7 2h1" /><path d="m22 22-5-10-5 10" /><path d="M14 18h6" />
-  </svg>
-);
 const WifiIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M5 12.55a11 11 0 0 1 14.08 0" /><path d="M1.42 9a16 16 0 0 1 21.16 0" /><path d="M8.53 16.11a6 6 0 0 1 6.95 0" /><line x1="12" y1="20" x2="12.01" y2="20" />
@@ -35,7 +31,7 @@ const PlugZapIcon = () => (
 export default function App() {
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem(LANG_KEY) as Language) || "de");
   const [playerName, setPlayerName] = useState(() => localStorage.getItem(NAME_KEY) || "Bazi");
-  const [screen, setScreen] = useState<"home" | "game" | "stats">("home");
+  const [screen, setScreen] = useState<"home" | "game" | "stats" | "settings">("home");
   const [role, setRole] = useState<"host" | "guest" | "solo" | null>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [connectionState, setConnectionState] = useState<PeerConnectionState | "idle">("idle");
@@ -252,6 +248,9 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      {/* The header is hidden in-game to free up vertical space (#26); the
+          in-game toolbar carries the contract, round and quit controls. */}
+      {!inGame && (
       <header className="topbar">
         <button className="brand" onClick={() => !inGame && setScreen("home")} type="button">
           <span className="brand-mark">S</span>
@@ -266,14 +265,13 @@ export default function App() {
               <button className="icon-button" onClick={() => setScreen("stats")} title={t.stats} type="button">
                 <ChartColumnIcon />
               </button>
+              <button className="icon-button" onClick={() => setScreen("settings")} title={t.settings} type="button">
+                <SettingsIcon />
+              </button>
             </>
           )}
           <button className="icon-button" onClick={() => setRulesOpen(true)} title={t.rules} type="button">
             <BookOpenIcon />
-          </button>
-          <button className="text-button" onClick={() => setLanguage(language === "de" ? "en" : "de")} type="button">
-            <LanguagesIcon />
-            {language.toUpperCase()}
           </button>
           <span className={`connection-pill ${role === "solo" ? "solo" : connectionState}`}>
             {role === "solo" ? <BotIcon size={14} /> : connectionState === "connected" ? <WifiIcon /> : <PlugZapIcon />}
@@ -289,9 +287,12 @@ export default function App() {
           </span>
         </div>
       </header>
+      )}
 
       {!inGame && screen === "stats" ? (
         <StatsScreen language={language} />
+      ) : !inGame && screen === "settings" ? (
+        <SettingsScreen language={language} onLanguageChange={setLanguage} />
       ) : !inGame ? (
         <HomeScreen
           language={language}

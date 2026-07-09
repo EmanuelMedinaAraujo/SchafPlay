@@ -3,8 +3,14 @@ import path from 'path';
 import {defineConfig} from 'vite';
 import fs from 'fs';
 
-export default defineConfig(() => {
+export default defineConfig(({ command }) => {
+  // GitHub Pages serves the project site under /<repo>/. The base can be
+  // overridden with BASE_PATH (e.g. "/" for a custom domain or a root host).
+  // Dev always runs at "/" so `npm run dev` is unaffected.
+  const base = process.env.BASE_PATH ?? (command === 'build' ? '/SchafPlay/' : '/');
+
   return {
+    base,
     plugins: [
       react(),
       {
@@ -15,15 +21,18 @@ export default defineConfig(() => {
             let content = fs.readFileSync(swPath, 'utf8');
             const version = `schafplay-v-${Date.now()}`;
             content = content.replace(/const CACHE_NAME = 'schafplay-v1';/, `const CACHE_NAME = '${version}';`);
+            // Bake the deploy base into the worker so precache keys and the
+            // navigation fallback resolve under /<repo>/ on GitHub Pages.
+            content = content.replace(/const BASE = '\/';/, `const BASE = '${base}';`);
             // Precache every built asset so the PWA is fully usable offline.
             const assetsDir = path.resolve(__dirname, 'dist/assets');
             const assets = fs.existsSync(assetsDir)
-              ? fs.readdirSync(assetsDir).map((file) => `/assets/${file}`)
+              ? fs.readdirSync(assetsDir).map((file) => `${base}assets/${file}`)
               : [];
-            const precache = ['/', '/index.html', '/icon-192.png', '/icon-512.png', '/manifest.json', ...assets];
+            const precache = [base, `${base}index.html`, `${base}icon-192.png`, `${base}icon-512.png`, `${base}manifest.json`, ...assets];
             content = content.replace(/const PRECACHE = \[[^\]]*\];/, `const PRECACHE = ${JSON.stringify(precache)};`);
             fs.writeFileSync(swPath, content, 'utf8');
-            console.log(`[sw-version-injector] Injected cache version ${version} and ${precache.length} precache entries`);
+            console.log(`[sw-version-injector] Injected cache version ${version}, base ${base} and ${precache.length} precache entries`);
           }
         }
       }

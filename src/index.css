@@ -378,6 +378,39 @@ button:not(:disabled):hover {
   color: var(--red-2);
 }
 
+/* ---------- Settings screen ---------- */
+
+.settings-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-panel h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.settings-panel .mode-switch {
+  margin-top: 0;
+  grid-template-columns: 1fr 1fr;
+}
+
+.settings-update-btn {
+  align-self: flex-start;
+}
+
+.settings-update-status {
+  margin: 0;
+  font-size: 13px;
+}
+
 /* ---------- In-game: fit the viewport, no page scrolling ----------
    html.in-game is set by App.tsx while the game screen is shown. The page
    itself never scrolls; the game screen is a flex column sized to the
@@ -1451,6 +1484,94 @@ html.rotated .rules-modal-container {
   display: flex;
   justify-content: flex-end;
   margin-top: 18px;
+}
+
+/* ---------- Round cards popup (dealt hands) ----------
+   Deliberately compact so all four hands fit an iPhone 13 in landscape
+   without scrolling (#25): no title bar, the close button rides in the
+   top-right corner over the first row, small cards and tight spacing. */
+
+.round-cards-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: max(10px, env(safe-area-inset-top, 0px)) max(10px, env(safe-area-inset-right, 0px))
+    max(10px, env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px));
+  background: rgba(0, 0, 0, 0.74);
+}
+
+.round-cards-panel {
+  position: relative;
+  width: min(760px, 96%);
+  max-height: calc(100dvh - 20px);
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  padding: 8px 14px;
+}
+
+/* Forced-landscape: the effective height is the physical width. */
+html.rotated .round-cards-panel {
+  max-height: calc(100dvw - 20px);
+}
+
+.round-cards-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.round-cards-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.round-cards-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.round-cards-name {
+  flex: 0 0 80px;
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.round-cards-hand {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Smaller than the standard "small" card so eight of them plus the name fit
+   one row and four rows fit the screen height. */
+.round-cards-panel .card-face.small {
+  width: 39px;
+  height: 52px;
+  padding: 3px;
+}
+
+html.compact .round-cards-panel .card-face.small {
+  width: 37px;
+  height: 50px;
 }
 
 /* ---------- Responsive ---------- */

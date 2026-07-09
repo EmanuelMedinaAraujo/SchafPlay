@@ -1,8 +1,12 @@
 const CACHE_NAME = 'schafplay-v1';
 
+// The deploy base ('/', or '/<repo>/' on GitHub Pages). The build
+// (vite.config.ts, sw-version-injector) rewrites this to match `base`.
+const BASE = '/';
+
 // The build (vite.config.ts, sw-version-injector) replaces this list with
-// the full set of hashed assets so the app works offline even if a file
-// was never fetched while online.
+// the full set of hashed assets (base-prefixed) so the app works offline even
+// if a file was never fetched while online.
 const PRECACHE = [
   '/',
   '/index.html',
@@ -47,29 +51,24 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  // Navigation: network-first, fall back to cache.
-  // IMPORTANT: an error response (e.g. a 502 from a reverse proxy whose
-  // upstream is down) counts as a failure too — otherwise the proxy's error
-  // page replaces the app shell and the PWA white-screens when the dev
-  // server is off but the network is still up.
+  // Navigation: cache-first (offline-first). The app shell is served straight
+  // from the precache so opening the app never depends on the network; the
+  // once-a-day update check (main.tsx) is the only thing that pulls online
+  // (#28). The network is only touched when nothing is cached yet.
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
-        let networkResponse = null;
+        const cached =
+          (await caches.match(BASE + 'index.html', { ignoreVary: true })) ||
+          (await caches.match(BASE, { ignoreVary: true })) ||
+          (await caches.match(request, { ignoreVary: true }));
+        if (cached) return cached;
         try {
-          networkResponse = await fetchWithTimeout(request, 3000);
-          if (networkResponse.ok) return networkResponse;
+          const networkResponse = await fetchWithTimeout(request, 3000);
+          return networkResponse;
         } catch {
-          // Offline / aborted — fall through to cache.
+          return Response.error();
         }
-        const exactMatch = await caches.match(request, { ignoreVary: true });
-        if (exactMatch) return exactMatch;
-        const indexFallback = await caches.match('/index.html', { ignoreVary: true });
-        if (indexFallback) return indexFallback;
-        const rootFallback = await caches.match('/', { ignoreVary: true });
-        if (rootFallback) return rootFallback;
-        // Nothing cached — surface whatever the network said rather than nothing.
-        return networkResponse || Response.error();
       })()
     );
     return;
