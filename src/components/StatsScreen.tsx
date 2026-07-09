@@ -17,7 +17,7 @@ export default function StatsScreen({ language }: StatsScreenProps) {
   const t = translations[language];
   const [filter, setFilter] = useState<Filter>("all");
 
-  // Statistics only change when a match finishes, which is impossible while
+  // Statistics only change when a list finishes, which is impossible while
   // this screen is mounted — reading once on mount is enough.
   const totals = useMemo(() => loadStats(), []);
   const games = useMemo(() => loadGames(), []);

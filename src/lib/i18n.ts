@@ -6,9 +6,9 @@ export const translations = {
   de: {
     // Home / pairing
     playerName: "Spielername",
-    matchLength: "Spiellänge",
+    listLength: "Listenlänge",
     rounds: "Runden",
-    matchOver: "Match beendet",
+    listOver: "Liste beendet",
     rematch: "Revanche",
     winner: "Gewinner",
     devSkip: "Stich überspringen (Dev)",
@@ -74,6 +74,8 @@ export const translations = {
     laufende: "Laufende",
     standings: "Punktestand",
     ready: "Bereit für die nächste Runde",
+    showCards: "Karten zeigen",
+    dealtCards: "Ausgeteilte Karten",
     readyWaiting: "Warte auf Mitspieler …",
     isReady: "bereit",
     notReady: "wartet",
@@ -113,9 +115,9 @@ export const translations = {
   },
   en: {
     playerName: "Player name",
-    matchLength: "Match length",
+    listLength: "List length",
     rounds: "rounds",
-    matchOver: "Match over",
+    listOver: "List over",
     rematch: "Rematch",
     winner: "Winner",
     devSkip: "Skip Trick (Dev)",
@@ -179,6 +181,8 @@ export const translations = {
     laufende: "Matadors",
     standings: "Standings",
     ready: "Ready for next round",
+    showCards: "Show cards",
+    dealtCards: "Dealt cards",
     readyWaiting: "Waiting for partner …",
     isReady: "ready",
     notReady: "waiting",
@@ -197,7 +201,7 @@ export const translations = {
     statsAll: "All",
     statsMultiplayer: "Multiplayer",
     statsRecent: "Recent games",
-    statsEmpty: "No finished games yet — completed matches show up here automatically.",
+    statsEmpty: "No finished games yet — completed lists show up here automatically.",
     statsSoloOpponent: "AI table",
 
     gameTypes: {

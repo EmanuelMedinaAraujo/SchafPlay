@@ -2,7 +2,7 @@ import { GameState, Language, PlayerAction, PlayerActionType } from "../types";
 import { translations } from "../lib/i18n";
 import { TrophyIcon } from "./icons";
 
-interface MatchOverScreenProps {
+interface ListOverScreenProps {
   state: GameState;
   language: Language;
   myPlayerId: string;
@@ -10,7 +10,7 @@ interface MatchOverScreenProps {
   onQuit: () => void;
 }
 
-export default function MatchOverScreen({ state, language, myPlayerId, onAction, onQuit }: MatchOverScreenProps) {
+export default function ListOverScreen({ state, language, myPlayerId, onAction, onQuit }: ListOverScreenProps) {
   const t = translations[language];
   const sortedPlayers = [...state.players].sort((a, b) => (state.scores[b.id] ?? 0) - (state.scores[a.id] ?? 0));
   const winner = sortedPlayers[0];
@@ -28,7 +28,7 @@ export default function MatchOverScreen({ state, language, myPlayerId, onAction,
       <section className="round-over">
         <h2 style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--amber)", justifyContent: "center" }}>
           <TrophyIcon size={24} />
-          {t.matchOver}
+          {t.listOver}
         </h2>
 
         <p className="round-headline" style={{ textAlign: "center", fontSize: "19px", margin: "12px 0 20px" }}>
@@ -39,9 +39,9 @@ export default function MatchOverScreen({ state, language, myPlayerId, onAction,
         <div className="score-grid" style={{ marginBottom: "20px" }}>
           {sortedPlayers.map((player, idx) => {
             const total = state.scores[player.id] ?? 0;
-            const isMatchWinner = player.id === winner.id;
+            const isListWinner = player.id === winner.id;
             return (
-              <div key={player.id} className={isMatchWinner ? "winner" : ""}>
+              <div key={player.id} className={isListWinner ? "winner" : ""}>
                 <span style={{ fontSize: "11px", color: "var(--muted)", textTransform: "uppercase", fontWeight: "bold" }}>
                   Platz {idx + 1}
                 </span>

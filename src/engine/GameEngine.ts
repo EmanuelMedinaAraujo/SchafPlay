@@ -424,7 +424,7 @@ export class GameEngine {
       state.scores[id] = (state.scores[id] ?? 0) + change;
     });
     if (state.roundNumber >= state.totalRounds) {
-      state.status = "MATCH_OVER";
+      state.status = "LIST_OVER";
     } else {
       state.status = "ROUND_OVER";
     }
@@ -434,7 +434,7 @@ export class GameEngine {
   }
 
   processRematchReady(playerId: string): void {
-    if (this.state.status !== "MATCH_OVER") return;
+    if (this.state.status !== "LIST_OVER") return;
     if (playerId !== "p1" && playerId !== "p3") return;
     this.mutate((state) => {
       state.readyState[playerId] = true;

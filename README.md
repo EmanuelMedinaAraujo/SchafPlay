@@ -23,9 +23,9 @@ If the connection drops, the host pauses the game: they exchange fresh codes, an
 | Game | Base | Schneider | Schwarz | Tout | Sie | per Laufender |
 |---|---|---|---|---|---|---|
 | Sauspiel (per player) | 1 | 2 | 3 | – | – | +1 |
-| Solo / Wenz (per opponent) | 2 | 3 | 4 | 6 | 8 | +1 |
+| Solo / Wenz (per opponent) | 1 | 2 | 3 | 4 | 6 | +1 |
 
-The soloist receives/pays **three times** the opponent value (e.g. Solo won: +6 / -2 each). Laufende count from 3 (Wenz from 2), "mit" the same as "ohne". The values live centrally in `TARIFF` ([gameLogic.ts](src/utils/gameLogic.ts)).
+The soloist receives/pays **three times** the opponent value (e.g. Solo won: +3 / -1 each). The values are intentionally kept small — a solo counts roughly triple a normal game and stays in the single digits. Laufende count from 3 (Wenz from 2), "mit" the same as "ohne". The values live centrally in `TARIFF` ([gameLogic.ts](src/utils/gameLogic.ts)).
 
 ## Development
 
@@ -83,7 +83,7 @@ src/
 ├── utils/gameLogic.ts     # Rules: trump, legality, trick evaluation, AI, tournament scoring
 ├── components/            # GameBoard, PlayerHand, BiddingPanel, TrickArea, PairingPanel, …
 ├── lib/stats.ts           # Versioned localStorage store for finished games
-├── lib/MatchRecorder.ts   # Observes game state snapshots and records finished matches
+├── lib/ListRecorder.ts    # Observes game state snapshots and records finished lists (sessions)
 └── lib/i18n.ts            # German/English incl. structured game log entries
 ```
 

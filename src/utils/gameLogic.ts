@@ -102,6 +102,28 @@ function plainSuitRank(value: CardValue): number {
   }[value];
 }
 
+const HAND_SUIT_ORDER: Record<Suit, number> = {
+  [Suit.ACORNS]: 0,
+  [Suit.LEAVES]: 1,
+  [Suit.HEARTS]: 2,
+  [Suit.BELLS]: 3,
+};
+
+/**
+ * Order a hand the way it is laid out during play: trumps first (highest on
+ * the left), then the plain suits grouped Acorns/Leaves/Hearts/Bells, each
+ * from high to low.
+ */
+export function sortCardsForHand(cards: Card[], gameType: GameType): Card[] {
+  return [...cards].sort((a, b) => {
+    const aTrump = isTrump(a, gameType);
+    const bTrump = isTrump(b, gameType);
+    if (aTrump !== bTrump) return aTrump ? -1 : 1;
+    if (!aTrump && a.suit !== b.suit) return HAND_SUIT_ORDER[a.suit] - HAND_SUIT_ORDER[b.suit];
+    return getCardRank(b, gameType) - getCardRank(a, gameType);
+  });
+}
+
 export function getLegalCards(hand: Card[], currentTrick: Trick | null, contract: Contract | null): Card[] {
   if (!contract || !currentTrick || currentTrick.playedCards.length === 0) {
     if (contract?.type === GameType.SAUSPIEL && contract.calledSuit) {
@@ -168,21 +190,38 @@ export function getAIBid(player: Player, existingDeclaration?: GameDeclaration |
   const hand = player.cards;
   const unters = hand.filter((card) => card.value === CardValue.UNTER);
   const obers = hand.filter((card) => card.value === CardValue.OBER);
+  const aces = hand.filter((card) => card.value === CardValue.ACE);
   const trumpsInNormal = hand.filter((card) => isTrump(card, GameType.SAUSPIEL));
 
   const declarations: GameDeclaration[] = [];
-  if (unters.length >= 3) declarations.push({ type: GameType.WENZ, isTout: unters.length === 4 });
-  if (obers.length >= 2 && trumpsInNormal.length >= 5) declarations.push({ type: bestSoloType(hand), isTout: obers.length >= 3 && trumpsInNormal.length >= 6 });
 
+  // Sauspiel is the everyday game: a solid trump holding plus a suit whose
+  // Ace can be called (a plain card of it, but not its Ace).
   const callableSuit = [Suit.ACORNS, Suit.LEAVES, Suit.BELLS].find((suit) => {
     const hasSuitCard = hand.some((card) => card.suit === suit && card.value !== CardValue.OBER && card.value !== CardValue.UNTER);
     const hasAce = hand.some((card) => card.suit === suit && card.value === CardValue.ACE);
     return hasSuitCard && !hasAce;
   });
-  if (trumpsInNormal.length >= 4 && callableSuit) declarations.push({ type: GameType.SAUSPIEL, calledSuit: callableSuit });
+  // A weak hand (few trumps, or four low trumps without an Ober) should pass
+  // rather than call a Sauspiel it can't carry: need an Ober with four trumps,
+  // or five-plus trumps.
+  const goodSauspielHand = (trumpsInNormal.length >= 4 && obers.length >= 1) || trumpsInNormal.length >= 5;
+  if (goodSauspielHand && callableSuit) declarations.push({ type: GameType.SAUSPIEL, calledSuit: callableSuit });
 
+  // Wenz: only with genuine Unter strength backed by a high card — at least
+  // two Unter plus an Ace, or three Unter. Kept intentionally rare (#19).
+  const wenzWorthy = (unters.length >= 3 && aces.length >= 1) || (unters.length >= 2 && aces.length >= 2);
+  if (wenzWorthy) declarations.push({ type: GameType.WENZ, isTout: unters.length === 4 && aces.length >= 2 });
+
+  // Solo: the AI should basically never go solo — only when the hand is almost
+  // nothing but trump (three-plus Ober and seven-plus trumps).
+  const soloWorthy = obers.length >= 3 && trumpsInNormal.length >= 7;
+  if (soloWorthy) declarations.push({ type: bestSoloType(hand), isTout: obers.length >= 4 && trumpsInNormal.length >= 8 });
+
+  // Prefer the lowest-ranking viable game (Sauspiel before Wenz before Solo);
+  // a higher game is only reached for when it is needed to overbid.
   return declarations
-    .sort((a, b) => getGamePriority(b.type, b.isTout) - getGamePriority(a.type, a.isTout))
+    .sort((a, b) => getGamePriority(a.type, a.isTout) - getGamePriority(b.type, b.isTout))
     .find((declaration) => canOverrideBid(existingDeclaration ?? null, declaration)) ?? null;
 }
 
@@ -201,15 +240,79 @@ function bestSoloType(hand: Card[]): GameType {
 export function getAICardPlay(player: Player, currentTrick: Trick | null, contract: Contract | null, difficulty = Difficulty.MEDIUM): Card {
   const legalCards = getLegalCards(player.cards, currentTrick, contract);
   if (legalCards.length === 1 || difficulty === Difficulty.EASY) return legalCards[0];
+  const gameType = contract?.type ?? GameType.SAUSPIEL;
+
+  // Leading the trick: the declaring side pulls trumps, defenders open safely.
   if (!contract || !currentTrick || currentTrick.playedCards.length === 0) {
-    return [...legalCards].sort((a, b) => getCardRank(b, contract?.type ?? GameType.SAUSPIEL) - getCardRank(a, contract?.type ?? GameType.SAUSPIEL))[0];
+    return chooseLead(player, legalCards, contract, gameType);
   }
 
-  const winningCards = legalCards.filter((card) => determineTrickWinner([...currentTrick.playedCards, { playerId: player.id, card }], contract.type) === player.id);
-  if (winningCards.length > 0 && countPoints(currentTrick.playedCards.map((played) => played.card)) >= 10) {
-    return winningCards.sort((a, b) => getCardRank(a, contract.type) - getCardRank(b, contract.type))[0];
+  const played = currentTrick.playedCards;
+  const currentWinnerId = determineTrickWinner(played, gameType);
+  const partnerIsWinning = onSameTeam(player.id, currentWinnerId, contract);
+  const trickPoints = countPoints(played.map((entry) => entry.card));
+  const isLastToPlay = played.length === 3;
+  const winners = legalCards.filter(
+    (card) => determineTrickWinner([...played, { playerId: player.id, card }], gameType) === player.id,
+  );
+
+  if (partnerIsWinning) {
+    // Our side already holds the trick. As the last player it is safe to
+    // schmier the highest-value card onto it; otherwise stay low so an
+    // opponent still to play can't scoop up the points.
+    return isLastToPlay ? highestValueCard(legalCards) : lowestValueCard(legalCards, gameType);
   }
-  return [...legalCards].sort((a, b) => a.points - b.points || getCardRank(a, contract.type) - getCardRank(b, contract.type))[0];
+
+  // An opponent is winning. Take the trick when it is worth it, using the
+  // cheapest card that still wins; otherwise throw the least valuable card.
+  const worthTaking = trickPoints >= 10 || (isLastToPlay && trickPoints >= 4);
+  if (winners.length > 0 && worthTaking) {
+    return [...winners].sort((a, b) => getCardRank(a, gameType) - getCardRank(b, gameType))[0];
+  }
+  return lowestValueCard(legalCards, gameType);
+}
+
+/** True when both players sit on the same side of the current contract. */
+function onSameTeam(a: string, b: string, contract: Contract | null): boolean {
+  if (!contract) return false;
+  const onDeclaringSide = (id: string) => id === contract.declarerId || id === contract.partnerId;
+  return onDeclaringSide(a) === onDeclaringSide(b);
+}
+
+/** Highest-point card — used to schmier an Ace or Ten to a winning partner. */
+function highestValueCard(cards: Card[]): Card {
+  return [...cards].sort((a, b) => b.points - a.points)[0];
+}
+
+/** Least valuable throwaway: fewest points, then lowest rank. */
+function lowestValueCard(cards: Card[], gameType: GameType): Card {
+  return [...cards].sort((a, b) => a.points - b.points || getCardRank(a, gameType) - getCardRank(b, gameType))[0];
+}
+
+/**
+ * Opening lead. The declaring side (declarer or called partner) leads a high
+ * trump to draw out the opponents' trumps; a defender opens with a safe
+ * non-trump Ace, otherwise a low side card — keeping Tens back instead of
+ * exposing them.
+ */
+function chooseLead(player: Player, legal: Card[], contract: Contract | null, gameType: GameType): Card {
+  const trumps = legal.filter((card) => isTrump(card, gameType));
+  const nonTrumps = legal.filter((card) => !isTrump(card, gameType));
+  const onDeclaringSide = Boolean(contract && (player.id === contract.declarerId || player.id === contract.partnerId));
+
+  if (onDeclaringSide && trumps.length > 0) {
+    return [...trumps].sort((a, b) => getCardRank(b, gameType) - getCardRank(a, gameType))[0];
+  }
+
+  const aces = nonTrumps.filter((card) => card.value === CardValue.ACE);
+  if (aces.length > 0) {
+    return [...aces].sort((a, b) => getCardRank(b, gameType) - getCardRank(a, gameType))[0];
+  }
+
+  const withoutTens = nonTrumps.filter((card) => card.value !== CardValue.TEN);
+  if (withoutTens.length > 0) return lowestValueCard(withoutTens, gameType);
+  if (nonTrumps.length > 0) return lowestValueCard(nonTrumps, gameType);
+  return lowestValueCard(trumps, gameType);
 }
 
 export function getSuitEmoji(suit: Suit): string {
@@ -228,16 +331,20 @@ export function getCardLabel(card: Card): string {
 /**
  * Tournament tariff (plus/minus scoring), zero-sum per round.
  *
+ * Kept deliberately small so the numbers stay in the single digits — the
+ * common casual convention is "a solo counts roughly three times a normal
+ * game" (issue #21).
+ *
  * Normal game (Rufspiel): value per PLAYER (2 vs 2) —
  *   base 1, Schneider 2, Schwarz 3, plus 1 per Laufendem.
  * Solo/Wenz: value per DEFENDER; the soloist receives/pays 3x —
- *   base 2, Schneider 3, Schwarz 4, Tout 6, Sie 8, plus 1 per Laufendem.
- *   Soloist totals: 6 / 9 / 12 / 18 / 24 (+3 per Laufendem).
+ *   base 1, Schneider 2, Schwarz 3, Tout 4, Sie 6, plus 1 per Laufendem.
+ *   Soloist totals: 3 / 6 / 9 / 12 / 18 (+3 per Laufendem).
  * Laufende count from 3 upwards (Wenz from 2), "mit" and "ohne" alike.
  */
 export const TARIFF = {
   rufspiel: { base: 1, schneider: 2, schwarz: 3, perLaufendem: 1 },
-  solo: { base: 2, schneider: 3, schwarz: 4, tout: 6, sie: 8, perLaufendem: 1 },
+  solo: { base: 1, schneider: 2, schwarz: 3, tout: 4, sie: 6, perLaufendem: 1 },
   minLaufende: 3,
   minLaufendeWenz: 2,
   maxLaufende: 8,

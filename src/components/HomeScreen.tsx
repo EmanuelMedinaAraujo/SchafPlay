@@ -39,9 +39,9 @@ export default function HomeScreen(props: HomeScreenProps) {
           </div>
 
           {(mode === "host" || mode === "solo") && (
-            <div className="match-length-row">
+            <div className="list-length-row">
               <label className="field-label">
-                {t.matchLength} ({t.rounds})
+                {t.listLength} ({t.rounds})
               </label>
               <div className="mode-switch" role="group">
                 {[4, 8, 12].map((r) => (

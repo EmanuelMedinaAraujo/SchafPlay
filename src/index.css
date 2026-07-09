@@ -476,19 +476,19 @@ html.in-game .table {
   gap: 16px;
 }
 
-/* Match-length picker: label and round buttons share one line. */
-.match-length-row {
+/* List-length picker: label and round buttons share one line. */
+.list-length-row {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.match-length-row .field-label {
+.list-length-row .field-label {
   margin: 0;
   white-space: nowrap;
 }
 
-.match-length-row .mode-switch {
+.list-length-row .mode-switch {
   flex: 1;
   margin-top: 0;
   grid-template-columns: repeat(3, 1fr);

@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { GameState, Language } from "../types";
 import { gameLabel, translations } from "../lib/i18n";
 import { CheckIcon, TrophyIcon } from "./icons";
+import RoundCardsPopup from "./RoundCardsPopup";
 
 interface RoundOverScreenProps {
   state: GameState;
@@ -12,6 +14,7 @@ interface RoundOverScreenProps {
 export default function RoundOverScreen({ state, language, myPlayerId, onReady }: RoundOverScreenProps) {
   const result = state.lastResult;
   const t = translations[language];
+  const [cardsOpen, setCardsOpen] = useState(false);
   if (!result) return null;
 
   const otherId = myPlayerId === "p1" ? "p3" : "p1";
@@ -22,6 +25,7 @@ export default function RoundOverScreen({ state, language, myPlayerId, onReady }
   const sortedByScore = [...state.players].sort((a, b) => (state.scores[b.id] ?? 0) - (state.scores[a.id] ?? 0));
 
   return (
+    <>
     <div className="round-over-overlay">
       <section className="round-over">
         <h2>
@@ -58,6 +62,9 @@ export default function RoundOverScreen({ state, language, myPlayerId, onReady }
           })}
         </div>
 
+        <button className="secondary-button" onClick={() => setCardsOpen(true)} type="button">
+          {t.showCards}
+        </button>
         <button className="primary-button" onClick={onReady} disabled={iAmReady} type="button">
           {iAmReady ? <CheckIcon size={18} /> : null}
           {iAmReady ? t.readyWaiting : t.ready}
@@ -67,5 +74,15 @@ export default function RoundOverScreen({ state, language, myPlayerId, onReady }
         </p>
       </section>
     </div>
+    {cardsOpen && (
+      <RoundCardsPopup
+        players={state.players}
+        tricks={state.tricks}
+        contract={result.contract}
+        language={language}
+        onClose={() => setCardsOpen(false)}
+      />
+    )}
+    </>
   );
 }

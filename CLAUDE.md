@@ -49,12 +49,14 @@ There is no separate lint tool (no ESLint config) — `npm run lint` is a TypeSc
 - `GameState` is the full authoritative shape; a `RedactedGameState` is not a separate type — it's the same `GameState` shape with hidden cards and (conditionally) `currentContract.partnerId` blanked out, produced by `getRedactedState`.
 - `LogEntry` is `{ key, params }`, not a rendered string — this lets the same engine log serve both languages. Rendering happens client-side via `formatLog` in `src/lib/i18n.ts`, which must have a matching entry for every `log.*` key the engine emits (`this.log(state, "log.xxx", params)` in `GameEngine.ts`).
 
-### Local statistics (`src/lib/stats.ts`, `src/lib/MatchRecorder.ts`)
+### Local statistics (`src/lib/stats.ts`, `src/lib/ListRecorder.ts`)
 
-- **`MatchRecorder`** is a pure observer of successive `GameState` snapshots — it never mutates state and has no engine or network dependency, so the same class serves the host (redacted `p1` view), solo (full state) and the guest (redacted wire state). Each device records its own local view; the guest's record simply has face-down placeholders where other players' hands were.
-- It calls `recordGame` **exactly once**, on the first `MATCH_OVER` snapshot (`finalized` flag), because `ROUND_OVER`/`MATCH_OVER` re-emit on every ready toggle and every pause/resume. Round records are pushed on the *status edge* only. Quitting mid-match records nothing — `quitGame()` in `App.tsx` drops the recorder.
+Terminology (see issue #22): a **list** is a whole session; it consists of **rounds** (one deal each); each round consists of **tricks**. The session-end state is `LIST_OVER`.
+
+- **`ListRecorder`** is a pure observer of successive `GameState` snapshots — it never mutates state and has no engine or network dependency, so the same class serves the host (redacted `p1` view), solo (full state) and the guest (redacted wire state). Each device records its own local view; the guest's record simply has face-down placeholders where other players' hands were.
+- It calls `recordGame` **exactly once**, on the first `LIST_OVER` snapshot (`finalized` flag), because `ROUND_OVER`/`LIST_OVER` re-emit on every ready toggle and every pause/resume. Round records are pushed on the *status edge* only. Quitting mid-list records nothing — `quitGame()` in `App.tsx` drops the recorder.
 - Initial-hand capture keys on "fresh `WILL_PHASE` with 0 will-bids", not on `roundNumber`, so an all-pass redeal (which keeps the round number) overwrites the draft with the hand that is actually played. A rematch resets the recorder on the next `BIDDING` snapshot.
-- Known edge: a guest who fully quits and re-joins mid-match gets a fresh recorder — earlier rounds are missing from `rounds`, but the `MATCH_OVER` summary is still correct. A reconnect (re-pairing after a drop) keeps the recorder and loses nothing.
+- Known edge: a guest who fully quits and re-joins mid-list gets a fresh recorder — earlier rounds are missing from `rounds`, but the `LIST_OVER` summary is still correct. A reconnect (re-pairing after a drop) keeps the recorder and loses nothing.
 - **Storage**: localStorage key `schafplay.stats` holds `{ version, totals, games }`. Binding stability rules:
   1. Never remove or repurpose a stored field without bumping `STATS_VERSION` **and** adding a `MIGRATIONS` entry.
   2. `loadStore` must never throw and never delete user data — unparseable payloads, and payloads written by a *newer* app version, are copied to `schafplay.stats.backup` before falling back to defaults.
