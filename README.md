@@ -25,7 +25,7 @@ If the connection drops, the host pauses the game: they exchange fresh codes, an
 | Sauspiel (per player) | 1 | 2 | 3 | – | – | +1 |
 | Solo / Wenz (per opponent) | 1 | 2 | 3 | 4 | 6 | +1 |
 
-The soloist receives/pays **three times** the opponent value (e.g. Solo won: +3 / -1 each). The values are intentionally kept small — a solo counts roughly triple a normal game and stays in the single digits. Laufende count from 3 (Wenz from 2), "mit" the same as "ohne". The values live centrally in `TARIFF` ([gameLogic.ts](src/utils/gameLogic.ts)).
+The soloist receives/pays **three times** the opponent value (e.g. Solo won: +3 / -1 each). The values are intentionally kept small — a solo counts roughly triple a normal game and stays in the single digits. Laufende count from 3 (Wenz from 2), "mit" the same as "ohne". The values live centrally in `TARIFF` ([scoring.ts](src/game/scoring.ts)).
 
 ## Development
 
@@ -86,13 +86,14 @@ Once Tailscale Serve is running, your tailnet peers can access the game using th
 
 ```
 src/
+├── game/                  # Pure domain: types, deck, rules (+ bid legality), scoring (TARIFF, Laufende)
+├── players/               # PlayerController interface, AIController, AI heuristics
 ├── engine/GameEngine.ts   # Host-authoritative game state machine (bidding, tricks, scoring, AI pacing)
-├── net/PeerConnection.ts  # P2P connection (hand-rolled serverless WebRTC data channel wrapper)
-├── net/protocol.ts        # P2P message format
-├── utils/gameLogic.ts     # Rules: trump, legality, trick evaluation, AI, tournament scoring
+├── engine/redaction.ts    # Pure redactStateFor — the privacy boundary
+├── net/                   # Transport & Signaling interfaces, WebRTCPeer, sdpCodec, protocol
+├── session/               # HostSession/GuestSession/SoloSession + useGameSession
+├── persistence/           # GameHistoryStore interface, IndexedDB store, ListRecorder
 ├── components/            # GameBoard, PlayerHand, BiddingPanel, TrickArea, PairingPanel, …
-├── lib/stats.ts           # Versioned localStorage store for finished games
-├── lib/ListRecorder.ts    # Observes game state snapshots and records finished lists (sessions)
 └── lib/i18n.ts            # German/English incl. structured game log entries
 ```
 

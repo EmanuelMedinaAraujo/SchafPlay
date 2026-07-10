@@ -20,54 +20,77 @@ There is no separate lint tool (no ESLint config) — `npm run lint` is a TypeSc
 
 ## Architecture
 
+The code is organised in layers, dependencies flowing downward. `src/types.ts` is a thin re-export barrel over `game/types.ts` and `net/protocol.ts` so UI components stay agnostic of the layout.
+
+```
+game/        pure domain — types, deck, rules, scoring (no I/O, no React)
+players/     PlayerController interface + AIController + AI heuristics
+engine/      GameEngine (state machine) + redaction (pure redactStateFor)
+net/         Transport & Signaling interfaces, WebRTCPeer, sdpCodec, protocol
+persistence/ GameHistoryStore interface, IndexedDB store, ListRecorder
+session/     Host/Guest/SoloSession + useGameSession (orchestration)
+components/  presentational React; App.tsx is the UI shell
+lib/         i18n, pwa, cardDisplay
+```
+
 ### Host-authoritative state machine over P2P
 
-- **`src/engine/GameEngine.ts`** is the single source of truth for game state. It only ever runs on the **host** (seat p1). It owns bidding, dealing, trick resolution, scoring, AI pacing (via injectable `aiDelayMs`/`trickHoldMs`/`shuffleFn` for deterministic tests), and emits full-state snapshots to listeners via `onStateChange`.
-- The host never sends full state to the guest. It calls `engine.getRedactedState("p3")` to strip other players' hands (replaced with face-down placeholders) and to hide the Sauspiel partner's identity until the called Ace has actually been played. This redaction is the only privacy boundary — treat any change that bypasses `getRedactedState` as a potential info leak to the guest.
-- The **guest** (seat p3) runs no engine at all — `App.tsx` just renders whatever redacted `GameState` arrives over the wire and forwards user intents as `PlayerAction`s.
-- The host **always overwrites the guest's action `playerId` with `"p3"`** before calling `engine.processAction` (see `attachHostPeer` in `src/App.tsx`) — the wire value is never trusted.
+- **`src/engine/GameEngine.ts`** is the single source of truth for game state. It only ever runs on the **host** (seat p1) and in solo. It owns bidding, dealing, trick resolution, scoring, AI pacing (via injectable `aiDelayMs`/`trickHoldMs`/`shuffleFn`), and emits full-state snapshots to listeners via `onStateChange`. It has zero I/O dependencies (imports only `game/` and `players/`).
+- The host never sends full state to the guest. It calls `engine.getRedactedState("p3")` — which delegates to **`src/engine/redaction.ts`** `redactStateFor(state, viewerId)` — to strip other players' hands (replaced with face-down placeholders) and hide the Sauspiel partner's identity until the called Ace has been played. This redaction is the only privacy boundary — treat any change that bypasses `redactStateFor` as a potential info leak to the guest.
+- The **guest** (seat p3) runs no engine at all — `GuestSession` renders whatever redacted `GameState` arrives over the wire and forwards user intents as `PlayerAction`s.
+- **`HostSession`** **always overwrites the guest's action `playerId` with `"p3"`** before calling `engine.processAction` — the wire value is never trusted.
 - `GameEngine.processAction` is the single entry point for all player and AI moves; each action type (`BID_WILL`, `BID_DECLARE`, `BID_RETREAT`, `PLAY_CARD`, `READY_NEXT`) has matching validation (turn order, phase, legality) before mutating state. AI moves go through the exact same `processBidWill`/`processBidDeclare`/`processCardPlay` methods as human ones.
 - Progression (AI turns, collecting a finished trick, redeals) is driven by `scheduleProgress()`, which sets a single timer (`this.timer`) per step — always call `clearTimer()` before scheduling a new one; `pause()`/`resume()` freeze/unfreeze this timer for disconnects.
 
+### Players & AI (`src/players/`)
+
+- **`PlayerController`** is the decision interface for an engine-driven seat: `decideWill`/`decideBid`/`decideCard`, all synchronous (the engine owns pacing). A **human seat has no controller** — its moves arrive as `PlayerAction`s. **`AIController`** wraps the heuristics and takes a `Difficulty` in its constructor (the seam for future difficulty classes).
+- `EngineOptions.controllers` defaults to an `AIController` on every non-human seat, so `aiStep` and the dev-skip helpers route through controllers into the same validation path.
+- **`aiHeuristics.ts`** holds `getAIWillBid`/`getAIBid`/`getAICardPlay` as pure functions; difficulty only affects card play, not bidding.
+
 ### Networking (`src/net/`)
 
-- **`PeerConnection.ts`** is a hand-rolled serverless WebRTC wrapper. It generates a compressed base64 SDP invitation blob for the host, accepts a reply SDP blob from the guest, and establishes a direct peer connection without any external broker.
-- Once connected, everything is a raw WebRTC data channel.
-- A 5s ping / 15s timeout heartbeat (host pings, both sides reset the timeout on any traffic) detects silent drops and flips connection state to `"disconnected"`.
-- On disconnect, the host **pauses** the engine (`engine.pause()`) rather than tearing it down — the `GameEngine` instance and all its state survive in `engineRef.current` in `App.tsx`. Re-pairing is just attaching a fresh `PeerConnection` and calling `engine.resume()`; nothing about the round is lost.
-- **`protocol.ts`** defines the wire message shape: `createMessage(type, payload)` stamps a timestamp. Message types are host→guest `GAME_STATE_UPDATE`, guest→host `PLAYER_ACTION`, guest→host-on-connect `CONNECTION_ACK` (carries the guest's display name), plus transport-level `PING`/`PONG`.
+- **`Transport`** (interface) is the framed, keepalive-supervised message channel sessions/UI depend on. **`Signaling`** (`HostSignaling`/`GuestSignaling`) is the out-of-band code exchange. **`WebRTCPeer.ts`** implements all three — a hand-rolled serverless WebRTC wrapper (no broker, no STUN, LAN-only); **`sdpCodec.ts`** is the exported compress/decompress used for the invite/reply codes.
+- A 5s ping / 15s timeout heartbeat (host pings, both sides reset the timeout on any traffic) detects silent drops and flips transport state to `"disconnected"`.
+- On disconnect, `HostSession` **pauses** the engine (`engine.pause()`) rather than tearing it down — the `GameEngine` instance survives on the session. Re-pairing attaches a fresh transport to the same session and calls `engine.resume()`; nothing about the round is lost.
+- **`protocol.ts`** defines the wire shape: `createMessage(type, payload)` stamps a timestamp. Types are host→guest `GAME_STATE_UPDATE`, guest→host `PLAYER_ACTION`, guest→host-on-connect `CONNECTION_ACK` (guest name), plus transport-level `PING`/`PONG`.
 
-### Rules & AI (`src/utils/gameLogic.ts`)
+### Sessions (`src/session/`)
 
-- Card/trump ordering, `getLegalCards` (follow-suit/trump enforcement, Sauspiel called-Ace lead/discard constraints), `determineTrickWinner`, `calculateRoundResult` (scoring), and `countLaufende` all live here as pure functions over `GameState`/`Card` data — no engine or network dependencies, which is why they're unit-testable in isolation (`tests/scoring.test.ts`).
-- `TARIFF` is the single source of truth for point values (base/Schneider/Schwarz/Tout/Sie per game type) — see the table in [README.md](README.md) for the values it encodes. Change scoring rules here, not in `GameEngine`.
-- Bidding priority is `GamePriority` (`src/types.ts`): Sauspiel < Wenz < Solo < Wenz Tout < Solo Tout. `canOverrideBid` enforces that a later declaration must strictly outrank the current high bid; ties go to the earlier bidder (seating-order tiebreak already baked into bidding order, not into the priority check).
-- `getAIWillBid`/`getAIBid`/`getAICardPlay` implement the three AI decision points; difficulty (`Difficulty`) only affects card play, not bidding.
+- **`HostSession`/`GuestSession`/`SoloSession`** own the engine (host/solo), the transport wiring and the stats recorder. `HostSession` creates the engine lazily on first connect, runs the redact→record→emit→broadcast pipeline, and maps transport state to engine pause/resume. `broadcastState()` loops over the remote human seats (today `["p3"]`) — the fan-out seam for variable multiplayer.
+- **`useGameSession`** bridges sessions to React state. Reuse rules: re-attaching the same role (reconnect) keeps the engine and recorder; switching roles destroys the old session; quitting drops the recorder (an aborted list records nothing).
+- **`App.tsx`** is a UI shell: screen routing, orientation/DOM effects, and prefs.
 
-### State shape (`src/types.ts`)
+### Rules & scoring (`src/game/`)
 
-- `GameState` is the full authoritative shape; a `RedactedGameState` is not a separate type — it's the same `GameState` shape with hidden cards and (conditionally) `currentContract.partnerId` blanked out, produced by `getRedactedState`.
-- `LogEntry` is `{ key, params }`, not a rendered string — this lets the same engine log serve both languages. Rendering happens client-side via `formatLog` in `src/lib/i18n.ts`, which must have a matching entry for every `log.*` key the engine emits (`this.log(state, "log.xxx", params)` in `GameEngine.ts`).
+- **`rules.ts`**: card/trump ordering, `getLegalCards`, `determineTrickWinner`, plus single-source bid legality — `getCallableSuits`, `isValidSauspielCall`, `isRetreatAllowed` (engine, `BiddingPanel` and the AI all call these, so they cannot drift). **`scoring.ts`**: `TARIFF`, `calculateRoundResult`, `countLaufende`. **`deck.ts`**: `createDeck`/`shuffleDeck`. All pure over `GameState`/`Card`.
+- `TARIFF` is the single source of truth for point values — see the table in [README.md](README.md). Change scoring rules here, not in `GameEngine`.
+- Bidding priority is `GamePriority` (`src/game/types.ts`): Sauspiel < Wenz < Solo < Wenz Tout < Solo Tout. `canOverrideBid` enforces that a later declaration strictly outranks the current high bid.
 
-### Local statistics (`src/lib/stats.ts`, `src/lib/ListRecorder.ts`)
+### State shape (`src/game/types.ts`)
+
+- `GameState` is the full authoritative shape; `RedactedGameState` is a documentation alias of the same shape with hidden cards and (conditionally) `currentContract.partnerId` blanked out, produced by `redactStateFor`.
+- `LogEntry` is `{ key, params }`, not a rendered string — this lets the same engine log serve both languages. Rendering happens client-side via `formatLog` in `src/lib/i18n.ts`, which must have a matching entry for every `log.*` key the engine emits.
+
+### Local statistics (`src/persistence/`)
 
 Terminology (see issue #22): a **list** is a whole session; it consists of **rounds** (one deal each); each round consists of **tricks**. The session-end state is `LIST_OVER`.
 
-- **`ListRecorder`** is a pure observer of successive `GameState` snapshots — it never mutates state and has no engine or network dependency, so the same class serves the host (redacted `p1` view), solo (full state) and the guest (redacted wire state). Each device records its own local view; the guest's record simply has face-down placeholders where other players' hands were.
-- It calls `recordGame` **exactly once**, on the first `LIST_OVER` snapshot (`finalized` flag), because `ROUND_OVER`/`LIST_OVER` re-emit on every ready toggle and every pause/resume. Round records are pushed on the *status edge* only. Quitting mid-list records nothing — `quitGame()` in `App.tsx` drops the recorder.
-- Initial-hand capture keys on "fresh `WILL_PHASE` with 0 will-bids", not on `roundNumber`, so an all-pass redeal (which keeps the round number) overwrites the draft with the hand that is actually played. A rematch resets the recorder on the next `BIDDING` snapshot.
-- Known edge: a guest who fully quits and re-joins mid-list gets a fresh recorder — earlier rounds are missing from `rounds`, but the `LIST_OVER` summary is still correct. A reconnect (re-pairing after a drop) keeps the recorder and loses nothing.
-- **Storage**: localStorage key `schafplay.stats` holds `{ version, totals, games }`. Binding stability rules:
-  1. Never remove or repurpose a stored field without bumping `STATS_VERSION` **and** adding a `MIGRATIONS` entry.
-  2. `loadStore` must never throw and never delete user data — unparseable payloads, and payloads written by a *newer* app version, are copied to `schafplay.stats.backup` before falling back to defaults.
-  3. `totals` are the authoritative lifetime counters, incremented at record time and never pruned. `games` are pruned to `MAX_GAMES=2000` (newest first) under quota pressure.
-  4. All games keep their full per-round `rounds` detail — no stripping. A `RoundRecord` contains the raw material for later analysis: the dealt hand, the contract, every trick in play order (compact card ids), and the scoring result.
-  5. All reads and writes of the key go through `stats.ts`.
+- **`ListRecorder`** is a pure observer of successive `GameState` snapshots — it never mutates state and has no engine or network dependency, so the same class serves the host (redacted `p1` view), solo (full state) and the guest (redacted wire state). Each device records its own local view. It takes an injectable `GameHistoryStore` (defaults to the shared singleton).
+- It calls `store.recordGame` **exactly once**, on the first `LIST_OVER` snapshot (`finalized` flag), because `ROUND_OVER`/`LIST_OVER` re-emit on every ready toggle and every pause/resume. Round records are pushed on the *status edge* only. Quitting mid-list records nothing — the session drops the recorder.
+- Initial-hand capture keys on "fresh `WILL_PHASE` with 0 will-bids", not on `roundNumber`, so an all-pass redeal overwrites the draft with the hand that is actually played. A rematch resets the recorder on the next `BIDDING` snapshot.
+- Known edge: a guest who fully quits and re-joins mid-list gets a fresh recorder — earlier rounds are missing, but the `LIST_OVER` summary is still correct. A reconnect keeps the recorder and loses nothing.
+- **Storage**: **`GameHistoryStore`** (interface) is the persistence boundary; **`IdbGameHistoryStore`** backs it with IndexedDB (db `schafplay`, `DB_VERSION` 1). `recordGame` is fire-and-forget `void`; `loadTotals`/`loadGames` are async. Binding stability rules:
+  1. Never remove or repurpose a stored field without bumping `DB_VERSION` **and** adding an `onupgradeneeded` branch in `idb.ts`/`IdbGameHistoryStore.ts`.
+  2. Every method degrades silently — IndexedDB unavailable (private mode, quota, blocked) means `recordGame` no-ops and reads resolve to empty defaults. A stats failure must never break a game.
+  3. `totals` are the authoritative lifetime counters, incremented at record time and never pruned. `games` are pruned to `MAX_GAMES=2000` (oldest first) past the cap.
+  4. All games keep their full per-round `rounds` detail — no stripping. A `RoundRecord` contains the dealt hand, the contract, every trick in play order (compact card ids), and the scoring result. Indexes `finishedAt`/`mode`/`players` support the planned analysis view (#16).
+  5. All reads and writes go through the `persistence/` module (the `gameHistoryStore` singleton).
 
 ### UI
 
 - Landscape-only design: `src/App.tsx` rotates the whole app 90° via a `rotated` class on `<html>` when the viewport is portrait, and adds a `compact` class for short *effective* height (post-rotation) that plain CSS media queries can't detect on their own — both are driven by a `resize`/orientation-change listener, not CSS alone.
-- `src/components/` are presentational, one per screen/panel (`GameBoard`, `PlayerHand`, `BiddingPanel`, `TrickArea`, `PlayerSeat`, `RoundOverScreen`, `PairingPanel`, `HomeScreen`, `StatsScreen`, `RulesModal`); they receive `GameState` and an `onAction`/`onReady` callback from `App.tsx` and don't talk to the engine or network directly.
+- `src/components/` are presentational, one per screen/panel (`GameBoard`, `PlayerHand`, `BiddingPanel`, `TrickArea`, `PlayerSeat`, `RoundOverScreen`, `PairingPanel`, `HomeScreen`, `StatsScreen`, `RulesModal`); they receive `GameState` and an `onAction`/`onReady` callback from `App.tsx` and don't talk to the engine directly. Two exceptions depend on lower layers by nature: `PairingPanel` constructs a transport via `createWebRTCPeer()` and drives signaling; `StatsScreen` reads through the `gameHistoryStore`.
 
 ## Testing policy — NO CODE TESTS FOR NOW
 

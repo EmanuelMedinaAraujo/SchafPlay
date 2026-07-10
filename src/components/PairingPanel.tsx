@@ -18,7 +18,7 @@ interface PairingPanelProps {
  * Two-way copy-paste pairing via compressed SDP blobs.
  *
  * Host flow:
- *   1. On mount, creates a PeerConnection, generates an invite code.
+ *   1. On mount, creates a transport (WebRTCPeer), generates an invite code.
  *   2. Displays invite code for copying.
  *   3. Waits for user to paste the guest's reply code, then calls acceptAnswer().
  *
