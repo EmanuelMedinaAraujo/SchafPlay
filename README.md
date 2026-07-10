@@ -40,7 +40,7 @@ The output in `dist/` is a purely static site — deployable to any static host 
 
 ## Deployment (GitHub Pages)
 
-The repo ships a workflow ([.github/workflows/deploy.yml](.github/workflows/deploy.yml)) that type-checks, builds and publishes `dist/` to GitHub Pages on every push to `main` (and via manual dispatch).
+The repo ships a workflow ([.github/workflows/deploy.yml](.github/workflows/deploy.yml)) that type-checks, builds and publishes `dist/` to GitHub Pages on every release (and via manual dispatch).
 
 One-time setup: in **Settings → Pages → Build and deployment**, set the source to **GitHub Actions**. The site is then served at `https://<user>.github.io/SchafPlay/`.
 
