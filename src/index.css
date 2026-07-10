@@ -799,11 +799,14 @@ html.in-game .table {
 }
 
 .role-badge {
+  display: inline-block;
+  position: relative;
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
   border-radius: 4px;
   padding: 2px 5px;
+  transform: translate(0, 0) scale(1);
 }
 
 .role-badge.declarer {
@@ -816,6 +819,30 @@ html.in-game .table {
   background: rgba(245, 158, 11, 0.14);
   color: var(--amber);
   border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+/* Once the contract is decided, the badge appears at the table center at
+   larger size, then scales down and flies to its resting spot in the seat.
+   PlayerSeat.tsx measures the badge's home position against `.trick-area`
+   (the board center) and writes --reveal-x/y before this class is applied,
+   so the 0% keyframe starts exactly on top of the felt. */
+.role-badge.role-badge-reveal {
+  z-index: 30;
+  animation: role-badge-reveal 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes role-badge-reveal {
+  0% {
+    transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) scale(2.2);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
 }
 
 .seat-meta {
