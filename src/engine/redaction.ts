@@ -33,6 +33,16 @@ export function redactStateFor(state: GameState, viewerId: string): GameState {
     !calledAceWasPlayed(state)
   ) {
     redacted.currentContract = { ...redacted.currentContract, partnerId: undefined };
+    // The engine stores the SAME contract object in currentContract and
+    // biddingState.resolvedContract (finalizeBidding), so the partner must be
+    // blanked in both — copying one and forgetting the other leaks the
+    // partner's identity to the guest through the bidding state.
+    if (redacted.biddingState?.resolvedContract) {
+      redacted.biddingState = {
+        ...redacted.biddingState,
+        resolvedContract: { ...redacted.biddingState.resolvedContract, partnerId: undefined },
+      };
+    }
   }
 
   return redacted;
