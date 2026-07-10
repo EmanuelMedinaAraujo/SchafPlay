@@ -1,10 +1,11 @@
-import { GameState, GameStatus, Trick } from "../types";
-import { CardId, RoundRecord, StatsMode, TrickRecord, recordGame } from "./stats";
+import { GameState, GameStatus, Trick } from "../game/types";
+import { CardId, GameHistoryStore, RoundRecord, StatsMode, TrickRecord } from "./GameHistoryStore";
+import { gameHistoryStore } from "./store";
 
 /**
  * Snapshot-driven list recorder: a pure observer of GameState snapshots
- * that persists a finished list via recordGame exactly once. (A list is a
- * whole session of rounds; each round is a series of tricks.)
+ * that persists a finished list via the store's recordGame exactly once. (A
+ * list is a whole session of rounds; each round is a series of tricks.)
  *
  * It never mutates game state and has no engine or network dependency, so
  * it works identically for the host (redacted p1 view), solo (full state)
@@ -21,6 +22,7 @@ export class ListRecorder {
     private mode: StatsMode,
     private role: "host" | "guest" | "solo",
     private localId: "p1" | "p3",
+    private store: GameHistoryStore = gameHistoryStore,
   ) {}
 
   observe(state: GameState): void {
@@ -81,7 +83,7 @@ export class ListRecorder {
         this.mode === "multiplayer"
           ? state.players.find((player) => player.isHuman && player.id !== this.localId)
           : undefined;
-      recordGame({
+      this.store.recordGame({
         mode: this.mode,
         role: this.role,
         localPlayerId: this.localId,

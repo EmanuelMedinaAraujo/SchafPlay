@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
-import { GameRecord, StatsMode, loadGames, loadStats } from "../lib/stats";
+import { GameRecord, StatsMode, StatsTotals, gameHistoryStore } from "../persistence";
 import { BotIcon, ChartColumnIcon, UsersIcon } from "./icons";
+
+const EMPTY_TOTALS: StatsTotals = { played: 0, won: 0, soloPlayed: 0, soloWon: 0, mpPlayed: 0, mpWon: 0 };
 
 interface StatsScreenProps {
   language: Language;
@@ -16,11 +18,20 @@ const VISIBLE_GAMES = 30;
 export default function StatsScreen({ language }: StatsScreenProps) {
   const t = translations[language];
   const [filter, setFilter] = useState<Filter>("all");
+  const [totals, setTotals] = useState<StatsTotals>(EMPTY_TOTALS);
+  const [games, setGames] = useState<GameRecord[]>([]);
 
   // Statistics only change when a list finishes, which is impossible while
-  // this screen is mounted — reading once on mount is enough.
-  const totals = useMemo(() => loadStats(), []);
-  const games = useMemo(() => loadGames(), []);
+  // this screen is mounted — reading once on mount is enough. Reads are async
+  // (IndexedDB), so populate into state; both resolve in a few ms.
+  useEffect(() => {
+    let active = true;
+    gameHistoryStore.loadTotals().then((value) => active && setTotals(value));
+    gameHistoryStore.loadGames().then((value) => active && setGames(value));
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const played = filter === "all" ? totals.played : filter === "solo" ? totals.soloPlayed : totals.mpPlayed;
   const won = filter === "all" ? totals.won : filter === "solo" ? totals.soloWon : totals.mpWon;

@@ -1,6 +1,6 @@
 import { Card, Contract, GameType, Language, Player, Trick } from "../types";
 import { translations } from "../lib/i18n";
-import { sortCardsForHand } from "../utils/gameLogic";
+import { sortCardsForHand } from "../game/rules";
 import CardFace from "./CardFace";
 import { XIcon } from "./icons";
 

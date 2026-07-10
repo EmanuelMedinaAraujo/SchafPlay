@@ -5,7 +5,6 @@ import {
   CardValue,
   Contract,
   GameDeclaration,
-  GamePriority,
   GameState,
   GameType,
   LogEntry,
@@ -13,21 +12,21 @@ import {
   PlayerAction,
   PlayerActionType,
   SeatId,
-  Suit,
-} from "../types";
+} from "../game/types";
+import { createDeck, shuffleDeck } from "../game/deck";
 import {
-  calculateRoundResult,
   canOverrideBid,
   countPoints,
-  createDeck,
   determineTrickWinner,
-  getAIBid,
-  getAICardPlay,
-  getAIWillBid,
-  getGamePriority,
+  getCallableSuits,
   getLegalCards,
-  shuffleDeck,
-} from "../utils/gameLogic";
+  isRetreatAllowed,
+  isValidSauspielCall,
+} from "../game/rules";
+import { calculateRoundResult } from "../game/scoring";
+import { redactStateFor } from "./redaction";
+import { AIController } from "../players/AIController";
+import { BidContext, PlayerController } from "../players/PlayerController";
 
 type Listener = (state: GameState) => void;
 
@@ -40,7 +39,14 @@ export interface EngineOptions {
   shuffleFn?: (deck: Card[]) => Card[];
   /** Solo mode: seat p3 is a third AI instead of the remote human. */
   soloMode?: boolean;
+  /** Decision-makers for engine-driven seats; defaults to an AIController on every non-human seat. */
+  controllers?: Partial<Record<SeatId, PlayerController>>;
+  /** Enables devSkipTrick/devSkipRound (the app wires this to its dev build flag). */
+  devToolsEnabled?: boolean;
 }
+
+/** Dev-skip fallback for seats without a controller of their own. */
+const devFallbackAI = new AIController();
 
 const MAX_LOGS = 30;
 
@@ -52,11 +58,14 @@ export class GameEngine {
   private trickHoldMs: number;
   private shuffleFn: (deck: Card[]) => Card[];
   private timer: ReturnType<typeof setTimeout> | null = null;
+  private controllers: Partial<Record<SeatId, PlayerController>>;
+  private devToolsEnabled: boolean;
 
   constructor(hostName: string, guestName = "Gast", totalRounds = 8, options: EngineOptions = {}) {
     this.aiDelayMs = options.aiDelayMs ?? 900;
     this.trickHoldMs = options.trickHoldMs ?? 1600;
     this.shuffleFn = options.shuffleFn ?? shuffleDeck;
+    this.devToolsEnabled = options.devToolsEnabled ?? false;
 
     const players: Player[] = [
       makePlayer("p1", hostName || "Host", true, 0),
@@ -64,6 +73,12 @@ export class GameEngine {
       options.soloMode ? makePlayer("p3", "Zenzi (KI)", false, 2) : makePlayer("p3", guestName || "Gast", true, 2),
       makePlayer("p4", "Sepp (KI)", false, 3),
     ];
+
+    // A seat is engine-driven iff it has a controller; defaults keep the
+    // controller map and the players' isHuman flags in agreement.
+    this.controllers =
+      options.controllers ??
+      Object.fromEntries(players.filter((player) => !player.isHuman).map((player) => [player.id, new AIController()]));
 
     this.state = {
       status: "LOBBY",
@@ -95,35 +110,11 @@ export class GameEngine {
   }
 
   /**
-   * State as seen by one player: other hands are replaced by face-down
-   * placeholders and the Sauspiel partner stays hidden until the called
-   * Ace has been played.
+   * State as seen by one player — see engine/redaction.ts, the privacy
+   * boundary of the host-authoritative model.
    */
   getRedactedState(playerId: string): GameState {
-    const state = this.getState();
-    state.players = state.players.map((player) => {
-      if (player.id === playerId) return player;
-      return {
-        ...player,
-        cards: player.cards.map((_, index) => ({
-          id: `hidden-${player.id}-${index}`,
-          suit: Suit.HEARTS,
-          value: CardValue.SEVEN,
-          points: 0,
-        })),
-      };
-    });
-
-    if (
-      state.status === "PLAYING" &&
-      state.currentContract?.type === GameType.SAUSPIEL &&
-      state.currentContract.partnerId !== playerId &&
-      !this.calledAceWasPlayed()
-    ) {
-      state.currentContract.partnerId = undefined;
-    }
-
-    return state;
+    return redactStateFor(this.getState(), playerId);
   }
 
   setGuestName(name: string): void {
@@ -192,7 +183,7 @@ export class GameEngine {
     // "Doch passen" (#24): a player who said "I'd play" may only bow out once a
     // Wenz or Solo already stands. You cannot retreat out of a Sauspiel — you
     // must top it with a higher game.
-    if (!declaration && !retreatAllowed(bidding)) return;
+    if (!declaration && !isRetreatAllowed(bidding.highBid?.declaration)) return;
     // Declarations must strictly outrank the current high bid.
     if (declaration && bidding.highBid?.declaration && !canOverrideBid(bidding.highBid.declaration, declaration)) return;
     // Sauspiel Tout does not exist.
@@ -200,11 +191,7 @@ export class GameEngine {
     // Sauspiel: caller must hold a plain card of the called suit but not its Ace.
     if (declaration?.type === GameType.SAUSPIEL) {
       const suit = declaration.calledSuit;
-      if (!suit || suit === Suit.HEARTS) return;
-      const hand = this.activePlayer().cards;
-      const hasPlainCard = hand.some((card) => card.suit === suit && card.value !== CardValue.OBER && card.value !== CardValue.UNTER);
-      const hasAce = hand.some((card) => card.suit === suit && card.value === CardValue.ACE);
-      if (!hasPlainCard || hasAce) return;
+      if (!suit || !isValidSauspielCall(this.activePlayer().cards, suit)) return;
     }
 
     this.mutate((state) => {
@@ -330,26 +317,34 @@ export class GameEngine {
     if (this.state.status !== "BIDDING" && this.state.status !== "PLAYING") return;
 
     const active = this.activePlayer();
-    if (!active || active.isHuman) return;
+    if (!active || !this.controllers[active.id]) return;
     this.defer(() => this.aiStep(), this.aiDelayMs);
   }
 
   private aiStep(): void {
     if (this.state.paused || this.state.collecting) return;
     const player = this.activePlayer();
-    if (!player || player.isHuman) return;
+    const controller = player ? this.controllers[player.id] : undefined;
+    if (!player || !controller) return;
 
     if (this.state.status === "BIDDING") {
       const bidding = this.state.biddingState!;
       if (bidding.phase === "WILL_PHASE") {
-        this.processBidWill(player.id, getAIWillBid(player));
+        this.processBidWill(player.id, controller.decideWill(player));
       } else {
-        this.processBidDeclare(player.id, getAIBid(player, bidding.highBid?.declaration ?? null, retreatAllowed(bidding)));
+        this.processBidDeclare(player.id, controller.decideBid(player, this.bidContext(bidding)));
       }
     } else if (this.state.status === "PLAYING") {
-      const card = getAICardPlay(player, this.state.currentTrick, this.state.currentContract, player.difficulty);
+      const card = controller.decideCard(player, this.state.currentTrick, this.state.currentContract);
       this.processCardPlay(player.id, card.id);
     }
+  }
+
+  private bidContext(bidding: BiddingState): BidContext {
+    return {
+      highBid: bidding.highBid?.declaration ?? null,
+      canRetreat: isRetreatAllowed(bidding.highBid?.declaration),
+    };
   }
 
   private collectTrick(): void {
@@ -483,22 +478,16 @@ export class GameEngine {
   }
 
   devSkipTrick(): void {
-    if (import.meta.env.DEV && this.state.status === "PLAYING" && !this.state.collecting) {
+    if (this.devToolsEnabled && this.state.status === "PLAYING" && !this.state.collecting) {
       this.clearTimer();
       while (this.state.status === "PLAYING" && !this.state.collecting) {
-        const active = this.activePlayer();
-        const legal = getLegalCards(active.cards, this.state.currentTrick, this.state.currentContract);
-        if (legal.length === 0) break;
-        const card = active.isHuman
-          ? legal[0]
-          : getAICardPlay(active, this.state.currentTrick, this.state.currentContract, active.difficulty);
-        this.processCardPlay(active.id, card.id);
+        if (!this.playStepFor(this.activePlayer())) break;
       }
     }
   }
 
   devSkipRound(): void {
-    if (import.meta.env.DEV && (this.state.status === "PLAYING" || this.state.status === "BIDDING") && !this.state.paused) {
+    if (this.devToolsEnabled && (this.state.status === "PLAYING" || this.state.status === "BIDDING") && !this.state.paused) {
       this.clearTimer();
       let safetyCount = 0;
       while ((this.state.status === "PLAYING" || this.state.status === "BIDDING") && safetyCount < 200) {
@@ -523,38 +512,34 @@ export class GameEngine {
               // the suit and only stands when nothing higher was bid. Otherwise:
               // top a standing Sauspiel with a Wenz, or retreat under a Wenz/Solo.
               const high = this.state.biddingState!.highBid?.declaration ?? null;
-              const calledSuit = high ? undefined : [Suit.ACORNS, Suit.LEAVES, Suit.BELLS].find(s =>
-                !active.cards.some(c => c.suit === s && c.value === CardValue.ACE) &&
-                active.cards.some(c => c.suit === s && c.value !== CardValue.OBER && c.value !== CardValue.UNTER)
-              );
+              const calledSuit = high ? undefined : getCallableSuits(active.cards)[0];
               if (calledSuit) this.processBidDeclare(active.id, { type: GameType.SAUSPIEL, calledSuit });
               else if (canOverrideBid(high, { type: GameType.WENZ })) this.processBidDeclare(active.id, { type: GameType.WENZ });
               else this.processBidDeclare(active.id, null);
             } else {
               const bidding = this.state.biddingState!;
-              const declaration = getAIBid(active, bidding.highBid?.declaration ?? null, retreatAllowed(bidding));
-              this.processBidDeclare(active.id, declaration);
+              const controller = this.controllers[active.id] ?? devFallbackAI;
+              this.processBidDeclare(active.id, controller.decideBid(active, this.bidContext(bidding)));
             }
           }
         } else if (this.state.status === "PLAYING") {
-          const active = this.activePlayer();
-          const legal = getLegalCards(active.cards, this.state.currentTrick, this.state.currentContract);
-          if (legal.length === 0) break;
-          const card = active.isHuman
-            ? legal[0]
-            : getAICardPlay(active, this.state.currentTrick, this.state.currentContract, active.difficulty);
-          this.processCardPlay(active.id, card.id);
+          if (!this.playStepFor(this.activePlayer())) break;
         }
       }
     }
   }
 
-  private calledAceWasPlayed(): boolean {
-    const calledSuit = this.state.currentContract?.calledSuit;
-    if (!calledSuit) return true;
-    return [...this.state.tricks.flatMap((trick) => trick.playedCards), ...(this.state.currentTrick?.playedCards ?? [])].some(
-      (played) => played.card.suit === calledSuit && played.card.value === CardValue.ACE,
-    );
+  /**
+   * Dev-skip helper: play one card for the given seat — its controller's
+   * choice, or the first legal card for a human. False when nothing is legal.
+   */
+  private playStepFor(player: Player): boolean {
+    const legal = getLegalCards(player.cards, this.state.currentTrick, this.state.currentContract);
+    if (legal.length === 0) return false;
+    const card =
+      this.controllers[player.id]?.decideCard(player, this.state.currentTrick, this.state.currentContract) ?? legal[0];
+    this.processCardPlay(player.id, card.id);
+    return true;
   }
 
   private activePlayer(): Player {
@@ -599,16 +584,6 @@ export class GameEngine {
     const snapshot = this.getState();
     this.listeners.forEach((listener) => listener(snapshot));
   }
-}
-
-/**
- * "Doch passen" (#24): retreating from the bidding is only permitted once a
- * Wenz or Solo already stands. A standing Sauspiel (or no bid yet) does not let
- * an interested player bow out — they must top it with a higher game.
- */
-function retreatAllowed(bidding: BiddingState): boolean {
-  const high = bidding.highBid?.declaration;
-  return !!high && getGamePriority(high.type, Boolean(high.isTout)) >= GamePriority.WENZ;
 }
 
 function makePlayer(id: SeatId, name: string, isHuman: boolean, seatIndex: number): Player {

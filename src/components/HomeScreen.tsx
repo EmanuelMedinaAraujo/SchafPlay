@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PeerConnection, PeerConnectionState } from "../net/PeerConnection";
+import { Transport, TransportState } from "../net/Transport";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
 import PairingPanel from "./PairingPanel";
@@ -8,10 +8,10 @@ import { UsersIcon, RadioIcon, BotIcon, PlayIcon } from "./icons";
 interface HomeScreenProps {
   language: Language;
   playerName: string;
-  connectionState: PeerConnectionState | "idle";
+  connectionState: TransportState | "idle";
   onPlayerNameChange: (name: string) => void;
-  onHostPeer: (peer: PeerConnection) => void;
-  onGuestPeer: (peer: PeerConnection) => void;
+  onHostPeer: (peer: Transport) => void;
+  onGuestPeer: (peer: Transport) => void;
   totalRounds: number;
   onTotalRoundsChange: (rounds: number) => void;
   onSoloStart: () => void;

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { CardValue, GamePriority, GameState, GameType, Language, PlayerAction, PlayerActionType, Suit } from "../types";
-import { canOverrideBid, getGamePriority } from "../utils/gameLogic";
+import { GameState, GameType, Language, PlayerAction, PlayerActionType, Suit } from "../types";
+import { canOverrideBid, getCallableSuits, isRetreatAllowed } from "../game/rules";
 import { gameLabel, translations } from "../lib/i18n";
 
 interface BiddingPanelProps {
@@ -63,17 +63,11 @@ export default function BiddingPanel({ state, language, myPlayerId, onAction }: 
   const iHoldHighBid = bidding.highBid?.playerId === myPlayerId;
   // "Doch passen" (#24): retreat is only offered once a Wenz or Solo stands.
   // Over a Sauspiel (or with no bid yet) the player must top it, not bow out.
-  const canRetreat = !!high && getGamePriority(high.type, Boolean(high.isTout)) >= GamePriority.WENZ;
+  const canRetreat = isRetreatAllowed(high);
   const activeName = state.players[state.activePlayerIdx]?.name ?? "";
 
   // A suit is callable when I hold a plain card of it but not its Ace.
-  const callableSuits = [Suit.ACORNS, Suit.LEAVES, Suit.BELLS].filter((suit) => {
-    const hasPlainCard = me.cards.some(
-      (card) => card.suit === suit && card.value !== CardValue.OBER && card.value !== CardValue.UNTER,
-    );
-    const hasAce = me.cards.some((card) => card.suit === suit && card.value === CardValue.ACE);
-    return hasPlainCard && !hasAce;
-  });
+  const callableSuits = getCallableSuits(me.cards);
 
   const declare = (type: GameType, calledSuit?: Suit, isTout = false) =>
     onAction({ type: PlayerActionType.BID_DECLARE, playerId: myPlayerId, data: { declaration: { type, calledSuit, isTout } } });
