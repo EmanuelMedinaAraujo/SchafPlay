@@ -7,6 +7,8 @@ import { CheckIcon, LoaderIcon, RefreshIcon, SettingsIcon } from "./icons";
 interface SettingsScreenProps {
   language: Language;
   onLanguageChange: (language: Language) => void;
+  disableLaufende: boolean;
+  onDisableLaufendeChange: (disable: boolean) => void;
 }
 
 type UpdateStatus = "idle" | "checking" | "uptodate" | "installing" | "unsupported";
@@ -16,7 +18,7 @@ const LANGUAGES: Array<{ code: Language; label: string }> = [
   { code: "en", label: "English" },
 ];
 
-export default function SettingsScreen({ language, onLanguageChange }: SettingsScreenProps) {
+export default function SettingsScreen({ language, onLanguageChange, disableLaufende, onDisableLaufendeChange }: SettingsScreenProps) {
   const t = translations[language];
   const [status, setStatus] = useState<UpdateStatus>("idle");
 
@@ -72,6 +74,29 @@ export default function SettingsScreen({ language, onLanguageChange }: SettingsS
               {label}
             </button>
           ))}
+        </div>
+      </section>
+
+      <section className="panel settings-panel">
+        <h2>{t.settingsLaufende}</h2>
+        <p className="muted">{t.settingsLaufendeHint}</p>
+        <div className="mode-switch" role="group" aria-label={t.settingsLaufende}>
+          <button
+            className={!disableLaufende ? "active" : ""}
+            onClick={() => onDisableLaufendeChange(false)}
+            aria-pressed={!disableLaufende}
+            type="button"
+          >
+            {t.settingsLaufendeCount}
+          </button>
+          <button
+            className={disableLaufende ? "active" : ""}
+            onClick={() => onDisableLaufendeChange(true)}
+            aria-pressed={disableLaufende}
+            type="button"
+          >
+            {t.settingsLaufendeOff}
+          </button>
         </div>
       </section>
 

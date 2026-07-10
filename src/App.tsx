@@ -12,6 +12,7 @@ import { BookOpenIcon, BotIcon, ChartColumnIcon, HomeIcon, SettingsIcon } from "
 
 const NAME_KEY = "schafplay.name";
 const LANG_KEY = "schafplay.language";
+const DISABLE_LAUFENDE_KEY = "schafplay.disableLaufende";
 
 /**
  * Deep-link join (#7, Option A): read an invite code from the URL fragment
@@ -49,10 +50,12 @@ export default function App() {
   // hash is synchronous and independent of the service-worker update check in
   // main.tsx, so nothing can race away the invite before we see it.
   const [initialInvite] = useState(readInviteFromHash);
+  const [disableLaufende, setDisableLaufende] = useState<boolean>(() => localStorage.getItem(DISABLE_LAUFENDE_KEY) === "true");
 
   const session = useGameSession({
     getPlayerName: () => playerName,
     getTotalRounds: () => totalRounds,
+    getDisableLaufende: () => disableLaufende,
     onEnterGame: () => setScreen("game"),
   });
   const { gameState, connectionState, role, myPlayerId } = session;
@@ -75,6 +78,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(LANG_KEY, language);
   }, [language]);
+
+  useEffect(() => {
+    localStorage.setItem(DISABLE_LAUFENDE_KEY, String(disableLaufende));
+  }, [disableLaufende]);
 
   // Landscape-only UI: on portrait screens the whole app is rotated 90°
   // via CSS (html.rotated). html.compact / html.narrow drive the phone
@@ -172,7 +179,12 @@ export default function App() {
       {!inGame && screen === "stats" ? (
         <StatsScreen language={language} />
       ) : !inGame && screen === "settings" ? (
-        <SettingsScreen language={language} onLanguageChange={setLanguage} />
+        <SettingsScreen
+          language={language}
+          onLanguageChange={setLanguage}
+          disableLaufende={disableLaufende}
+          onDisableLaufendeChange={setDisableLaufende}
+        />
       ) : !inGame ? (
         <HomeScreen
           language={language}

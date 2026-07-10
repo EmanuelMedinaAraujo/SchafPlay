@@ -43,6 +43,8 @@ export interface EngineOptions {
   controllers?: Partial<Record<SeatId, PlayerController>>;
   /** Enables devSkipTrick/devSkipRound (the app wires this to its dev build flag). */
   devToolsEnabled?: boolean;
+  /** House rule (#31): when true, Laufende (matadors) pay nothing. Default false. */
+  disableLaufende?: boolean;
 }
 
 /** Dev-skip fallback for seats without a controller of their own. */
@@ -60,12 +62,14 @@ export class GameEngine {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private controllers: Partial<Record<SeatId, PlayerController>>;
   private devToolsEnabled: boolean;
+  private disableLaufende: boolean;
 
   constructor(hostName: string, guestName = "Gast", totalRounds = 8, options: EngineOptions = {}) {
     this.aiDelayMs = options.aiDelayMs ?? 900;
     this.trickHoldMs = options.trickHoldMs ?? 1600;
     this.shuffleFn = options.shuffleFn ?? shuffleDeck;
     this.devToolsEnabled = options.devToolsEnabled ?? false;
+    this.disableLaufende = options.disableLaufende ?? false;
 
     const players: Player[] = [
       makePlayer("p1", hostName || "Host", true, 0),
@@ -433,7 +437,9 @@ export class GameEngine {
   }
 
   private finishRound(state: GameState): void {
-    const result = calculateRoundResult(state.players, state.currentContract!, state.tricks, this.initialHands);
+    const result = calculateRoundResult(state.players, state.currentContract!, state.tricks, this.initialHands, {
+      disableLaufende: this.disableLaufende,
+    });
     state.lastResult = result;
     Object.entries(result.scoreChanges).forEach(([id, change]) => {
       state.scores[id] = (state.scores[id] ?? 0) + change;
