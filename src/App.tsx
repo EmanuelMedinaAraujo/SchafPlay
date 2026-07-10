@@ -1,15 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import GameBoard from "./components/GameBoard";
 import HomeScreen from "./components/HomeScreen";
 import PairingPanel from "./components/PairingPanel";
 import RulesModal from "./components/RulesModal";
 import SettingsScreen from "./components/SettingsScreen";
 import StatsScreen from "./components/StatsScreen";
-import { GameEngine } from "./engine/GameEngine";
-import { ListRecorder } from "./lib/ListRecorder";
-import { Transport, TransportState } from "./net/Transport";
-import { createMessage } from "./net/protocol";
-import { GameState, Language, P2PMessageType, PlayerAction, PlayerActionType } from "./types";
+import { useGameSession } from "./session/useGameSession";
+import { Language, PlayerActionType } from "./types";
 import { translations } from "./lib/i18n";
 import { BookOpenIcon, BotIcon, ChartColumnIcon, HomeIcon, SettingsIcon } from "./components/icons";
 
@@ -32,23 +29,23 @@ export default function App() {
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem(LANG_KEY) as Language) || "de");
   const [playerName, setPlayerName] = useState(() => localStorage.getItem(NAME_KEY) || "Bazi");
   const [screen, setScreen] = useState<"home" | "game" | "stats" | "settings">("home");
-  const [role, setRole] = useState<"host" | "guest" | "solo" | null>(null);
-  const [gameState, setGameState] = useState<GameState | null>(null);
-  const [connectionState, setConnectionState] = useState<TransportState | "idle">("idle");
   const [rulesOpen, setRulesOpen] = useState(false);
   const [totalRounds, setTotalRounds] = useState<number>(8);
 
-  const engineRef = useRef<GameEngine | null>(null);
-  const recorderRef = useRef<ListRecorder | null>(null);
-  const peerRef = useRef<Transport | null>(null);
-  const nameRef = useRef(playerName);
-  nameRef.current = playerName;
-  const totalRoundsRef = useRef(totalRounds);
-  totalRoundsRef.current = totalRounds;
+  const session = useGameSession({
+    getPlayerName: () => playerName,
+    getTotalRounds: () => totalRounds,
+    onEnterGame: () => setScreen("game"),
+  });
+  const { gameState, connectionState, role, myPlayerId } = session;
 
   useEffect(() => {
     localStorage.setItem(NAME_KEY, playerName);
   }, [playerName]);
+
+  useEffect(() => {
+    localStorage.setItem(LANG_KEY, language);
+  }, [language]);
 
   // Landscape-only UI: on portrait screens the whole app is rotated 90°
   // via CSS (html.rotated). html.compact / html.narrow drive the phone
@@ -76,10 +73,6 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem(LANG_KEY, language);
-  }, [language]);
-
   // In-game the whole UI fits the viewport; page scrolling is disabled and
   // only the game screen itself may scroll if it genuinely doesn't fit.
   useEffect(() => {
@@ -89,158 +82,13 @@ export default function App() {
   }, [screen]);
 
   const t = translations[language];
-  const myPlayerId = role === "guest" ? "p3" : "p1";
-
-  function sendGuestState() {
-    const engine = engineRef.current;
-    const peer = peerRef.current;
-    if (!engine || !peer) return;
-    try {
-      peer.send(createMessage(P2PMessageType.GAME_STATE_UPDATE, { state: engine.getRedactedState("p3") }));
-    } catch {
-      // Channel not open (yet / anymore); the next state change will retry.
-    }
-  }
-
-  /**
-   * Host side. The engine is created once and survives reconnects —
-   * attaching a fresh PeerConnection resumes the same game.
-   */
-  function attachHostPeer(peer: Transport) {
-    peerRef.current?.disconnect();
-    peerRef.current = peer;
-    setRole("host");
-
-    peer.onConnectionStateChange((state) => {
-      setConnectionState(state);
-      if (state === "connected" && !engineRef.current) {
-        // Constructed lazily at the moment the connection actually succeeds,
-        // not at mount time, so it picks up whatever round count the user
-        // last selected before the game actually starts.
-        const engine = new GameEngine(nameRef.current, "Gast", totalRoundsRef.current, { devToolsEnabled: import.meta.env.DEV });
-        engineRef.current = engine;
-        recorderRef.current = new ListRecorder("multiplayer", "host", "p1");
-        engine.onStateChange(() => {
-          const redacted = engine.getRedactedState("p1");
-          recorderRef.current?.observe(redacted);
-          setGameState(redacted);
-          sendGuestState();
-        });
-      }
-      const engine = engineRef.current;
-      if (!engine) return;
-      if (state === "connected") {
-        setScreen("game");
-        if (engine.getState().status === "LOBBY") {
-          engine.dealCards();
-        } else {
-          engine.resume();
-          sendGuestState();
-        }
-      }
-      if (state === "disconnected" || state === "failed") {
-        engine.pause();
-      }
-    });
-
-    peer.onMessage((message) => {
-      const engine = engineRef.current;
-      if (!engine) return;
-      if (message.type === P2PMessageType.PLAYER_ACTION) {
-        const action = (message.payload as { action: PlayerAction }).action;
-        // The guest is always seat 3 — never trust the id on the wire.
-        engine.processAction({ ...action, playerId: "p3" });
-      }
-      if (message.type === P2PMessageType.CONNECTION_ACK) {
-        const name = (message.payload as { name?: string })?.name;
-        if (name) engine.setGuestName(name);
-      }
-    });
-  }
-
-  /**
-   * Solo: 100% offline against three AI seats. Any peer created on the home
-   * screen (hosting registers with the broker eagerly) is torn down — no
-   * WebRTC connection or broker socket stays open.
-   */
-  function startSoloGame() {
-    peerRef.current?.disconnect();
-    peerRef.current = null;
-    engineRef.current?.destroy();
-
-    const engine = new GameEngine(nameRef.current, "Zenzi (KI)", totalRoundsRef.current, {
-      soloMode: true,
-      devToolsEnabled: import.meta.env.DEV,
-    });
-    engineRef.current = engine;
-    recorderRef.current = new ListRecorder("solo", "solo", "p1");
-    engine.onStateChange((updatedState) => {
-      recorderRef.current?.observe(updatedState);
-      setGameState(updatedState);
-    });
-
-    setRole("solo");
-    setConnectionState("idle");
-    setScreen("game");
-    engine.dealCards();
-  }
-
-  /** Guest side: thin client rendering the host's redacted state. */
-  function attachGuestPeer(peer: Transport) {
-    peerRef.current?.disconnect();
-    peerRef.current = peer;
-    setRole("guest");
-    // Guarded: re-pairing after a drop keeps the in-progress recording,
-    // while a fresh join after quitGame() starts a new one.
-    if (!recorderRef.current) recorderRef.current = new ListRecorder("multiplayer", "guest", "p3");
-
-    peer.onConnectionStateChange((state) => {
-      setConnectionState(state);
-      if (state === "connected") {
-        setScreen("game");
-        try {
-          peer.send(createMessage(P2PMessageType.CONNECTION_ACK, { name: nameRef.current }));
-        } catch {
-          // Ignore; host falls back to a default name.
-        }
-      }
-    });
-
-    peer.onMessage((message) => {
-      if (message.type === P2PMessageType.GAME_STATE_UPDATE) {
-        const state = (message.payload as { state: GameState }).state;
-        recorderRef.current?.observe(state);
-        setGameState(state);
-      }
-    });
-  }
-
-  function handleAction(action: PlayerAction) {
-    if (role === "host" || role === "solo") {
-      engineRef.current?.processAction(action);
-      return;
-    }
-    try {
-      peerRef.current?.send(createMessage(P2PMessageType.PLAYER_ACTION, { action }));
-    } catch {
-      // Disconnected; the reconnect overlay is already showing.
-    }
-  }
 
   function handleReady() {
-    handleAction({ type: PlayerActionType.READY_NEXT, playerId: myPlayerId });
+    session.dispatch({ type: PlayerActionType.READY_NEXT, playerId: myPlayerId });
   }
 
   function quitGame() {
-    peerRef.current?.disconnect();
-    peerRef.current = null;
-    engineRef.current?.destroy();
-    engineRef.current = null;
-    // An aborted list leaves no trace in the statistics.
-    recorderRef.current = null;
-    setGameState(null);
-    setRole(null);
-    setConnectionState("idle");
+    session.quit();
     setScreen("home");
   }
 
@@ -302,22 +150,22 @@ export default function App() {
           playerName={playerName}
           onPlayerNameChange={setPlayerName}
           connectionState={connectionState}
-          onHostPeer={attachHostPeer}
-          onGuestPeer={attachGuestPeer}
+          onHostPeer={session.attachHostPeer}
+          onGuestPeer={session.attachGuestPeer}
           totalRounds={totalRounds}
           onTotalRoundsChange={setTotalRounds}
-          onSoloStart={startSoloGame}
+          onSoloStart={session.startSolo}
         />
       ) : (
         <GameBoard
           state={gameState}
           language={language}
           myPlayerId={myPlayerId}
-          onAction={handleAction}
+          onAction={session.dispatch}
           onReady={handleReady}
           onQuit={quitGame}
-          onDevSkip={role === "host" || role === "solo" ? () => engineRef.current?.devSkipTrick() : undefined}
-          onDevSkipRound={role === "host" || role === "solo" ? () => engineRef.current?.devSkipRound() : undefined}
+          onDevSkip={role === "host" || role === "solo" ? session.devSkipTrick : undefined}
+          onDevSkipRound={role === "host" || role === "solo" ? session.devSkipRound : undefined}
         />
       )}
 
@@ -331,7 +179,7 @@ export default function App() {
               language={language}
               mode={role === "guest" ? "join" : "host"}
               connectionState={connectionState}
-              onPeer={role === "guest" ? attachGuestPeer : attachHostPeer}
+              onPeer={role === "guest" ? session.attachGuestPeer : session.attachHostPeer}
             />
             <button className="secondary-button" onClick={quitGame} type="button">
               {t.quit}
