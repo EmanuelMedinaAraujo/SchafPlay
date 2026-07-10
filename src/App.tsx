@@ -7,7 +7,7 @@ import SettingsScreen from "./components/SettingsScreen";
 import StatsScreen from "./components/StatsScreen";
 import { GameEngine } from "./engine/GameEngine";
 import { ListRecorder } from "./lib/ListRecorder";
-import { PeerConnection, PeerConnectionState } from "./net/PeerConnection";
+import { Transport, TransportState } from "./net/Transport";
 import { createMessage } from "./net/protocol";
 import { GameState, Language, P2PMessageType, PlayerAction, PlayerActionType } from "./types";
 import { translations } from "./lib/i18n";
@@ -34,13 +34,13 @@ export default function App() {
   const [screen, setScreen] = useState<"home" | "game" | "stats" | "settings">("home");
   const [role, setRole] = useState<"host" | "guest" | "solo" | null>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
-  const [connectionState, setConnectionState] = useState<PeerConnectionState | "idle">("idle");
+  const [connectionState, setConnectionState] = useState<TransportState | "idle">("idle");
   const [rulesOpen, setRulesOpen] = useState(false);
   const [totalRounds, setTotalRounds] = useState<number>(8);
 
   const engineRef = useRef<GameEngine | null>(null);
   const recorderRef = useRef<ListRecorder | null>(null);
-  const peerRef = useRef<PeerConnection | null>(null);
+  const peerRef = useRef<Transport | null>(null);
   const nameRef = useRef(playerName);
   nameRef.current = playerName;
   const totalRoundsRef = useRef(totalRounds);
@@ -106,7 +106,7 @@ export default function App() {
    * Host side. The engine is created once and survives reconnects —
    * attaching a fresh PeerConnection resumes the same game.
    */
-  function attachHostPeer(peer: PeerConnection) {
+  function attachHostPeer(peer: Transport) {
     peerRef.current?.disconnect();
     peerRef.current = peer;
     setRole("host");
@@ -186,7 +186,7 @@ export default function App() {
   }
 
   /** Guest side: thin client rendering the host's redacted state. */
-  function attachGuestPeer(peer: PeerConnection) {
+  function attachGuestPeer(peer: Transport) {
     peerRef.current?.disconnect();
     peerRef.current = peer;
     setRole("guest");

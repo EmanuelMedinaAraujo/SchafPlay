@@ -1,45 +1,7 @@
-import { P2PMessage, P2PMessageType } from "../types";
-
-export type PeerConnectionState = "connecting" | "connected" | "disconnected" | "failed";
-
-/**
- * Compress an SDP + ICE-candidates bundle into a short-ish URL-safe string.
- * JSON → deflate → base64url. The browser's CompressionStream API handles
- * the heavy lifting; no extra dependency needed.
- */
-async function compressSDP(obj: object): Promise<string> {
-  const json = JSON.stringify(obj);
-  const input = new Blob([json]);
-  const cs = new CompressionStream("deflate");
-  const compressed = input.stream().pipeThrough(cs);
-  const buf = await new Response(compressed).arrayBuffer();
-  // base64url (no padding) so the blob is safe to paste anywhere.
-  const bytes = new Uint8Array(buf);
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-
-async function decompressSDP<T>(encoded: string): Promise<T> {
-  // Codes travel through messengers/clipboards that like to inject line
-  // breaks, spaces or invisible characters — strip everything that can't
-  // be part of a base64url string before decoding.
-  const cleaned = encoded.replace(/[^A-Za-z0-9_-]/g, "");
-  // Undo base64url → standard base64
-  let b64 = cleaned.replace(/-/g, "+").replace(/_/g, "/");
-  while (b64.length % 4) b64 += "=";
-  const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-  const input = new Blob([raw]);
-  const ds = new DecompressionStream("deflate");
-  const decompressed = input.stream().pipeThrough(ds);
-  const text = await new Response(decompressed).text();
-  return JSON.parse(text) as T;
-}
+import { P2PMessage, P2PMessageType } from "./protocol";
+import { GuestSignaling, HostSignaling } from "./Signaling";
+import { Transport, TransportState } from "./Transport";
+import { compressSDP, decompressSDP } from "./sdpCodec";
 
 interface SDPBundle {
   sdp: string;
@@ -48,11 +10,19 @@ interface SDPBundle {
 }
 
 /**
- * One game link. Signaling runs via copy-paste of compressed SDP blobs
- * (no broker, no STUN, LAN-only). All game traffic afterwards is a
- * direct P2P WebRTC data channel (DTLS-encrypted by the browser).
+ * Factory used by the pairing UI — the one line to touch when a
+ * settings-driven transport choice arrives.
  */
-export class PeerConnection {
+export function createWebRTCPeer(): WebRTCPeer {
+  return new WebRTCPeer();
+}
+
+/**
+ * One game link over serverless WebRTC. Signaling runs via copy-paste of
+ * compressed SDP blobs (no broker, no STUN, LAN-only). All game traffic
+ * afterwards is a direct P2P data channel (DTLS-encrypted by the browser).
+ */
+export class WebRTCPeer implements Transport, HostSignaling, GuestSignaling {
   private pc: RTCPeerConnection | null = null;
   private dc: RTCDataChannel | null = null;
   private isHost = false;
@@ -60,7 +30,7 @@ export class PeerConnection {
   private heartbeatIntervalId: ReturnType<typeof setInterval> | null = null;
   private heartbeatTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private messageHandlers = new Set<(message: P2PMessage) => void>();
-  private stateHandlers = new Set<(state: PeerConnectionState) => void>();
+  private stateHandlers = new Set<(state: TransportState) => void>();
 
   /**
    * Host side: create an offer and collect ICE candidates.
@@ -270,7 +240,7 @@ export class PeerConnection {
     this.heartbeatTimeoutId = null;
   }
 
-  private emitState(state: PeerConnectionState) {
+  private emitState(state: TransportState) {
     this.stateHandlers.forEach((handler) => handler(state));
   }
 
@@ -288,7 +258,7 @@ export class PeerConnection {
     return () => this.messageHandlers.delete(callback);
   }
 
-  onConnectionStateChange(callback: (state: PeerConnectionState) => void): () => void {
+  onConnectionStateChange(callback: (state: TransportState) => void): () => void {
     this.stateHandlers.add(callback);
     return () => this.stateHandlers.delete(callback);
   }

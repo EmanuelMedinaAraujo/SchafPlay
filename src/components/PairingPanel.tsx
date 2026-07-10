@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { PeerConnection, PeerConnectionState } from "../net/PeerConnection";
+import { GuestSignaling, HostSignaling } from "../net/Signaling";
+import { Transport, TransportState } from "../net/Transport";
+import { createWebRTCPeer } from "../net/WebRTCPeer";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
 import { CopyIcon, CheckIcon, LoaderIcon, LinkIcon, ShareIcon } from "./icons";
@@ -7,9 +9,9 @@ import { CopyIcon, CheckIcon, LoaderIcon, LinkIcon, ShareIcon } from "./icons";
 interface PairingPanelProps {
   language: Language;
   mode: "host" | "join";
-  connectionState: PeerConnectionState | "idle";
-  /** Called with every freshly created PeerConnection so the app can attach handlers. */
-  onPeer: (peer: PeerConnection) => void;
+  connectionState: TransportState | "idle";
+  /** Called with every freshly created transport so the app can attach handlers. */
+  onPeer: (peer: Transport) => void;
 }
 
 /**
@@ -34,7 +36,7 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
-  const peerRef = useRef<PeerConnection | null>(null);
+  const peerRef = useRef<(Transport & HostSignaling & GuestSignaling) | null>(null);
   const onPeerRef = useRef(onPeer);
   onPeerRef.current = onPeer;
 
@@ -48,7 +50,7 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
   }, []);
 
   async function createHostInvite() {
-    const peer = new PeerConnection();
+    const peer = createWebRTCPeer();
     peerRef.current = peer;
     onPeerRef.current(peer);
     try {
@@ -115,7 +117,7 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
     if (!pastedCode.trim()) return;
     setBusy(true);
     setError("");
-    const peer = new PeerConnection();
+    const peer = createWebRTCPeer();
     peerRef.current = peer;
     onPeer(peer);
     try {
