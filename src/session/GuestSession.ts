@@ -1,5 +1,5 @@
 import { GameState, PlayerAction, SeatId } from "../game/types";
-import { ListRecorder } from "../lib/ListRecorder";
+import { ListRecorder } from "../persistence";
 import { createMessage, P2PMessageType } from "../net/protocol";
 import { Transport } from "../net/Transport";
 import { GameSession, SessionDeps } from "./GameSession";

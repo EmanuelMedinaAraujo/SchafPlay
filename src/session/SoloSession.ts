@@ -1,6 +1,6 @@
 import { GameEngine } from "../engine/GameEngine";
 import { PlayerAction, SeatId } from "../game/types";
-import { ListRecorder } from "../lib/ListRecorder";
+import { ListRecorder } from "../persistence";
 import { Transport } from "../net/Transport";
 import { GameSession, SessionDeps } from "./GameSession";
 
