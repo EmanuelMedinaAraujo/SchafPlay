@@ -15,11 +15,13 @@ interface HomeScreenProps {
   totalRounds: number;
   onTotalRoundsChange: (rounds: number) => void;
   onSoloStart: () => void;
+  /** Invite code from a deep link (#invite=…); when set, opens the join flow. */
+  initialInvite?: string;
 }
 
 export default function HomeScreen(props: HomeScreenProps) {
   const t = translations[props.language];
-  const [mode, setMode] = useState<"host" | "join" | "solo">("host");
+  const [mode, setMode] = useState<"host" | "join" | "solo">(props.initialInvite ? "join" : "host");
 
   return (
     <main className="home-screen">
@@ -115,6 +117,7 @@ export default function HomeScreen(props: HomeScreenProps) {
               mode={mode}
               connectionState={props.connectionState}
               onPeer={mode === "host" ? props.onHostPeer : props.onGuestPeer}
+              initialInvite={mode === "join" ? props.initialInvite : undefined}
             />
           )}
         </div>

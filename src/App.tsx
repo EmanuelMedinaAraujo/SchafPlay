@@ -13,6 +13,20 @@ import { BookOpenIcon, BotIcon, ChartColumnIcon, HomeIcon, SettingsIcon } from "
 const NAME_KEY = "schafplay.name";
 const LANG_KEY = "schafplay.language";
 
+/**
+ * Deep-link join (#7, Option A): read an invite code from the URL fragment
+ * (`…#invite=<code>`). Returns "" when absent. The code is an opaque string
+ * that was percent-encoded when the host copied the link.
+ */
+function readInviteFromHash(): string {
+  try {
+    const match = window.location.hash.match(/[#&]invite=([^&]*)/);
+    return match ? decodeURIComponent(match[1]) : "";
+  } catch {
+    return "";
+  }
+}
+
 /** Inline SVG icons — replaces lucide-react */
 const WifiIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -31,6 +45,10 @@ export default function App() {
   const [screen, setScreen] = useState<"home" | "game" | "stats" | "settings">("home");
   const [rulesOpen, setRulesOpen] = useState(false);
   const [totalRounds, setTotalRounds] = useState<number>(8);
+  // Captured once at startup, before we scrub the fragment below. Reading the
+  // hash is synchronous and independent of the service-worker update check in
+  // main.tsx, so nothing can race away the invite before we see it.
+  const [initialInvite] = useState(readInviteFromHash);
 
   const session = useGameSession({
     getPlayerName: () => playerName,
@@ -38,6 +56,17 @@ export default function App() {
     onEnterGame: () => setScreen("game"),
   });
   const { gameState, connectionState, role, myPlayerId } = session;
+
+  // Strip the `#invite=…` fragment once we've captured it so a reload doesn't
+  // re-trigger a stale invite. Uses replaceState (no navigation / history entry).
+  useEffect(() => {
+    if (!initialInvite) return;
+    try {
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+    } catch {
+      // Ignore — a lingering fragment is harmless (it's only read on startup).
+    }
+  }, [initialInvite]);
 
   useEffect(() => {
     localStorage.setItem(NAME_KEY, playerName);
@@ -155,6 +184,7 @@ export default function App() {
           totalRounds={totalRounds}
           onTotalRoundsChange={setTotalRounds}
           onSoloStart={session.startSolo}
+          initialInvite={initialInvite}
         />
       ) : (
         <GameBoard
