@@ -1,5 +1,6 @@
 import { Card, Contract, GameType, Suit } from "../types";
-import { getSuitEmoji, isTrump } from "../utils/gameLogic";
+import { isTrump } from "../game/rules";
+import { getSuitEmoji } from "../lib/cardDisplay";
 
 interface CardFaceProps {
   card: Card;

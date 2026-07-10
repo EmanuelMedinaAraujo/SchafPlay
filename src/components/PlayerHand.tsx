@@ -1,6 +1,6 @@
 import { PointerEvent, useEffect, useRef, useState } from "react";
 import { Card, Contract, GameType, Language, Trick } from "../types";
-import { getLegalCards, sortCardsForHand } from "../utils/gameLogic";
+import { getLegalCards, sortCardsForHand } from "../game/rules";
 import { translations } from "../lib/i18n";
 import CardFace from "./CardFace";
 

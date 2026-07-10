@@ -1,11 +1,9 @@
 import {
   BidDeclaration,
-  BiddingState,
   Card,
   CardValue,
   Contract,
   GameDeclaration,
-  GamePriority,
   GameState,
   GameType,
   LogEntry,
@@ -14,20 +12,19 @@ import {
   PlayerActionType,
   SeatId,
   Suit,
-} from "../types";
+} from "../game/types";
+import { createDeck, shuffleDeck } from "../game/deck";
 import {
-  calculateRoundResult,
   canOverrideBid,
   countPoints,
-  createDeck,
   determineTrickWinner,
-  getAIBid,
-  getAICardPlay,
-  getAIWillBid,
-  getGamePriority,
+  getCallableSuits,
   getLegalCards,
-  shuffleDeck,
-} from "../utils/gameLogic";
+  isRetreatAllowed,
+  isValidSauspielCall,
+} from "../game/rules";
+import { calculateRoundResult } from "../game/scoring";
+import { getAIBid, getAICardPlay, getAIWillBid } from "../players/aiHeuristics";
 
 type Listener = (state: GameState) => void;
 
@@ -192,7 +189,7 @@ export class GameEngine {
     // "Doch passen" (#24): a player who said "I'd play" may only bow out once a
     // Wenz or Solo already stands. You cannot retreat out of a Sauspiel — you
     // must top it with a higher game.
-    if (!declaration && !retreatAllowed(bidding)) return;
+    if (!declaration && !isRetreatAllowed(bidding.highBid?.declaration)) return;
     // Declarations must strictly outrank the current high bid.
     if (declaration && bidding.highBid?.declaration && !canOverrideBid(bidding.highBid.declaration, declaration)) return;
     // Sauspiel Tout does not exist.
@@ -200,11 +197,7 @@ export class GameEngine {
     // Sauspiel: caller must hold a plain card of the called suit but not its Ace.
     if (declaration?.type === GameType.SAUSPIEL) {
       const suit = declaration.calledSuit;
-      if (!suit || suit === Suit.HEARTS) return;
-      const hand = this.activePlayer().cards;
-      const hasPlainCard = hand.some((card) => card.suit === suit && card.value !== CardValue.OBER && card.value !== CardValue.UNTER);
-      const hasAce = hand.some((card) => card.suit === suit && card.value === CardValue.ACE);
-      if (!hasPlainCard || hasAce) return;
+      if (!suit || !isValidSauspielCall(this.activePlayer().cards, suit)) return;
     }
 
     this.mutate((state) => {
@@ -344,7 +337,7 @@ export class GameEngine {
       if (bidding.phase === "WILL_PHASE") {
         this.processBidWill(player.id, getAIWillBid(player));
       } else {
-        this.processBidDeclare(player.id, getAIBid(player, bidding.highBid?.declaration ?? null, retreatAllowed(bidding)));
+        this.processBidDeclare(player.id, getAIBid(player, bidding.highBid?.declaration ?? null, isRetreatAllowed(bidding.highBid?.declaration)));
       }
     } else if (this.state.status === "PLAYING") {
       const card = getAICardPlay(player, this.state.currentTrick, this.state.currentContract, player.difficulty);
@@ -523,16 +516,13 @@ export class GameEngine {
               // the suit and only stands when nothing higher was bid. Otherwise:
               // top a standing Sauspiel with a Wenz, or retreat under a Wenz/Solo.
               const high = this.state.biddingState!.highBid?.declaration ?? null;
-              const calledSuit = high ? undefined : [Suit.ACORNS, Suit.LEAVES, Suit.BELLS].find(s =>
-                !active.cards.some(c => c.suit === s && c.value === CardValue.ACE) &&
-                active.cards.some(c => c.suit === s && c.value !== CardValue.OBER && c.value !== CardValue.UNTER)
-              );
+              const calledSuit = high ? undefined : getCallableSuits(active.cards)[0];
               if (calledSuit) this.processBidDeclare(active.id, { type: GameType.SAUSPIEL, calledSuit });
               else if (canOverrideBid(high, { type: GameType.WENZ })) this.processBidDeclare(active.id, { type: GameType.WENZ });
               else this.processBidDeclare(active.id, null);
             } else {
               const bidding = this.state.biddingState!;
-              const declaration = getAIBid(active, bidding.highBid?.declaration ?? null, retreatAllowed(bidding));
+              const declaration = getAIBid(active, bidding.highBid?.declaration ?? null, isRetreatAllowed(bidding.highBid?.declaration));
               this.processBidDeclare(active.id, declaration);
             }
           }
@@ -599,16 +589,6 @@ export class GameEngine {
     const snapshot = this.getState();
     this.listeners.forEach((listener) => listener(snapshot));
   }
-}
-
-/**
- * "Doch passen" (#24): retreating from the bidding is only permitted once a
- * Wenz or Solo already stands. A standing Sauspiel (or no bid yet) does not let
- * an interested player bow out — they must top it with a higher game.
- */
-function retreatAllowed(bidding: BiddingState): boolean {
-  const high = bidding.highBid?.declaration;
-  return !!high && getGamePriority(high.type, Boolean(high.isTout)) >= GamePriority.WENZ;
 }
 
 function makePlayer(id: SeatId, name: string, isHuman: boolean, seatIndex: number): Player {
