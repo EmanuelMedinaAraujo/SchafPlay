@@ -1326,9 +1326,24 @@ button.playing-card:not(:disabled):hover {
   color: var(--muted);
 }
 
+.round-over-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-top: 14px;
+}
+
+.round-over-status {
+  margin: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .round-over .primary-button {
   width: 100%;
-  margin-top: 16px;
+  margin-top: 10px;
 }
 
 /* ---------- Reconnect overlay ---------- */
@@ -1773,6 +1788,14 @@ html.compact .round-over h3 {
 html.compact .score-grid div {
   padding: 7px 9px;
   gap: 2px;
+}
+
+html.compact .round-over-footer {
+  margin-top: 10px;
+}
+
+html.compact .round-over .primary-button {
+  margin-top: 8px;
 }
 
 /* Bigger than before on purpose: hand and trick cards must stay readable. */
