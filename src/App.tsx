@@ -117,7 +117,7 @@ export default function App() {
         // Constructed lazily at the moment the connection actually succeeds,
         // not at mount time, so it picks up whatever round count the user
         // last selected before the game actually starts.
-        const engine = new GameEngine(nameRef.current, "Gast", totalRoundsRef.current);
+        const engine = new GameEngine(nameRef.current, "Gast", totalRoundsRef.current, { devToolsEnabled: import.meta.env.DEV });
         engineRef.current = engine;
         recorderRef.current = new ListRecorder("multiplayer", "host", "p1");
         engine.onStateChange(() => {
@@ -168,7 +168,10 @@ export default function App() {
     peerRef.current = null;
     engineRef.current?.destroy();
 
-    const engine = new GameEngine(nameRef.current, "Zenzi (KI)", totalRoundsRef.current, { soloMode: true });
+    const engine = new GameEngine(nameRef.current, "Zenzi (KI)", totalRoundsRef.current, {
+      soloMode: true,
+      devToolsEnabled: import.meta.env.DEV,
+    });
     engineRef.current = engine;
     recorderRef.current = new ListRecorder("solo", "solo", "p1");
     engine.onStateChange((updatedState) => {
