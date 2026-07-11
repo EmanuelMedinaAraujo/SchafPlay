@@ -104,6 +104,10 @@ export const translations = {
     // Settings
     settings: "Einstellungen",
     settingsLanguage: "Sprache",
+    settingsLaufende: "Laufende",
+    settingsLaufendeHint: "Laufende (Matadore) geben Zusatzpunkte für eine ununterbrochene Reihe der höchsten Trümpfe. Hier kannst du sie für die Wertung abschalten.",
+    settingsLaufendeCount: "Zählen",
+    settingsLaufendeOff: "Aus",
     settingsUpdates: "App-Aktualisierung",
     settingsUpdatesHint: "Die App läuft offline und sucht höchstens einmal täglich nach einer neuen Version. Hier kannst du sofort danach suchen.",
     checkForUpdate: "Jetzt nach Update suchen",
@@ -224,6 +228,10 @@ export const translations = {
     // Settings
     settings: "Settings",
     settingsLanguage: "Language",
+    settingsLaufende: "Laufende",
+    settingsLaufendeHint: "Laufende (matadors) award bonus points for an unbroken run of the highest trumps. You can turn them off for scoring here.",
+    settingsLaufendeCount: "Count",
+    settingsLaufendeOff: "Off",
     settingsUpdates: "App update",
     settingsUpdatesHint: "The app runs offline and checks for a new version at most once a day. You can check right now here.",
     checkForUpdate: "Check for update now",

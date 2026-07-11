@@ -29,11 +29,21 @@ export const TARIFF = {
   maxLaufendeWenz: 4,
 } as const;
 
+/**
+ * House-rule toggles that affect round scoring. Passed in from the engine so
+ * scoring stays pure — no globals.
+ */
+export interface ScoringOptions {
+  /** When true, Laufende (matadors) pay nothing — laufende is forced to 0. Default false. */
+  disableLaufende?: boolean;
+}
+
 export function calculateRoundResult(
   players: Player[],
   contract: Contract,
   tricks: Trick[],
   initialHands: Record<string, Card[]>,
+  options: ScoringOptions = {},
 ): RoundResult {
   const declarerTeam = [contract.declarerId, contract.partnerId].filter(Boolean) as string[];
   const defenderTeam: string[] = players.map((player) => player.id).filter((id) => !declarerTeam.includes(id));
@@ -47,7 +57,9 @@ export function calculateRoundResult(
     ? tricks.every((trick) => declarerTeam.includes(trick.winnerId ?? ""))
     : tricks.every((trick) => defenderTeam.includes(trick.winnerId ?? ""));
   const teamCards = declarerTeam.flatMap((id) => initialHands[id] ?? []);
-  const laufende = countLaufende(teamCards, contract.type);
+  // House rule (#31): when Laufende are disabled they pay nothing, so the run
+  // is never counted and no bonus flows into the tariff.
+  const laufende = options.disableLaufende ? 0 : countLaufende(teamCards, contract.type);
   const scoreChanges = scoreTournament(players, contract, declarerTeam, declarerWon, isSchneider, isSchwarz, laufende, initialHands);
   return {
     contract,
