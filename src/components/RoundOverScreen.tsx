@@ -65,16 +65,18 @@ export default function RoundOverScreen({ state, language, myPlayerId, onReady }
           })}
         </div>
 
-        <button className="secondary-button" onClick={() => setCardsOpen(true)} type="button">
-          {t.showCards}
-        </button>
+        <div className="round-over-footer">
+          <button className="secondary-button" onClick={() => setCardsOpen(true)} type="button">
+            {t.showCards}
+          </button>
+          <p className="muted round-over-status">
+            {otherName}: {otherReady ? `✓ ${t.isReady}` : `… ${t.notReady}`}
+          </p>
+        </div>
         <button className="primary-button" onClick={onReady} disabled={iAmReady} type="button">
           {iAmReady ? <CheckIcon size={18} /> : null}
           {iAmReady ? t.readyWaiting : isLastRound ? t.toFinalStandings : t.ready}
         </button>
-        <p className="muted">
-          {otherName}: {otherReady ? `✓ ${t.isReady}` : `… ${t.notReady}`}
-        </p>
       </section>
     </div>
     {cardsOpen && (
