@@ -1,9 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Transport, TransportState } from "../net/Transport";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
 import PairingPanel from "./PairingPanel";
 import { UsersIcon, RadioIcon, BotIcon, PlayIcon } from "./icons";
+
+type Mode = "host" | "join" | "solo";
+
+/** localStorage key for the last-used game mode (#44), preselected next open. */
+const LAST_MODE_KEY = "schafplay.lastMode";
+
+/** Tolerate missing/unknown stored values (older versions) — fall back to host. */
+function parseMode(raw: string | null): Mode {
+  return raw === "join" || raw === "solo" || raw === "host" ? raw : "host";
+}
 
 interface HomeScreenProps {
   language: Language;
@@ -21,7 +31,26 @@ interface HomeScreenProps {
 
 export default function HomeScreen(props: HomeScreenProps) {
   const t = translations[props.language];
-  const [mode, setMode] = useState<"host" | "join" | "solo">(props.initialInvite ? "join" : "host");
+  // Preselect the last-used mode (#44). Read synchronously so the correct tab
+  // is active on first paint (no flash). An invite deep-link always wins — a
+  // shared link should land on join regardless of the stored preference.
+  const [mode, setMode] = useState<Mode>(() => {
+    if (props.initialInvite) return "join";
+    try {
+      return parseMode(localStorage.getItem(LAST_MODE_KEY));
+    } catch {
+      return "host";
+    }
+  });
+
+  // Persist every mode change so the next open reopens on the same tab.
+  useEffect(() => {
+    try {
+      localStorage.setItem(LAST_MODE_KEY, mode);
+    } catch {
+      // Storage unavailable (private mode, quota) — selection just won't survive.
+    }
+  }, [mode]);
 
   return (
     <main className="home-screen">
