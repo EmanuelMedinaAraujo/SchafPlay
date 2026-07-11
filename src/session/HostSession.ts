@@ -71,6 +71,7 @@ export class HostSession implements GameSession {
   private createEngine(): void {
     const engine = new GameEngine(this.deps.getPlayerName(), "Gast", this.deps.getTotalRounds(), {
       devToolsEnabled: import.meta.env.DEV,
+      disableLaufende: this.deps.getDisableLaufende(),
     });
     this.engine = engine;
     this.recorder = new ListRecorder("multiplayer", "host", "p1");
