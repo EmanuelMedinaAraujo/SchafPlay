@@ -38,6 +38,16 @@ npm run build    # Production build (dist/)
 
 The output in `dist/` is a purely static site — deployable to any static host (GitHub Pages, Netlify, Cloudflare Pages, …). Installable as a PWA; both devices need to be on the same local network to establish the direct P2P WebRTC connection.
 
+## Testing
+
+The project has a Playwright E2E suite (`tests/e2e/`, see [TEST_INFRA.md](TEST_INFRA.md)) covering WebRTC pairing and reconnect, bidding legality, card-play rule enforcement, scored gameplay across full rounds and lists, Sauspiel partner-reveal redaction, settings persistence and local statistics.
+
+```bash
+npm run test:e2e   # run the suite headless (starts the Vite dev server automatically)
+```
+
+It runs automatically in CI (`.github/workflows/e2e.yml`) on every pull request and on pushes to `main`. There are no unit tests — the suite above is the project's only automated testing.
+
 ## Deployment (GitHub Pages)
 
 The repo ships a workflow ([.github/workflows/deploy.yml](.github/workflows/deploy.yml)) that type-checks, builds and publishes `dist/` to GitHub Pages on every release (and via manual dispatch).
