@@ -735,6 +735,38 @@ html.in-game .table {
   font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
+  position: relative;
+  transform: translate(0, 0) scale(1);
+}
+
+/* When the contract is decided the red game chip takes centre stage: it
+   appears enlarged over the table centre (0%), holds there for ~a second
+   (6% -> 60%), then scales down and flies up to its resting toolbar spot
+   (100%). GameBoard.tsx measures the chip's home position against
+   `.trick-area` (the board centre) and writes --reveal-x/y before this class
+   is applied, so the 0% keyframe starts exactly on the felt. */
+.contract-chip.contract-chip-reveal {
+  z-index: 40;
+  animation: contract-chip-reveal 1900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes contract-chip-reveal {
+  0% {
+    transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) scale(1.9);
+    opacity: 0;
+  }
+  6% {
+    transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) scale(1.9);
+    opacity: 1;
+  }
+  60% {
+    transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) scale(1.9);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
 }
 
 /* ---------- Table & seats ---------- */
@@ -821,26 +853,33 @@ html.in-game .table {
   border: 1px solid rgba(245, 158, 11, 0.4);
 }
 
-/* Once the contract is decided, the badge appears at the table center at
-   larger size, then scales down and flies to its resting spot in the seat.
-   PlayerSeat.tsx measures the badge's home position against `.trick-area`
-   (the board center) and writes --reveal-x/y before this class is applied,
-   so the 0% keyframe starts exactly on top of the felt. */
+/* The role label (declarer/partner) pops into its spot beside the name. For
+   the declarer this is sequenced to land *after* the contract chip finishes
+   its centre-stage reveal, so it waits out the chip via animation-delay; the
+   `backwards` fill keeps the badge hidden (0% keyframe) during that delay.
+   The partner badge, revealed later when the called Ace drops, pops in with
+   no delay. */
 .role-badge.role-badge-reveal {
   z-index: 30;
-  animation: role-badge-reveal 600ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: role-badge-popin 420ms cubic-bezier(0.22, 1, 0.36, 1) 1850ms backwards;
 }
 
-@keyframes role-badge-reveal {
+.role-badge.role-badge-reveal-now {
+  z-index: 30;
+  animation: role-badge-popin 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@keyframes role-badge-popin {
   0% {
-    transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) scale(2.2);
+    transform: scale(0.4);
     opacity: 0;
   }
-  40% {
+  60% {
+    transform: scale(1.15);
     opacity: 1;
   }
   100% {
-    transform: translate(0, 0) scale(1);
+    transform: scale(1);
     opacity: 1;
   }
 }

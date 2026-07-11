@@ -13,10 +13,13 @@ interface PlayerSeatProps {
 
 type Role = "declarer" | "partner" | null;
 
-/** Fly the role badge in from the table center (bigger) down to its resting
- * spot at natural size — mirrors the FLIP technique TrickArea.tsx uses for
- * gathering/flying trick cards. Runs once, on the null -> role edge, so
- * neither re-renders nor state re-emits (pause/resume) retrigger it. */
+/** Pop the role badge into its spot beside the player's name. Runs once, on
+ * the null -> role edge, so neither re-renders nor state re-emits (pause/
+ * resume) retrigger it. The declarer badge appears at contract-decision time
+ * and is sequenced to land *after* the contract chip's centre-stage reveal
+ * (GameBoard drives that first), so it uses the delayed class. The partner
+ * badge is revealed later in the hand (when the called Ace drops), with no
+ * chip animation in flight, so it pops in immediately. */
 function useRoleBadgeReveal(role: Role) {
   const badgeRef = useRef<HTMLSpanElement>(null);
   const prevRoleRef = useRef<Role>(null);
@@ -27,22 +30,11 @@ function useRoleBadgeReveal(role: Role) {
     if (!role || prevRole) return;
 
     const badge = badgeRef.current;
-    const center = document.querySelector(".trick-area");
-    if (!badge || !center) return;
+    if (!badge) return;
 
-    const badgeRect = badge.getBoundingClientRect();
-    const centerRect = center.getBoundingClientRect();
-    let dx = centerRect.left + centerRect.width / 2 - (badgeRect.left + badgeRect.width / 2);
-    let dy = centerRect.top + centerRect.height / 2 - (badgeRect.top + badgeRect.height / 2);
-    // Forced-landscape mode rotates the page 90°, so screen-space deltas
-    // must be mapped into the rotated local coordinate space.
-    if (document.documentElement.classList.contains("rotated")) {
-      [dx, dy] = [dy, -dx];
-    }
-    badge.style.setProperty("--reveal-x", `${dx}px`);
-    badge.style.setProperty("--reveal-y", `${dy}px`);
-    badge.classList.add("role-badge-reveal");
-    const clear = () => badge.classList.remove("role-badge-reveal");
+    const cls = role === "declarer" ? "role-badge-reveal" : "role-badge-reveal-now";
+    badge.classList.add(cls);
+    const clear = () => badge.classList.remove(cls);
     badge.addEventListener("animationend", clear, { once: true });
     return () => badge.removeEventListener("animationend", clear);
   }, [role]);
