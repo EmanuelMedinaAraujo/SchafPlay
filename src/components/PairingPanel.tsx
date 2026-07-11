@@ -12,6 +12,12 @@ interface PairingPanelProps {
   connectionState: TransportState | "idle";
   /** Called with every freshly created transport so the app can attach handlers. */
   onPeer: (peer: Transport) => void;
+  /**
+   * Guest-only: an invite code delivered via a deep link (`#invite=…`). When
+   * present it pre-fills the paste field and is processed automatically on
+   * mount, exactly as if the user had pasted it and clicked "Generate reply".
+   */
+  initialInvite?: string;
 }
 
 /**
@@ -27,15 +33,16 @@ interface PairingPanelProps {
  *   2. Clicks "Generate reply" → generates reply code.
  *   3. Displays reply code for copying. Connection completes once host pastes it.
  */
-export default function PairingPanel({ language, mode, connectionState, onPeer }: PairingPanelProps) {
+export default function PairingPanel({ language, mode, connectionState, onPeer, initialInvite }: PairingPanelProps) {
   const t = translations[language];
   const [inviteCode, setInviteCode] = useState("");
   const [replyCode, setReplyCode] = useState("");
-  const [pastedCode, setPastedCode] = useState("");
+  const [pastedCode, setPastedCode] = useState(initialInvite?.trim() ?? "");
   const [busy, setBusy] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const peerRef = useRef<(Transport & HostSignaling & GuestSignaling) | null>(null);
   const onPeerRef = useRef(onPeer);
   onPeerRef.current = onPeer;
@@ -113,15 +120,16 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
     }
   }
 
-  async function guestGenerateReply() {
-    if (!pastedCode.trim()) return;
+  async function guestGenerateReply(codeArg?: string) {
+    const code = (codeArg ?? pastedCode).trim();
+    if (!code) return;
     setBusy(true);
     setError("");
     const peer = createWebRTCPeer();
     peerRef.current = peer;
     onPeer(peer);
     try {
-      const reply = await peer.join(pastedCode.trim());
+      const reply = await peer.join(code);
       setReplyCode(reply);
     } catch {
       peer.disconnect();
@@ -131,12 +139,43 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
     }
   }
 
+  // Deep-link (`#invite=…`) join: process the supplied invite code once on
+  // mount, exactly as if the user had pasted it and clicked "Generate reply".
+  // A bad/expired code surfaces the same error UI as a bad pasted code.
+  const autoSubmittedRef = useRef(false);
+  useEffect(() => {
+    if (mode !== "join" || autoSubmittedRef.current) return;
+    const code = initialInvite?.trim();
+    if (!code) return;
+    autoSubmittedRef.current = true;
+    guestGenerateReply(code);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
   function copyText(text: string) {
     navigator.clipboard
       ?.writeText(text)
       .then(() => {
         setCopied(true);
         setTimeout(() => setCopied(false), 1800);
+      })
+      .catch(() => undefined);
+  }
+
+  /**
+   * Copy a deep link that carries the invite code in the URL fragment. Built
+   * from `window.location` so it works on GitHub Pages subpaths, localhost and
+   * the installed PWA alike. The code is treated as an opaque string and
+   * percent-encoded so any codec output survives the round-trip.
+   */
+  function copyInviteLink() {
+    const { origin, pathname } = window.location;
+    const link = `${origin}${pathname}#invite=${encodeURIComponent(inviteCode)}`;
+    navigator.clipboard
+      ?.writeText(link)
+      .then(() => {
+        setLinkCopied(true);
+        setTimeout(() => setLinkCopied(false), 1800);
       })
       .catch(() => undefined);
   }
@@ -179,6 +218,15 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
                 aria-label={copied ? t.copied : t.copy}
               >
                 {copied ? <CheckIcon /> : <CopyIcon />}
+              </button>
+              <button
+                className="secondary-button"
+                onClick={copyInviteLink}
+                type="button"
+                title={linkCopied ? t.linkCopied : t.copyLink}
+                aria-label={linkCopied ? t.linkCopied : t.copyLink}
+              >
+                {linkCopied ? <CheckIcon /> : <LinkIcon size={16} />}
               </button>
               <button
                 className="secondary-button"
@@ -245,7 +293,7 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
           />
           <button
             className="primary-button"
-            onClick={guestGenerateReply}
+            onClick={() => guestGenerateReply()}
             disabled={busy || !pastedCode.trim()}
             type="button"
           >
