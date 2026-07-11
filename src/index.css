@@ -853,17 +853,39 @@ html.in-game .table {
   border: 1px solid rgba(245, 158, 11, 0.4);
 }
 
-/* The role label (declarer/partner) pops into its spot beside the name. For
-   the declarer this is sequenced to land *after* the contract chip finishes
-   its centre-stage reveal, so it waits out the chip via animation-delay; the
-   `backwards` fill keeps the badge hidden (0% keyframe) during that delay.
-   The partner badge, revealed later when the called Ace drops, pops in with
-   no delay. */
-.role-badge.role-badge-reveal {
+/* The declarer badge takes over the table centre as the contract chip flies
+   away: it appears large over the felt (0%-6%), holds there for ~a second
+   (6%-60%), then scales down and flies to its resting spot beside the name
+   (60%-100%) — mirroring the chip's own reveal curve. PlayerSeat.tsx sets
+   --reveal-x/y (measured against `.trick-area`, FLIP-style) and the
+   animation-delay (kept in lockstep with the chip's fly-away moment) inline;
+   `backwards` fill keeps the badge invisible for the duration of that delay. */
+.role-badge.role-badge-declarer-reveal {
   z-index: 30;
-  animation: role-badge-popin 420ms cubic-bezier(0.22, 1, 0.36, 1) 1850ms backwards;
+  animation: role-badge-center-reveal 1850ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
+@keyframes role-badge-center-reveal {
+  0% {
+    transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) scale(2.2);
+    opacity: 0;
+  }
+  6% {
+    transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) scale(2.2);
+    opacity: 1;
+  }
+  60% {
+    transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) scale(2.2);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* The partner badge, revealed later when the called Ace drops, has no chip
+   animation to sequence against — it just pops into its resting spot. */
 .role-badge.role-badge-reveal-now {
   z-index: 30;
   animation: role-badge-popin 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
