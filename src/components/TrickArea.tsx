@@ -81,7 +81,7 @@ export default function TrickArea({ trick, players, contract, myIdx, collecting 
               key={played.card.id}
               className={`trick-slot slot-${slotPos} ${winnerPos ? "collecting" : ""}`}
             >
-              <div className="trick-card" style={stackRot}>
+              <div className="trick-card" data-card-id={played.card.id} style={stackRot}>
                 <CardFace card={played.card} contract={contract} small />
               </div>
             </div>

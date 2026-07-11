@@ -1,5 +1,6 @@
 import { GameEngine } from "../engine/GameEngine";
 import { PlayerAction, SeatId } from "../game/types";
+import { getE2EOverrides } from "../lib/e2e";
 import { ListRecorder } from "../persistence";
 import { Transport } from "../net/Transport";
 import { GameSession, SessionDeps } from "./GameSession";
@@ -27,6 +28,7 @@ export class SoloSession implements GameSession {
       soloMode: true,
       devToolsEnabled: import.meta.env.DEV,
       disableLaufende: deps.getDisableLaufende(),
+      ...getE2EOverrides(),
     });
     this.engine.onStateChange((state) => {
       this.recorder?.observe(state);

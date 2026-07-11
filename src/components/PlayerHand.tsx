@@ -123,6 +123,7 @@ export default function PlayerHand({
           return (
             <button
               key={card.id}
+              data-card-id={card.id}
               className={`playing-card ${isGrayed ? "grayed-out" : ""}`}
               onPointerDown={(event) => startDrag(event, card.id, isLegal)}
               onPointerMove={moveDrag}
