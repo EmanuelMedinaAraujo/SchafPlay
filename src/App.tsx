@@ -8,11 +8,15 @@ import StatsScreen from "./components/StatsScreen";
 import { useGameSession } from "./session/useGameSession";
 import { Language, PlayerActionType } from "./types";
 import { translations } from "./lib/i18n";
+import { usePersistedState } from "./lib/persistedState";
 import { BookOpenIcon, BotIcon, ChartColumnIcon, HomeIcon, SettingsIcon } from "./components/icons";
 
 const NAME_KEY = "schafplay.name";
 const LANG_KEY = "schafplay.language";
+const TOTAL_ROUNDS_KEY = "schafplay.totalRounds";
+const ROUND_OPTIONS = [4, 8, 12];
 const DISABLE_LAUFENDE_KEY = "schafplay.disableLaufende";
+
 
 /**
  * Deep-link join (#7, Option A): read an invite code from the URL fragment
@@ -41,11 +45,14 @@ const PlugZapIcon = () => (
 );
 
 export default function App() {
-  const [language, setLanguage] = useState<Language>(() => (localStorage.getItem(LANG_KEY) as Language) || "de");
-  const [playerName, setPlayerName] = useState(() => localStorage.getItem(NAME_KEY) || "Bazi");
+  const [language, setLanguage] = usePersistedState<Language>(LANG_KEY, "de", (raw) => (raw === "en" ? "en" : "de"));
+  const [playerName, setPlayerName] = usePersistedState(NAME_KEY, "Bazi", (raw) => raw || "Bazi");
   const [screen, setScreen] = useState<"home" | "game" | "stats" | "settings">("home");
   const [rulesOpen, setRulesOpen] = useState(false);
-  const [totalRounds, setTotalRounds] = useState<number>(8);
+  const [totalRounds, setTotalRounds] = usePersistedState(TOTAL_ROUNDS_KEY, 8, (raw) => {
+    const n = Number(raw);
+    return ROUND_OPTIONS.includes(n) ? n : 8;
+  });
   // Captured once at startup, before we scrub the fragment below. Reading the
   // hash is synchronous and independent of the service-worker update check in
   // main.tsx, so nothing can race away the invite before we see it.
