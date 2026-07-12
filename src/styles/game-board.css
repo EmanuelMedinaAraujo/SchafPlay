@@ -1,0 +1,58 @@
+/* ---------- Game toolbar ---------- */
+
+.game-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+  position: relative;
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+.contract-chip {
+  border: 1px solid rgba(220, 38, 38, 0.45);
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: rgba(220, 38, 38, 0.12);
+  color: #fecaca;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  position: relative;
+  transform: translate(0, 0) scale(1);
+}
+
+/* When the contract is decided the red game chip takes centre stage: it
+   appears enlarged over the table centre (0%), holds there for ~a second
+   (6% -> 60%), then scales down and flies up to its resting toolbar spot
+   (100%). GameBoard.tsx measures the chip's home position against
+   `.trick-area` (the board centre) and writes --reveal-x/y before this class
+   is applied, so the 0% keyframe starts exactly on the felt. */
+.contract-chip.contract-chip-reveal {
+  z-index: 40;
+  animation: contract-chip-reveal 1900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes contract-chip-reveal {
+  0% {
+    transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) scale(1.9);
+    opacity: 0;
+  }
+  6% {
+    transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) scale(1.9);
+    opacity: 1;
+  }
+  60% {
+    transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) scale(1.9);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+}
+

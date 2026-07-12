@@ -1,0 +1,30 @@
+/* ---------- Reconnect overlay ---------- */
+
+.reconnect-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  overflow-y: auto;
+  padding: 18px;
+  background: rgba(5, 5, 8, 0.88);
+  backdrop-filter: blur(8px);
+}
+
+.reconnect-panel {
+  margin: auto;
+  width: min(520px, 100%);
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  border-radius: 14px;
+  background: var(--panel);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reconnect-panel h2 {
+  margin: 0;
+  color: var(--red-2);
+}
+
