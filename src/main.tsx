@@ -60,14 +60,35 @@ if ('serviceWorker' in navigator) {
   } else {
     // Unregister active service workers in dev mode to prevent caching conflicts
     navigator.serviceWorker.getRegistrations().then((registrations) => {
-      for (const registration of registrations) {
+      if (registrations.length === 0) return;
+
+      const reloadKey = 'sw-dev-cleanup-reload';
+      const lastReload = sessionStorage.getItem(reloadKey);
+      const now = Date.now();
+      if (lastReload && now - Number(lastReload) < 5000) {
+        console.warn('[Dev SW Cleanup] Detected potential reload loop. Skipping automatic reload.');
+        return;
+      }
+
+      const promises = registrations.map((registration) =>
         registration.unregister().then((success) => {
           if (success) {
-            console.log('[Dev SW Cleanup] Unregistered service worker to avoid caching conflicts.');
-            window.location.reload();
+            console.log('[Dev SW Cleanup] Unregistered service worker:', registration.scope);
           }
-        });
-      }
+          return success;
+        })
+      );
+
+      Promise.all(promises).then((results) => {
+        const anyUnregistered = results.some(Boolean);
+        if (anyUnregistered) {
+          sessionStorage.setItem(reloadKey, String(Date.now()));
+          console.log('[Dev SW Cleanup] Service worker(s) unregistered. Reloading to clear cache interceptors.');
+          window.location.reload();
+        }
+      }).catch((err) => {
+        console.error('[Dev SW Cleanup] Failed to unregister service worker:', err);
+      });
     });
   }
 }
