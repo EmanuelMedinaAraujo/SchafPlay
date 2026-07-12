@@ -4,12 +4,11 @@
   grid-column: 2;
   grid-row: 1;
   border-radius: 14px;
-  border: 3px solid #1f0f07; /* Dark wood frame border */
-  background: radial-gradient(circle at center, #7e22ce 0%, #b91c1c 45%, #4c0519 80%, #1f000b 100%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.15); /* Let the mahogany wood shine through with a soft dark tint */
   box-shadow: 
-    inset 0 0 16px rgba(0, 0, 0, 0.95), /* Inner shadow for depth/recess */
-    0 8px 16px rgba(0, 0, 0, 0.6), /* Drop shadow on the wooden table */
-    0 0 0 2px #3e2212; /* Light accent outer wood ring */
+    inset 0 4px 12px rgba(0, 0, 0, 0.45),
+    0 2px 4px rgba(0, 0, 0, 0.15);
   position: relative;
   overflow: visible;
   z-index: 15;
