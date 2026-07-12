@@ -29,6 +29,10 @@ html.in-game .game-screen {
   flex-direction: column;
   overflow-y: auto;
   overscroll-behavior: contain;
+  background-image: linear-gradient(rgba(10, 10, 15, 0.45), rgba(10, 10, 15, 0.55)), url('/mahogany_wood.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 html.in-game .table {

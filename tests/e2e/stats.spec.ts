@@ -52,12 +52,14 @@ async function fastForwardList(page: Page, rounds: number): Promise<void> {
  * suite polls for the fire-and-forget IndexedDB write from ListRecorder. */
 async function openStats(page: Page): Promise<void> {
   await page.getByTitle(de.home).click();
+  await expect(page.locator(".home-screen")).toBeVisible();
   await page.getByTitle(de.stats).click();
   await expect(page.locator(".stats-screen")).toBeVisible();
 }
 
 async function playedTileText(page: Page): Promise<string> {
   await openStats(page);
+  await page.waitForTimeout(200);
   return ((await page.locator(".stat-tiles > div").nth(0).locator("strong").textContent()) ?? "").trim();
 }
 
@@ -98,7 +100,10 @@ test.describe("stats", () => {
     // The write is fire-and-forget (ListRecorder → IndexedDB) and each poll
     // remounts StatsScreen to re-read it, so allow a generous window — under
     // full-suite CPU contention the write can lag several seconds.
-    await expect.poll(() => playedTileText(page), { timeout: 30_000 }).toBe("1");
+    await expect.poll(() => playedTileText(page), {
+      timeout: 30_000,
+      intervals: [1000],
+    }).toBe("1");
 
     // We're on the stats screen (fresh mount) with the write settled now.
     const tiles = page.locator(".stat-tiles > div strong");
