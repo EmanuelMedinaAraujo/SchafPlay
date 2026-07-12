@@ -4,7 +4,9 @@ import { Transport, TransportState } from "../net/Transport";
 import { createWebRTCPeer } from "../net/WebRTCPeer";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
-import { CopyIcon, CheckIcon, LoaderIcon, LinkIcon, ShareIcon } from "./icons";
+import { CopyIcon, CheckIcon, LoaderIcon, LinkIcon, ShareIcon, QrCodeIcon, ScanIcon } from "./icons";
+import QRCodeView from "./QRCodeView";
+import QRScanner, { detectQrScanSupport } from "./QRScanner";
 
 interface PairingPanelProps {
   language: Language;
@@ -43,6 +45,11 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  // QR pairing (issue #7, Option C): scanning is only offered where the
+  // native BarcodeDetector + camera exist; QR *display* is always available.
+  const [scanSupported, setScanSupported] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [showQr, setShowQr] = useState(true);
   const peerRef = useRef<(Transport & HostSignaling & GuestSignaling) | null>(null);
   const onPeerRef = useRef(onPeer);
   onPeerRef.current = onPeer;
@@ -53,6 +60,17 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
       if (peerRef.current && !peerRef.current.isConnected()) {
         peerRef.current.disconnect();
       }
+    };
+  }, []);
+
+  // Feature-detect QR scanning once; the scan buttons stay hidden otherwise.
+  useEffect(() => {
+    let alive = true;
+    detectQrScanSupport().then((ok) => {
+      if (alive) setScanSupported(ok);
+    });
+    return () => {
+      alive = false;
     };
   }, []);
 
@@ -96,13 +114,15 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionState, mode]);
 
-  async function hostAcceptReply() {
+  async function hostAcceptReply(codeArg?: string) {
     const peer = peerRef.current;
-    if (!peer || !pastedCode.trim()) return;
+    const code = (codeArg ?? pastedCode).trim();
+    if (!peer || !code) return;
+    setPastedCode(code);
     setBusy(true);
     setError("");
     try {
-      await peer.acceptAnswer(pastedCode.trim());
+      await peer.acceptAnswer(code);
       setAccepted(true);
     } catch (err) {
       if (err instanceof Error && err.message === "INVALID_CODE") {
@@ -240,6 +260,24 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
             </div>
 
             {connectionState !== "connected" && (
+              <div className="qr-block">
+                <button
+                  className="text-button qr-toggle"
+                  onClick={() => setShowQr((v) => !v)}
+                  type="button"
+                >
+                  <QrCodeIcon /> {showQr ? t.hideQr : t.showQr}
+                </button>
+                {showQr && (
+                  <>
+                    <QRCodeView data={inviteCode} label={t.inviteCode} />
+                    <p className="muted qr-hint">{t.inviteQrHint}</p>
+                  </>
+                )}
+              </div>
+            )}
+
+            {connectionState !== "connected" && (
               <>
                 <label className="field-label">{t.pasteReply}</label>
                 <textarea
@@ -249,15 +287,22 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
                   placeholder={t.pasteReplyHint}
                   rows={2}
                 />
-                <button
-                  className="primary-button"
-                  onClick={hostAcceptReply}
-                  disabled={busy || !pastedCode.trim()}
-                  type="button"
-                >
-                  {busy ? <LoaderIcon /> : <LinkIcon />}
-                  {t.connect}
-                </button>
+                <div className="pairing-actions">
+                  <button
+                    className="primary-button"
+                    onClick={() => hostAcceptReply()}
+                    disabled={busy || !pastedCode.trim()}
+                    type="button"
+                  >
+                    {busy ? <LoaderIcon /> : <LinkIcon />}
+                    {t.connect}
+                  </button>
+                  {scanSupported && (
+                    <button className="secondary-button" onClick={() => setScanning(true)} type="button">
+                      <ScanIcon /> {t.scanReplyQr}
+                    </button>
+                  )}
+                </div>
               </>
             )}
 
@@ -274,6 +319,17 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
         )}
 
         {error && <p className="error-text">{error}</p>}
+
+        {scanning && (
+          <QRScanner
+            language={language}
+            onResult={(code) => {
+              setScanning(false);
+              hostAcceptReply(code);
+            }}
+            onClose={() => setScanning(false)}
+          />
+        )}
       </div>
     );
   }
@@ -291,15 +347,22 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
             placeholder={t.pasteInviteHint}
             rows={2}
           />
-          <button
-            className="primary-button"
-            onClick={() => guestGenerateReply()}
-            disabled={busy || !pastedCode.trim()}
-            type="button"
-          >
-            {busy ? <LoaderIcon /> : <LinkIcon />}
-            {t.generateReply}
-          </button>
+          <div className="pairing-actions">
+            <button
+              className="primary-button"
+              onClick={() => guestGenerateReply()}
+              disabled={busy || !pastedCode.trim()}
+              type="button"
+            >
+              {busy ? <LoaderIcon /> : <LinkIcon />}
+              {t.generateReply}
+            </button>
+            {scanSupported && (
+              <button className="secondary-button" onClick={() => setScanning(true)} type="button">
+                <ScanIcon /> {t.scanInviteQr}
+              </button>
+            )}
+          </div>
         </>
       )}
 
@@ -333,6 +396,24 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
               <ShareIcon />
             </button>
           </div>
+
+          {connectionState !== "connected" && (
+            <div className="qr-block">
+              <button
+                className="text-button qr-toggle"
+                onClick={() => setShowQr((v) => !v)}
+                type="button"
+              >
+                <QrCodeIcon /> {showQr ? t.hideQr : t.showQr}
+              </button>
+              {showQr && (
+                <>
+                  <QRCodeView data={replyCode} label={t.replyCode} />
+                  <p className="muted qr-hint">{t.replyQrHint}</p>
+                </>
+              )}
+            </div>
+          )}
         </>
       )}
 
@@ -342,6 +423,18 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
 
       {busy && <p className="muted pulse-soft">{t.connecting}</p>}
       {error && <p className="error-text">{error}</p>}
+
+      {scanning && (
+        <QRScanner
+          language={language}
+          onResult={(code) => {
+            setScanning(false);
+            setPastedCode(code);
+            guestGenerateReply(code);
+          }}
+          onClose={() => setScanning(false)}
+        />
+      )}
     </div>
   );
 }

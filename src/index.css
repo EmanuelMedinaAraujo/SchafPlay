@@ -679,6 +679,103 @@ html.in-game .table {
   margin: 4px 0 0;
 }
 
+/* QR pairing (issue #7, Option C) --------------------------------------- */
+
+/* Primary + optional scan button share a row instead of stacking full-width. */
+.pairing-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.pairing-flow .pairing-actions .primary-button {
+  flex: 1;
+}
+
+.pairing-flow .pairing-actions .secondary-button {
+  width: auto;
+  flex-shrink: 0;
+}
+
+.qr-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 8px;
+}
+
+.qr-toggle {
+  align-self: center;
+}
+
+/* The symbol renders dark-on-white for scanner contrast; the white padding is
+   part of the quiet zone in the viewBox, so a small frame is enough here. */
+.qr-code {
+  width: 150px;
+  height: 150px;
+  max-width: 55vh; /* effective width is the post-rotation viewport height */
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px;
+}
+
+html.compact .qr-code {
+  width: 116px;
+  height: 116px;
+}
+
+.qr-hint {
+  font-size: 12px;
+  text-align: center;
+  margin: 0;
+}
+
+.qr-scanner-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+}
+
+.qr-scanner-box {
+  position: relative;
+  width: min(60vw, 60vh);
+  aspect-ratio: 1;
+}
+
+.qr-scanner-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #000;
+}
+
+.qr-scanner-frame {
+  position: absolute;
+  inset: 12%;
+  border: 3px solid rgba(255, 255, 255, 0.85);
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+.qr-scanner-hint {
+  font-size: 13px;
+  text-align: center;
+  margin: 0;
+  max-width: 80vw;
+}
+
+.qr-scanner-cancel {
+  width: auto;
+}
+
 .spin {
   animation: spin 1s linear infinite;
 }
