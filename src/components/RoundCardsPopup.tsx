@@ -1,4 +1,5 @@
 import { Card, Contract, GameType, Language, Player, Trick } from "../types";
+import { CardDesign } from "../lib/settings";
 import { translations } from "../lib/i18n";
 import { sortCardsForHand } from "../game/rules";
 import CardFace from "./CardFace";
@@ -9,6 +10,7 @@ interface RoundCardsPopupProps {
   tricks: Trick[];
   contract: Contract | null;
   language: Language;
+  cardDesign: CardDesign;
   onClose: () => void;
 }
 
@@ -21,7 +23,7 @@ interface RoundCardsPopupProps {
  * Kept deliberately compact — no title bar, the close button shares the first
  * row — so all four hands fit an iPhone 13 in landscape without scrolling (#25).
  */
-export default function RoundCardsPopup({ players, tricks, contract, language, onClose }: RoundCardsPopupProps) {
+export default function RoundCardsPopup({ players, tricks, contract, language, cardDesign, onClose }: RoundCardsPopupProps) {
   const t = translations[language];
   const gameType = contract?.type ?? GameType.SAUSPIEL;
 
@@ -47,7 +49,7 @@ export default function RoundCardsPopup({ players, tricks, contract, language, o
               <span className="round-cards-name">{player.name}</span>
               <div className="round-cards-hand">
                 {sortCardsForHand(handByPlayer[player.id] ?? [], gameType).map((card) => (
-                  <CardFace key={card.id} card={card} contract={contract} small />
+                  <CardFace key={card.id} card={card} contract={contract} design={cardDesign} small />
                 ))}
               </div>
             </div>

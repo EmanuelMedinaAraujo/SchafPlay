@@ -1,4 +1,5 @@
 import { Contract, Language, Player, Trick } from "../types";
+import { CardDesign } from "../lib/settings";
 import { translations } from "../lib/i18n";
 import CardFace from "./CardFace";
 import { XIcon } from "./icons";
@@ -8,10 +9,11 @@ interface LastTrickPopupProps {
   players: Player[];
   contract: Contract | null;
   language: Language;
+  cardDesign: CardDesign;
   onClose: () => void;
 }
 
-export default function LastTrickPopup({ trick, players, contract, language, onClose }: LastTrickPopupProps) {
+export default function LastTrickPopup({ trick, players, contract, language, cardDesign, onClose }: LastTrickPopupProps) {
   const t = translations[language];
   const winner = players.find((p) => p.id === trick.winnerId);
 
@@ -34,7 +36,7 @@ export default function LastTrickPopup({ trick, players, contract, language, onC
             const isWinner = played.playerId === trick.winnerId;
             return (
               <div key={played.card.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
-                <CardFace card={played.card} contract={contract} small />
+                <CardFace card={played.card} contract={contract} design={cardDesign} small />
                 <span style={{ fontSize: "12px", fontWeight: isWinner ? "bold" : "normal", color: isWinner ? "var(--amber)" : "var(--text)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap", maxWidth: "120px" }}>
                   {player?.name} {isWinner ? "🏆" : ""}
                 </span>

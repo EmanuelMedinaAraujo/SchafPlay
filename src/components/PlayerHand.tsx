@@ -1,5 +1,6 @@
 import { PointerEvent, useEffect, useRef, useState } from "react";
 import { Card, Contract, GameType, Language, Trick } from "../types";
+import { CardDesign } from "../lib/settings";
 import { getLegalCards, sortCardsForHand } from "../game/rules";
 import { translations } from "../lib/i18n";
 import CardFace from "./CardFace";
@@ -12,6 +13,7 @@ interface PlayerHandProps {
   playerName: string;
   showLastTrick: boolean;
   language: Language;
+  cardDesign: CardDesign;
   onPlay: (cardId: string) => void;
   onLastTrick: () => void;
 }
@@ -33,6 +35,7 @@ export default function PlayerHand({
   playerName,
   showLastTrick,
   language,
+  cardDesign,
   onPlay,
   onLastTrick,
 }: PlayerHandProps) {
@@ -133,7 +136,7 @@ export default function PlayerHand({
               disabled={disabled}
               type="button"
             >
-              <CardFace card={card} contract={contract} />
+              <CardFace card={card} contract={contract} design={cardDesign} />
             </button>
           );
         })}

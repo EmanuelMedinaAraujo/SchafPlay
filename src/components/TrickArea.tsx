@@ -1,5 +1,6 @@
 import { CSSProperties, useLayoutEffect, useRef } from "react";
 import { Contract, Language, Player, Trick } from "../types";
+import { CardDesign } from "../lib/settings";
 import CardFace from "./CardFace";
 
 interface TrickAreaProps {
@@ -9,6 +10,7 @@ interface TrickAreaProps {
   myIdx: number;
   language: Language;
   collecting: boolean;
+  cardDesign: CardDesign;
 }
 
 /** Where the winner's name lives on screen, per table position. */
@@ -19,7 +21,7 @@ const FLY_TARGETS: Record<string, string> = {
   right: ".seat-right .seat-name",
 };
 
-export default function TrickArea({ trick, players, contract, myIdx, collecting }: TrickAreaProps) {
+export default function TrickArea({ trick, players, contract, myIdx, collecting, cardDesign }: TrickAreaProps) {
   const feltRef = useRef<HTMLDivElement>(null);
 
   const positionOf = (playerId: string) => {
@@ -82,7 +84,7 @@ export default function TrickArea({ trick, players, contract, myIdx, collecting 
               className={`trick-slot slot-${slotPos} ${winnerPos ? "collecting" : ""}`}
             >
               <div className="trick-card" data-card-id={played.card.id} style={stackRot}>
-                <CardFace card={played.card} contract={contract} small />
+                <CardFace card={played.card} contract={contract} design={cardDesign} small />
               </div>
             </div>
           );

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { GameState, Language } from "../types";
+import { CardDesign } from "../lib/settings";
 import { gameLabel, translations } from "../lib/i18n";
 import { CheckIcon, TrophyIcon } from "./icons";
 import RoundCardsPopup from "./RoundCardsPopup";
@@ -8,10 +9,11 @@ interface RoundOverScreenProps {
   state: GameState;
   language: Language;
   myPlayerId: string;
+  cardDesign: CardDesign;
   onReady: () => void;
 }
 
-export default function RoundOverScreen({ state, language, myPlayerId, onReady }: RoundOverScreenProps) {
+export default function RoundOverScreen({ state, language, myPlayerId, cardDesign, onReady }: RoundOverScreenProps) {
   const result = state.lastResult;
   const t = translations[language];
   const [cardsOpen, setCardsOpen] = useState(false);
@@ -85,6 +87,7 @@ export default function RoundOverScreen({ state, language, myPlayerId, onReady }
         tricks={state.tricks}
         contract={result.contract}
         language={language}
+        cardDesign={cardDesign}
         onClose={() => setCardsOpen(false)}
       />
     )}

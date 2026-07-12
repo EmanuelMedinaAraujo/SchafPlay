@@ -4,6 +4,12 @@ import { Language } from "../types";
 /** The three ways to start a session from the home screen. */
 export type GameMode = "host" | "join" | "solo";
 
+/**
+ * How card faces are drawn (#15): "bavarian" is the hand-drawn SVG take on
+ * the traditional Bavarian pattern, "minimal" the original emoji design.
+ */
+export type CardDesign = "bavarian" | "minimal";
+
 /** List lengths offered on the home screen / settings, in rounds. */
 export const ROUND_OPTIONS = [4, 8, 12] as const;
 
@@ -20,6 +26,8 @@ export interface Settings {
   disableLaufende: boolean;
   /** The mode tab last used on the home screen, preselected next open. */
   lastMode: GameMode;
+  /** Visual style of the card faces (#15). */
+  cardDesign: CardDesign;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -28,6 +36,7 @@ export const DEFAULT_SETTINGS: Settings = {
   totalRounds: 8,
   disableLaufende: false,
   lastMode: "host",
+  cardDesign: "bavarian",
 };
 
 /**
@@ -88,6 +97,11 @@ const CODECS: { [K in keyof Settings]: FieldCodec<Settings[K]> } = {
   lastMode: {
     key: "schafplay.lastMode",
     parse: (raw) => (raw === "join" || raw === "solo" || raw === "host" ? raw : DEFAULT_SETTINGS.lastMode),
+    serialize: identity,
+  },
+  cardDesign: {
+    key: "schafplay.cardDesign",
+    parse: (raw) => (raw === "minimal" || raw === "bavarian" ? raw : DEFAULT_SETTINGS.cardDesign),
     serialize: identity,
   },
 };

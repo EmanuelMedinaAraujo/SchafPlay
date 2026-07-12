@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { GameState, Language, PlayerAction, PlayerActionType } from "../types";
+import { CardDesign } from "../lib/settings";
 import { gameLabel, translations } from "../lib/i18n";
 import BiddingPanel from "./BiddingPanel";
 import PlayerHand from "./PlayerHand";
@@ -14,6 +15,7 @@ interface GameBoardProps {
   state: GameState;
   language: Language;
   myPlayerId: string;
+  cardDesign: CardDesign;
   onAction: (action: PlayerAction) => void;
   onReady: () => void;
   onQuit: () => void;
@@ -64,6 +66,7 @@ export default function GameBoard({
   state,
   language,
   myPlayerId,
+  cardDesign,
   onAction,
   onReady,
   onQuit,
@@ -120,14 +123,14 @@ export default function GameBoard({
 
       <section className="table">
         <PlayerSeat player={seatAt(1)} position="left" active={activePlayer?.id === seatAt(1).id} contract={state.currentContract} language={language} />
-        <TrickArea trick={state.currentTrick} players={state.players} contract={state.currentContract} myIdx={myIdx} language={language} collecting={state.collecting} />
+        <TrickArea trick={state.currentTrick} players={state.players} contract={state.currentContract} myIdx={myIdx} language={language} collecting={state.collecting} cardDesign={cardDesign} />
         <PlayerSeat player={seatAt(3)} position="right" active={activePlayer?.id === seatAt(3).id} contract={state.currentContract} language={language} />
       </section>
 
       {state.status === "BIDDING" && <BiddingPanel state={state} language={language} myPlayerId={myPlayerId} onAction={onAction} />}
 
       {state.status === "ROUND_OVER" && (
-        <RoundOverScreen state={state} language={language} myPlayerId={myPlayerId} onReady={onReady} />
+        <RoundOverScreen state={state} language={language} myPlayerId={myPlayerId} cardDesign={cardDesign} onReady={onReady} />
       )}
 
       {state.status === "LIST_OVER" && (
@@ -142,6 +145,7 @@ export default function GameBoard({
         playerName={me.name}
         showLastTrick={state.tricks.length > 0}
         language={language}
+        cardDesign={cardDesign}
         onPlay={playCard}
         onLastTrick={() => setLastTrickOpen(true)}
       />
@@ -152,6 +156,7 @@ export default function GameBoard({
           players={state.players}
           contract={state.currentContract}
           language={language}
+          cardDesign={cardDesign}
           onClose={() => setLastTrickOpen(false)}
         />
       )}
