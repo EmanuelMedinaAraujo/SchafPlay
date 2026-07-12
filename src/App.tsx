@@ -41,7 +41,7 @@ const PlugZapIcon = () => (
 export default function App() {
   // All persisted device preferences flow through one store (see lib/settings).
   const [settings, updateSetting] = useSettings();
-  const { language, playerName, totalRounds, disableLaufende, lastMode } = settings;
+  const { language, playerName, totalRounds, disableLaufende, enableRamsch, lastMode } = settings;
   const [screen, setScreen] = useState<"home" | "game" | "stats" | "settings">("home");
   const [rulesOpen, setRulesOpen] = useState(false);
   // Captured once at startup, before we scrub the fragment below. Reading the
@@ -53,6 +53,7 @@ export default function App() {
     getPlayerName: () => playerName,
     getTotalRounds: () => totalRounds,
     getDisableLaufende: () => disableLaufende,
+    getEnableRamsch: () => enableRamsch,
     onEnterGame: () => setScreen("game"),
   });
   const { gameState, connectionState, role, myPlayerId } = session;
@@ -169,6 +170,8 @@ export default function App() {
           onLanguageChange={(value) => updateSetting("language", value)}
           disableLaufende={disableLaufende}
           onDisableLaufendeChange={(value) => updateSetting("disableLaufende", value)}
+          enableRamsch={enableRamsch}
+          onEnableRamschChange={(value) => updateSetting("enableRamsch", value)}
         />
       ) : !inGame ? (
         <HomeScreen
