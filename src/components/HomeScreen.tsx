@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Transport, TransportState } from "../net/Transport";
 import { Language } from "../types";
+import { GameMode } from "../lib/settings";
 import { translations } from "../lib/i18n";
 import PairingPanel from "./PairingPanel";
 import { UsersIcon, RadioIcon, BotIcon, PlayIcon } from "./icons";
@@ -15,13 +16,26 @@ interface HomeScreenProps {
   totalRounds: number;
   onTotalRoundsChange: (rounds: number) => void;
   onSoloStart: () => void;
+  /** Last-used mode (#44), preselected on open unless an invite overrides it. */
+  lastMode: GameMode;
+  onLastModeChange: (mode: GameMode) => void;
   /** Invite code from a deep link (#invite=…); when set, opens the join flow. */
   initialInvite?: string;
 }
 
 export default function HomeScreen(props: HomeScreenProps) {
   const t = translations[props.language];
-  const [mode, setMode] = useState<"host" | "join" | "solo">(props.initialInvite ? "join" : "host");
+  // Preselect the last-used mode (#44), seeded synchronously from settings so
+  // the correct tab is active on first paint. An invite deep-link always wins
+  // — a shared link should land on join regardless of the stored preference,
+  // and that transient override is not written back to settings.
+  const [mode, setMode] = useState<GameMode>(props.initialInvite ? "join" : props.lastMode);
+
+  // Report deliberate tab changes upward so they persist for next open.
+  function selectMode(next: GameMode) {
+    setMode(next);
+    props.onLastModeChange(next);
+  }
 
   return (
     <main className="home-screen">
@@ -65,7 +79,7 @@ export default function HomeScreen(props: HomeScreenProps) {
             <div className="mode-switch" role="tablist">
               <button
                 className={mode === "host" ? "active" : ""}
-                onClick={() => setMode("host")}
+                onClick={() => selectMode("host")}
                 role="tab"
                 aria-selected={mode === "host"}
                 type="button"
@@ -75,7 +89,7 @@ export default function HomeScreen(props: HomeScreenProps) {
               </button>
               <button
                 className={mode === "join" ? "active" : ""}
-                onClick={() => setMode("join")}
+                onClick={() => selectMode("join")}
                 role="tab"
                 aria-selected={mode === "join"}
                 type="button"
@@ -85,7 +99,7 @@ export default function HomeScreen(props: HomeScreenProps) {
               </button>
               <button
                 className={mode === "solo" ? "active" : ""}
-                onClick={() => setMode("solo")}
+                onClick={() => selectMode("solo")}
                 role="tab"
                 aria-selected={mode === "solo"}
                 type="button"
