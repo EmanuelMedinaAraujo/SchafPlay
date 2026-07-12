@@ -1,0 +1,99 @@
+/* ---------- Round over ---------- */
+
+.round-over-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  overflow-y: auto;
+  padding: 18px;
+  background: rgba(5, 5, 8, 0.82);
+  backdrop-filter: blur(6px);
+}
+
+.round-over {
+  margin: auto;
+  width: min(560px, 100%);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  padding: 22px;
+}
+
+.round-over h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  color: var(--amber);
+}
+
+.round-over h3 {
+  margin: 16px 0 8px;
+  font-size: 14px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.round-headline {
+  font-size: 17px;
+  font-weight: 800;
+  margin: 4px 0;
+}
+
+.score-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.score-grid div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  padding: 10px;
+}
+
+.score-grid div.winner {
+  border-color: rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.score-grid .pos {
+  color: var(--green);
+  font-weight: 800;
+}
+
+.score-grid .neg {
+  color: var(--red-2);
+  font-weight: 800;
+}
+
+.score-grid small {
+  color: var(--muted);
+}
+
+.round-over-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-top: 14px;
+}
+
+.round-over-status {
+  margin: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.round-over .primary-button {
+  width: 100%;
+  margin-top: 10px;
+}
+

@@ -1,0 +1,25 @@
+/* Entry stylesheet: imports are ordered to exactly match the original
+   src/index.css cascade — do not reorder without checking for
+   specificity-tie rules that depend on source order (see CLAUDE.md). */
+@import "./tokens.css";
+@import "./base.css";
+@import "./app-shell.css";
+@import "./topbar.css";
+@import "./home.css";
+@import "./stats.css";
+@import "./settings.css";
+@import "./in-game-layout.css";
+@import "./home-hero.css";
+@import "./pairing.css";
+@import "./utilities.css";
+@import "./game-board.css";
+@import "./seats.css";
+@import "./trick-area.css";
+@import "./cards.css";
+@import "./player-hand.css";
+@import "./bidding.css";
+@import "./round-over.css";
+@import "./reconnect.css";
+@import "./rules-modal.css";
+@import "./round-cards-popup.css";
+@import "./responsive.css";

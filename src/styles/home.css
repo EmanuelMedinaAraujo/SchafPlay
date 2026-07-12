@@ -1,0 +1,20 @@
+/* ---------- Home ---------- */
+
+.home-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.home-screen,
+.game-screen {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: 8px clamp(12px, 2.5vw, 28px) 4px;
+  /* Keep content clear of the notch (landscape) and home indicator. */
+  padding-left: max(clamp(12px, 2.5vw, 28px), env(safe-area-inset-left, 0px));
+  padding-right: max(clamp(12px, 2.5vw, 28px), env(safe-area-inset-right, 0px));
+  padding-bottom: max(4px, env(safe-area-inset-bottom, 0px));
+}
+

@@ -1,0 +1,21 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap");
+
+:root {
+  color-scheme: dark;
+  --bg: #0a0a0f;
+  --panel: #121218;
+  --panel-2: #181820;
+  --line: #2b2b34;
+  --text: #f4f4f5;
+  --muted: #a1a1aa;
+  --red: #dc2626;
+  --red-2: #ef4444;
+  --amber: #f59e0b;
+  --green: #22c55e;
+  --blue: #3b82f6;
+  --felt: #14371f;
+}
+
+* {
+  box-sizing: border-box;
+}
