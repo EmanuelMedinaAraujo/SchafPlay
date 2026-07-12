@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
 import { Contract, GameType, Language, Player } from "../types";
+import { Avatar } from "../lib/avatars";
 import { translations } from "../lib/i18n";
-import { UserIcon, BotIcon } from "./icons";
 
 interface PlayerSeatProps {
   player: Player;
@@ -88,7 +88,7 @@ export default function PlayerSeat({ player, position, active, contract, languag
   return (
     <div className={`seat seat-${position} ${active ? "active" : ""} ${player.connected === false ? "offline" : ""}`}>
       <div className="seat-name">
-        {player.isHuman ? <UserIcon /> : <BotIcon />}
+        <Avatar id={player.avatar} size={22} className="seat-avatar" />
         <strong>{player.name}</strong>
         {isDeclarer && (
           <span ref={badgeRef} className="role-badge declarer">

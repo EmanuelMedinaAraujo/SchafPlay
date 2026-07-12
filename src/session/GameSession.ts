@@ -17,6 +17,10 @@ export interface SessionDeps {
   getTotalRounds(): number;
   /** House rule (#31): whether Laufende are disabled for the round scoring. Read when the engine is created. */
   getDisableLaufende(): boolean;
+  /** Profile pictures (#14): avatar ids from device settings (lib/avatars). Read when the engine is created / on connect. */
+  getPlayerAvatar(): string;
+  getResiAvatar(): string;
+  getSeppAvatar(): string;
   events: SessionEvents;
 }
 

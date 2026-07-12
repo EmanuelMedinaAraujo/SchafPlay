@@ -1,5 +1,6 @@
 import { GameEngine } from "../engine/GameEngine";
 import { PlayerAction, SeatId } from "../game/types";
+import { isAvatarId } from "../lib/avatars";
 import { getE2EOverrides } from "../lib/e2e";
 import { ListRecorder } from "../persistence";
 import { createMessage, P2PMessageType } from "../net/protocol";
@@ -58,8 +59,11 @@ export class HostSession implements GameSession {
         engine.processAction({ ...action, playerId: "p3" });
       }
       if (message.type === P2PMessageType.CONNECTION_ACK) {
-        const name = (message.payload as { name?: string })?.name;
-        if (name) engine.setGuestName(name);
+        const payload = message.payload as { name?: string; avatar?: string } | undefined;
+        // Wire values are untrusted: only known preselection ids are applied
+        // (an unknown/garbage avatar simply keeps the current one).
+        const avatar = typeof payload?.avatar === "string" && isAvatarId(payload.avatar) ? payload.avatar : undefined;
+        if (payload?.name) engine.setGuestProfile(payload.name, avatar);
       }
     });
   }
@@ -73,6 +77,12 @@ export class HostSession implements GameSession {
     const engine = new GameEngine(this.deps.getPlayerName(), "Gast", this.deps.getTotalRounds(), {
       devToolsEnabled: import.meta.env.DEV,
       disableLaufende: this.deps.getDisableLaufende(),
+      // The guest's own avatar (p3) arrives with CONNECTION_ACK.
+      avatars: {
+        p1: this.deps.getPlayerAvatar(),
+        p2: this.deps.getResiAvatar(),
+        p4: this.deps.getSeppAvatar(),
+      },
       ...getE2EOverrides(),
     });
     this.engine = engine;

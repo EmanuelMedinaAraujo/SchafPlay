@@ -92,6 +92,13 @@ export interface Player {
   difficulty?: Difficulty;
   seatIndex: number;
   connected?: boolean;
+  /**
+   * Profile picture (#14): a preselection id from `lib/avatars`. Public,
+   * non-secret display data — like `name`, it survives redaction and reaches
+   * the guest through the redacted state broadcast. Optional: renderers fall
+   * back to a default when absent (e.g. states from an older peer).
+   */
+  avatar?: string;
 }
 
 export interface PlayedCard {

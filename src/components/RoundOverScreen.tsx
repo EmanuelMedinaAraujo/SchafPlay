@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { GameState, Language } from "../types";
+import { Avatar } from "../lib/avatars";
 import { gameLabel, translations } from "../lib/i18n";
 import { CheckIcon, TrophyIcon } from "./icons";
 import RoundCardsPopup from "./RoundCardsPopup";
@@ -51,7 +52,10 @@ export default function RoundOverScreen({ state, language, myPlayerId, onReady }
             const total = state.scores[player.id] ?? 0;
             return (
               <div key={player.id} className={result.winnerIds.includes(player.id) ? "winner" : ""}>
-                <strong>{player.name}</strong>
+                <span className="score-player">
+                  <Avatar id={player.avatar} size={18} />
+                  <strong>{player.name}</strong>
+                </span>
                 <span className={change >= 0 ? "pos" : "neg"}>
                   {change >= 0 ? "+" : ""}
                   {change}

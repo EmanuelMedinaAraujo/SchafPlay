@@ -1,4 +1,5 @@
 import { GameState, Language, PlayerAction, PlayerActionType } from "../types";
+import { Avatar } from "../lib/avatars";
 import { translations } from "../lib/i18n";
 import { TrophyIcon } from "./icons";
 
@@ -45,7 +46,10 @@ export default function ListOverScreen({ state, language, myPlayerId, onAction, 
                 <span style={{ fontSize: "11px", color: "var(--muted)", textTransform: "uppercase", fontWeight: "bold" }}>
                   Platz {idx + 1}
                 </span>
-                <strong>{player.name}</strong>
+                <span className="score-player">
+                  <Avatar id={player.avatar} size={18} />
+                  <strong>{player.name}</strong>
+                </span>
                 <span style={{ fontSize: "16px", fontWeight: "bold", color: total >= 0 ? "var(--green)" : "var(--red-2)" }}>
                   {total > 0 ? "+" : ""}{total}
                 </span>

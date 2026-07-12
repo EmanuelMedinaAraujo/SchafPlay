@@ -104,6 +104,11 @@ export const translations = {
     // Settings
     settings: "Einstellungen",
     settingsLanguage: "Sprache",
+    settingsAvatars: "Profilbilder",
+    settingsAvatarsHint: "Wähle dein Profilbild und die Bilder für die beiden KI-Mitspieler. Dein Bild sieht auch dein Mitspieler am anderen Gerät.",
+    settingsAvatarYours: "Dein Bild",
+    settingsAvatarResi: "Resi (KI)",
+    settingsAvatarSepp: "Sepp (KI)",
     settingsLaufende: "Laufende",
     settingsLaufendeHint: "Laufende (Matadore) geben Zusatzpunkte für eine ununterbrochene Reihe der höchsten Trümpfe. Hier kannst du sie für die Wertung abschalten.",
     settingsLaufendeCount: "Zählen",
@@ -228,6 +233,11 @@ export const translations = {
     // Settings
     settings: "Settings",
     settingsLanguage: "Language",
+    settingsAvatars: "Profile pictures",
+    settingsAvatarsHint: "Pick your profile picture and the pictures for the two AI players. Your picture is also shown to your partner on the other device.",
+    settingsAvatarYours: "Your picture",
+    settingsAvatarResi: "Resi (AI)",
+    settingsAvatarSepp: "Sepp (AI)",
     settingsLaufende: "Laufende",
     settingsLaufendeHint: "Laufende (matadors) award bonus points for an unbroken run of the highest trumps. You can turn them off for scoring here.",
     settingsLaufendeCount: "Count",

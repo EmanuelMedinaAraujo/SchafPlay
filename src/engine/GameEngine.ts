@@ -45,6 +45,14 @@ export interface EngineOptions {
   devToolsEnabled?: boolean;
   /** House rule (#31): when true, Laufende (matadors) pay nothing. Default false. */
   disableLaufende?: boolean;
+  /**
+   * Profile pictures (#14): per-seat avatar ids (see lib/avatars). Pure
+   * display data carried on `Player.avatar` — sessions provide them from the
+   * device settings; the guest's own avatar arrives later via CONNECTION_ACK
+   * (`setGuestProfile`). Seats without an entry stay undefined and the UI
+   * falls back to its default picture.
+   */
+  avatars?: Partial<Record<SeatId, string>>;
 }
 
 /** Dev-skip fallback for seats without a controller of their own. */
@@ -77,6 +85,9 @@ export class GameEngine {
       options.soloMode ? makePlayer("p3", "Zenzi (KI)", false, 2) : makePlayer("p3", guestName || "Gast", true, 2),
       makePlayer("p4", "Sepp (KI)", false, 3),
     ];
+    for (const player of players) {
+      player.avatar = options.avatars?.[player.id];
+    }
 
     // A seat is engine-driven iff it has a controller; defaults keep the
     // controller map and the players' isHuman flags in agreement.
@@ -121,9 +132,11 @@ export class GameEngine {
     return redactStateFor(this.getState(), playerId);
   }
 
-  setGuestName(name: string): void {
+  /** Apply the guest's display data from CONNECTION_ACK (name + avatar id). */
+  setGuestProfile(name: string, avatar?: string): void {
     this.mutate((state) => {
       state.players[2].name = name.trim() || "Gast";
+      if (avatar !== undefined) state.players[2].avatar = avatar;
     });
   }
 

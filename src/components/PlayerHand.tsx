@@ -1,6 +1,7 @@
 import { PointerEvent, useEffect, useRef, useState } from "react";
 import { Card, Contract, GameType, Language, Trick } from "../types";
 import { getLegalCards, sortCardsForHand } from "../game/rules";
+import { Avatar } from "../lib/avatars";
 import { translations } from "../lib/i18n";
 import CardFace from "./CardFace";
 
@@ -10,6 +11,7 @@ interface PlayerHandProps {
   contract: Contract | null;
   disabled: boolean;
   playerName: string;
+  playerAvatar?: string;
   showLastTrick: boolean;
   language: Language;
   onPlay: (cardId: string) => void;
@@ -31,6 +33,7 @@ export default function PlayerHand({
   contract,
   disabled,
   playerName,
+  playerAvatar,
   showLastTrick,
   language,
   onPlay,
@@ -113,7 +116,10 @@ export default function PlayerHand({
 
   return (
     <div className={`player-hand-container ${disabled ? "" : "my-turn"}`}>
-      <span className="player-hand-name">{playerName}</span>
+      <span className="player-hand-name">
+        <Avatar id={playerAvatar} size={20} className="hand-avatar" />
+        {playerName}
+      </span>
 
       <div className="player-hand-cards">
         {sorted.map((card) => {

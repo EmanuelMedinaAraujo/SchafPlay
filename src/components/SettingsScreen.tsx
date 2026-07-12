@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Language } from "../types";
+import { Avatar, AVATARS } from "../lib/avatars";
 import { translations } from "../lib/i18n";
 import { checkForUpdate } from "../lib/pwa";
 import { CheckIcon, LoaderIcon, RefreshIcon, SettingsIcon } from "./icons";
@@ -9,6 +10,12 @@ interface SettingsScreenProps {
   onLanguageChange: (language: Language) => void;
   disableLaufende: boolean;
   onDisableLaufendeChange: (disable: boolean) => void;
+  avatar: string;
+  onAvatarChange: (id: string) => void;
+  resiAvatar: string;
+  onResiAvatarChange: (id: string) => void;
+  seppAvatar: string;
+  onSeppAvatarChange: (id: string) => void;
 }
 
 type UpdateStatus = "idle" | "checking" | "uptodate" | "installing" | "unsupported";
@@ -18,7 +25,48 @@ const LANGUAGES: Array<{ code: Language; label: string }> = [
   { code: "en", label: "English" },
 ];
 
-export default function SettingsScreen({ language, onLanguageChange, disableLaufende, onDisableLaufendeChange }: SettingsScreenProps) {
+interface AvatarPickerProps {
+  /** Group label, also used as the accessible name and in per-option labels. */
+  label: string;
+  selected: string;
+  onSelect: (id: string) => void;
+}
+
+/** One row of the preselection: every built-in avatar as a toggle button. */
+function AvatarPicker({ label, selected, onSelect }: AvatarPickerProps) {
+  return (
+    <div className="avatar-picker-row">
+      <span className="field-label">{label}</span>
+      <div className="avatar-picker" role="group" aria-label={label}>
+        {AVATARS.map(({ id }) => (
+          <button
+            key={id}
+            className={`avatar-option ${selected === id ? "active" : ""}`}
+            onClick={() => onSelect(id)}
+            aria-pressed={selected === id}
+            aria-label={`${label}: ${id}`}
+            type="button"
+          >
+            <Avatar id={id} size={34} />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function SettingsScreen({
+  language,
+  onLanguageChange,
+  disableLaufende,
+  onDisableLaufendeChange,
+  avatar,
+  onAvatarChange,
+  resiAvatar,
+  onResiAvatarChange,
+  seppAvatar,
+  onSeppAvatarChange,
+}: SettingsScreenProps) {
   const t = translations[language];
   const [status, setStatus] = useState<UpdateStatus>("idle");
 
@@ -75,6 +123,14 @@ export default function SettingsScreen({ language, onLanguageChange, disableLauf
             </button>
           ))}
         </div>
+      </section>
+
+      <section className="panel settings-panel">
+        <h2>{t.settingsAvatars}</h2>
+        <p className="muted">{t.settingsAvatarsHint}</p>
+        <AvatarPicker label={t.settingsAvatarYours} selected={avatar} onSelect={onAvatarChange} />
+        <AvatarPicker label={t.settingsAvatarResi} selected={resiAvatar} onSelect={onResiAvatarChange} />
+        <AvatarPicker label={t.settingsAvatarSepp} selected={seppAvatar} onSelect={onSeppAvatarChange} />
       </section>
 
       <section className="panel settings-panel">

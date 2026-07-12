@@ -1908,3 +1908,79 @@ html.compact .slot-left {
 html.compact .slot-right {
   right: 7%;
 }
+
+/* ---------- Avatars (#14) ----------
+   Profile pictures are self-contained inline SVGs (see src/lib/avatars.tsx):
+   a coloured circle + emblem that scales crisply from the settings picker
+   down to the seat badges. */
+
+.avatar {
+  display: block;
+  flex: none;
+  border-radius: 50%;
+}
+
+.seat-name .seat-avatar {
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.18);
+}
+
+/* The bottom seat's own name tag next to the hand. */
+.player-hand-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* Round-over / list-over standings: avatar + name on one line. */
+.score-player {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.score-player strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Settings: one picker row per configurable seat. */
+.avatar-picker-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.avatar-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.avatar-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.avatar-option:hover {
+  transform: scale(1.08);
+}
+
+.avatar-option.active {
+  border-color: var(--amber);
+  background: rgba(245, 158, 11, 0.12);
+}
+
+/* Short effective height: slightly smaller seat badges. */
+html.compact .seat-name .avatar {
+  width: 18px;
+  height: 18px;
+}

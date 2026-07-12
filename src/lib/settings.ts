@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { Language } from "../types";
+import { DEFAULT_AVATAR, DEFAULT_RESI_AVATAR, DEFAULT_SEPP_AVATAR, isAvatarId } from "./avatars";
 
 /** The three ways to start a session from the home screen. */
 export type GameMode = "host" | "join" | "solo";
@@ -20,6 +21,12 @@ export interface Settings {
   disableLaufende: boolean;
   /** The mode tab last used on the home screen, preselected next open. */
   lastMode: GameMode;
+  /** Profile picture (#14): preselection id from `lib/avatars`. */
+  avatar: string;
+  /** Avatar shown for the Resi (p2) AI seat on games this device hosts. */
+  resiAvatar: string;
+  /** Avatar shown for the Sepp (p4) AI seat on games this device hosts. */
+  seppAvatar: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -28,6 +35,9 @@ export const DEFAULT_SETTINGS: Settings = {
   totalRounds: 8,
   disableLaufende: false,
   lastMode: "host",
+  avatar: DEFAULT_AVATAR,
+  resiAvatar: DEFAULT_RESI_AVATAR,
+  seppAvatar: DEFAULT_SEPP_AVATAR,
 };
 
 /**
@@ -88,6 +98,21 @@ const CODECS: { [K in keyof Settings]: FieldCodec<Settings[K]> } = {
   lastMode: {
     key: "schafplay.lastMode",
     parse: (raw) => (raw === "join" || raw === "solo" || raw === "host" ? raw : DEFAULT_SETTINGS.lastMode),
+    serialize: identity,
+  },
+  avatar: {
+    key: "schafplay.avatar",
+    parse: (raw) => (isAvatarId(raw) ? raw : DEFAULT_SETTINGS.avatar),
+    serialize: identity,
+  },
+  resiAvatar: {
+    key: "schafplay.resiAvatar",
+    parse: (raw) => (isAvatarId(raw) ? raw : DEFAULT_SETTINGS.resiAvatar),
+    serialize: identity,
+  },
+  seppAvatar: {
+    key: "schafplay.seppAvatar",
+    parse: (raw) => (isAvatarId(raw) ? raw : DEFAULT_SETTINGS.seppAvatar),
     serialize: identity,
   },
 };

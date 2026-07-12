@@ -24,7 +24,10 @@ async function readStandings(page: Page): Promise<Standing[]> {
   for (let i = 0; i < count; i++) {
     const row = rows.nth(i);
     const name = ((await row.locator("strong").textContent()) ?? "").trim();
-    const scoreText = ((await row.locator("span").nth(1).textContent()) ?? "0").trim();
+    // The score is the last direct-child span of the row. Selected positionally
+    // (rather than nth(1)) so it stays correct as the row gains an avatar next
+    // to the name (#14 wraps name + avatar in a leading .score-player span).
+    const scoreText = ((await row.locator(":scope > span").last().textContent()) ?? "0").trim();
     standings.push({ name, score: Number(scoreText) });
   }
   return standings;

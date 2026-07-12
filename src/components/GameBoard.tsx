@@ -140,6 +140,7 @@ export default function GameBoard({
         contract={state.currentContract}
         disabled={state.status !== "PLAYING" || !isMyTurn}
         playerName={me.name}
+        playerAvatar={me.avatar}
         showLastTrick={state.tricks.length > 0}
         language={language}
         onPlay={playCard}

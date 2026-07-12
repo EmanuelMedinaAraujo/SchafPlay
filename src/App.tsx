@@ -41,7 +41,7 @@ const PlugZapIcon = () => (
 export default function App() {
   // All persisted device preferences flow through one store (see lib/settings).
   const [settings, updateSetting] = useSettings();
-  const { language, playerName, totalRounds, disableLaufende, lastMode } = settings;
+  const { language, playerName, totalRounds, disableLaufende, lastMode, avatar, resiAvatar, seppAvatar } = settings;
   const [screen, setScreen] = useState<"home" | "game" | "stats" | "settings">("home");
   const [rulesOpen, setRulesOpen] = useState(false);
   // Captured once at startup, before we scrub the fragment below. Reading the
@@ -53,6 +53,9 @@ export default function App() {
     getPlayerName: () => playerName,
     getTotalRounds: () => totalRounds,
     getDisableLaufende: () => disableLaufende,
+    getPlayerAvatar: () => avatar,
+    getResiAvatar: () => resiAvatar,
+    getSeppAvatar: () => seppAvatar,
     onEnterGame: () => setScreen("game"),
   });
   const { gameState, connectionState, role, myPlayerId } = session;
@@ -169,6 +172,12 @@ export default function App() {
           onLanguageChange={(value) => updateSetting("language", value)}
           disableLaufende={disableLaufende}
           onDisableLaufendeChange={(value) => updateSetting("disableLaufende", value)}
+          avatar={avatar}
+          onAvatarChange={(value) => updateSetting("avatar", value)}
+          resiAvatar={resiAvatar}
+          onResiAvatarChange={(value) => updateSetting("resiAvatar", value)}
+          seppAvatar={seppAvatar}
+          onSeppAvatarChange={(value) => updateSetting("seppAvatar", value)}
         />
       ) : !inGame ? (
         <HomeScreen
