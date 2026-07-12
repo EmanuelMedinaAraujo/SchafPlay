@@ -31,7 +31,7 @@ net/         Transport & Signaling interfaces, WebRTCPeer, sdpCodec, protocol
 persistence/ GameHistoryStore interface, IndexedDB store, ListRecorder
 session/     Host/Guest/SoloSession + useGameSession (orchestration)
 components/  presentational React; App.tsx is the UI shell
-lib/         i18n, pwa, cardDisplay
+lib/         i18n, pwa, cardDisplay, settings
 ```
 
 ### Host-authoritative state machine over P2P
@@ -92,6 +92,7 @@ Terminology (see issue #22): a **list** is a whole session; it consists of **rou
 
 - Landscape-only design: `src/App.tsx` rotates the whole app 90° via a `rotated` class on `<html>` when the viewport is portrait, and adds a `compact` class for short *effective* height (post-rotation) that plain CSS media queries can't detect on their own — both are driven by a `resize`/orientation-change listener, not CSS alone.
 - `src/components/` are presentational, one per screen/panel (`GameBoard`, `PlayerHand`, `BiddingPanel`, `TrickArea`, `PlayerSeat`, `RoundOverScreen`, `PairingPanel`, `HomeScreen`, `StatsScreen`, `RulesModal`); they receive `GameState` and an `onAction`/`onReady` callback from `App.tsx` and don't talk to the engine directly. Two exceptions depend on lower layers by nature: `PairingPanel` constructs a transport via `createWebRTCPeer()` and drives signaling; `StatsScreen` reads through the `gameHistoryStore`.
+- **Device settings** (`src/lib/settings.ts`): every persisted local preference — `language`, `playerName`, `totalRounds`, `disableLaufende`, `lastMode` (#44) — lives in one `Settings` shape behind a `SettingsStore` seam (the same swap-the-backend pattern as `GameHistoryStore`, but synchronous so the right value is on screen at first paint). `App.tsx` holds the single `useSettings()` and passes values + `updateSetting(key, value)` setters down. Add a new preference by extending `Settings` + `DEFAULT_SETTINGS` + the `CODECS` map (which owns the tolerant parse/serialize and the historical `schafplay.*` `localStorage` keys) — never hand-roll a `localStorage` read/write in a component again. The default `LocalStorageSettingsStore` degrades silently when storage is unavailable, same contract as the persistence layer.
 
 ## Testing
 
