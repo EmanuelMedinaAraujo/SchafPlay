@@ -1,0 +1,67 @@
+/* ---------- Settings screen ---------- */
+
+.settings-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-panel h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.settings-panel .mode-switch {
+  margin-top: 0;
+  grid-template-columns: 1fr 1fr;
+}
+
+.settings-update-btn {
+  align-self: flex-start;
+}
+
+.settings-update-status {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* Settings: one picker row per configurable seat. */
+.avatar-picker-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.avatar-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.avatar-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.avatar-option:hover {
+  transform: scale(1.08);
+}
+
+.avatar-option.active {
+  border-color: var(--amber);
+  background: rgba(245, 158, 11, 0.12);
+}
+

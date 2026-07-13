@@ -1,0 +1,152 @@
+.panel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  padding: 18px;
+}
+
+.panel h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 17px;
+}
+
+.field-label {
+  display: block;
+  margin: 10px 0 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #0d0d12;
+  color: var(--text);
+  padding: 12px;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--red);
+}
+
+/* The host's short game code, one cell per character. */
+.game-code {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0 6px;
+}
+
+.game-code span {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 58px;
+  border: 1px solid rgba(220, 38, 38, 0.45);
+  border-radius: 10px;
+  background: #0d0d12;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.code-input {
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 22px;
+  font-weight: 800;
+  margin: 6px 0 10px;
+}
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #0d0d12;
+}
+
+.home-screen [role="tablist"].mode-switch {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.mode-switch button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mode-switch button.active {
+  background: var(--red);
+  color: var(--text);
+}
+
+.pairing-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.code-textarea {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  resize: none;
+  background: #0d0d12;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 10px;
+  width: 100%;
+  margin-bottom: 8px;
+  word-break: break-all;
+}
+
+.pairing-flow .primary-button,
+.pairing-flow .secondary-button {
+  width: 100%;
+}
+
+/* Code textarea with its copy button beside it on the same line. */
+.code-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.code-row .code-textarea {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.pairing-flow .code-row .secondary-button {
+  width: auto;
+  height: auto;
+  flex-shrink: 0;
+}
+
+.error-text {
+  color: var(--red-2);
+  font-size: 13px;
+  font-weight: 700;
+  margin: 4px 0 0;
+}
+
