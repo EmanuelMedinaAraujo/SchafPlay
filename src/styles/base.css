@@ -1,0 +1,33 @@
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  overscroll-behavior: none;
+}
+
+#root {
+  touch-action: manipulation;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* The page itself never scrolls; each screen scrolls internally, and only
+   when its content genuinely doesn't fit the viewport. */
+html,
+body {
+  height: 100dvh;
+  overflow: hidden;
+}
+

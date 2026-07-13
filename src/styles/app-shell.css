@@ -1,0 +1,50 @@
+.app-shell {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Landscape-only ----------
+   The game is designed for landscape. On portrait screens the whole app is
+   rotated 90° so it always renders the landscape layout; html.rotated is set
+   by App.tsx. Inside the rotated frame, position:fixed descendants attach to
+   #root (transform creates the containing block), so overlays keep working. */
+
+html.rotated,
+html.rotated body {
+  overflow: hidden;
+}
+
+html.rotated #root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vh;
+  height: 100vw;
+  width: 100dvh;
+  height: 100dvw;
+  transform: rotate(90deg) translateY(-100%);
+  transform-origin: top left;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+html.rotated .app-shell {
+  height: 100%;
+}
+
+/* Physical top (notch) is the rotated UI's left edge; the physical bottom
+   (home indicator) is its right edge. */
+html.rotated .topbar {
+  padding-top: 8px;
+  padding-left: max(clamp(14px, 3vw, 32px), env(safe-area-inset-top, 0px));
+  padding-right: max(clamp(14px, 3vw, 32px), env(safe-area-inset-bottom, 0px));
+}
+
+html.rotated .home-screen,
+html.rotated .game-screen {
+  padding-left: max(12px, env(safe-area-inset-top, 0px));
+  padding-right: max(12px, env(safe-area-inset-bottom, 0px));
+  padding-bottom: 10px;
+}
+

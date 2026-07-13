@@ -1,0 +1,125 @@
+/* ---------- Rules modal ---------- */
+
+.rules-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.74);
+}
+
+.rules-modal-container {
+  width: min(720px, 100%);
+  max-height: calc(100dvh - 36px);
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  padding: 20px;
+}
+
+/* In forced-landscape mode the effective screen height is the physical
+   width — vh/dvh would overshoot and make the modal unscrollably tall. */
+html.rotated .rules-modal-container {
+  max-height: calc(100dvw - 36px);
+}
+
+.rules-modal-header,
+.rules-modal-title-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rules-modal-header {
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+}
+
+.rules-modal-title {
+  margin: 0;
+  font-size: 20px;
+}
+
+.rules-modal-icon-red,
+.rules-modal-section-title {
+  color: var(--red-2);
+}
+
+.rules-modal-close-btn {
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.rules-modal-content {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.rules-modal-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.rules-modal-paragraph,
+.rules-modal-caption,
+.rules-modal-contract-text,
+.rules-modal-list-item,
+.rules-modal-hierarchy-text {
+  color: #d4d4d8;
+  line-height: 1.55;
+}
+
+.rules-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.rules-modal-grid-item,
+.rules-modal-hierarchy-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  padding: 10px;
+}
+
+.rules-modal-grid-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rules-modal-grid-item-label,
+.rules-modal-hierarchy-subtitle {
+  color: var(--muted);
+}
+
+.rules-modal-hierarchy-list {
+  display: grid;
+  gap: 10px;
+}
+
+.rules-modal-action-btn {
+  min-height: 38px;
+  border-radius: 8px;
+  background: var(--red);
+  color: var(--text);
+  padding: 0 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.rules-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+

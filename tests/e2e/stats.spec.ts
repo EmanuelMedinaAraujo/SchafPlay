@@ -72,6 +72,11 @@ test.describe("stats", () => {
     await expect(tiles.nth(1)).toHaveText("0"); // won
     await expect(tiles.nth(2)).toHaveText("0"); // lost
     await expect(tiles.nth(3)).toHaveText("—"); // win rate
+    await expect(tiles.nth(4)).toHaveText("0"); // rounds
+    await expect(tiles.nth(5)).toHaveText("0"); // points balance
+
+    // No stored games: the analysis panels (trend + contracts) stay hidden.
+    await expect(page.locator(".stats-analysis")).toHaveCount(0);
   });
 
   test("a finished solo list is recorded and displayed correctly", async ({ page }) => {
@@ -106,6 +111,13 @@ test.describe("stats", () => {
     await expect(tiles.nth(1)).toHaveText(expectedWon ? "1" : "0"); // won
     await expect(tiles.nth(2)).toHaveText(expectedWon ? "0" : "1"); // lost
     await expect(tiles.nth(3)).toHaveText(expectedWon ? "100%" : "0%");
+    await expect(tiles.nth(4)).toHaveText("4"); // rounds (one 4-round list)
+    await expect(tiles.nth(5)).toHaveText(formatScore(p1!.score)); // points balance
+
+    // With stored games the analysis section shows; a single list is not
+    // enough for a trend chart, so the trend panel shows its hint text.
+    await expect(page.locator(".stats-analysis")).toBeVisible();
+    await expect(page.getByText(de.statsTrendEmpty)).toBeVisible();
 
     const rows = page.locator(".stats-game-row");
     await expect(rows).toHaveCount(1);
@@ -113,6 +125,12 @@ test.describe("stats", () => {
     await expect(rows.first().locator(".stats-result")).toHaveText(expectedWon ? "W" : "L");
     await expect(rows.first().locator(".stats-result")).toHaveClass(expectedWon ? /won/ : /lost/);
     await expect(rows.first().locator(".stats-opponent")).toHaveText(de.statsSoloOpponent);
+
+    // Expanding a game reveals its per-round detail (4 recorded rounds).
+    await rows.first().click();
+    await expect(page.locator(".stats-round-row")).toHaveCount(4);
+    await rows.first().click();
+    await expect(page.locator(".stats-round-row")).toHaveCount(0);
 
     // Solo filter still shows the game …
     await page.getByRole("tab", { name: de.soloGame }).click();
