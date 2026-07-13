@@ -1,0 +1,77 @@
+.hero-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 0.5fr);
+  align-items: center;
+  gap: 24px;
+  padding: clamp(20px, 4vw, 46px);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background:
+    linear-gradient(110deg, rgba(220, 38, 38, 0.2), transparent 44%),
+    radial-gradient(circle at 75% 35%, rgba(245, 158, 11, 0.14), transparent 30%),
+    var(--panel);
+}
+
+.eyebrow {
+  color: var(--red-2);
+  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.hero-copy h1 {
+  margin: 8px 0;
+  font-size: clamp(38px, 8vw, 80px);
+  line-height: 0.94;
+}
+
+.hero-copy p {
+  max-width: 640px;
+  color: #d4d4d8;
+  line-height: 1.55;
+  margin: 8px 0;
+}
+
+.hero-table {
+  aspect-ratio: 1.15;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  transform: rotate(-4deg);
+}
+
+.hero-table span {
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #f8fafc;
+  font-size: clamp(26px, 5vw, 46px);
+  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.28);
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.2fr);
+  gap: 16px;
+}
+
+/* List-length picker: label and round buttons share one line. */
+.list-length-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.list-length-row .field-label {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.list-length-row .mode-switch {
+  flex: 1;
+  margin-top: 0;
+  grid-template-columns: repeat(3, 1fr);
+}
+

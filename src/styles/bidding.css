@@ -1,0 +1,89 @@
+/* ---------- Bidding ---------- */
+
+.bidding-panel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.bidding-panel h2 {
+  margin: 0 0 10px;
+  font-size: 17px;
+}
+
+.bid-status {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.bid-status span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.bid-status span.active {
+  border-color: var(--red-2);
+}
+
+.bid-status strong {
+  color: var(--text);
+}
+
+.button-row,
+.bid-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  align-items: center;
+}
+
+.bid-grid button {
+  min-height: 40px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  padding: 0 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.bid-grid button:not(:disabled):hover {
+  border-color: var(--red-2);
+}
+
+.tout-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  padding: 0 12px;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tout-toggle.on {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.tout-toggle input {
+  accent-color: var(--amber);
+}
+

@@ -1,0 +1,244 @@
+.panel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  padding: 18px;
+}
+
+.panel h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 17px;
+}
+
+.field-label {
+  display: block;
+  margin: 10px 0 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #0d0d12;
+  color: var(--text);
+  padding: 12px;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--red);
+}
+
+/* The host's short game code, one cell per character. */
+.game-code {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0 6px;
+}
+
+.game-code span {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 58px;
+  border: 1px solid rgba(220, 38, 38, 0.45);
+  border-radius: 10px;
+  background: #0d0d12;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.code-input {
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 22px;
+  font-weight: 800;
+  margin: 6px 0 10px;
+}
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #0d0d12;
+}
+
+.home-screen [role="tablist"].mode-switch {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.mode-switch button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mode-switch button.active {
+  background: var(--red);
+  color: var(--text);
+}
+
+.pairing-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.code-textarea {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  resize: none;
+  background: #0d0d12;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 10px;
+  width: 100%;
+  margin-bottom: 8px;
+  word-break: break-all;
+}
+
+.pairing-flow .primary-button,
+.pairing-flow .secondary-button {
+  width: 100%;
+}
+
+/* Code textarea with its copy button beside it on the same line. */
+.code-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.code-row .code-textarea {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.pairing-flow .code-row .secondary-button {
+  width: auto;
+  height: auto;
+  flex-shrink: 0;
+}
+
+.error-text {
+  color: var(--red-2);
+  font-size: 13px;
+  font-weight: 700;
+  margin: 4px 0 0;
+}
+
+/* QR pairing (issue #7, Option C) --------------------------------------- */
+
+/* Primary + optional scan button share a row instead of stacking full-width. */
+.pairing-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.pairing-flow .pairing-actions .primary-button {
+  flex: 1;
+}
+
+.pairing-flow .pairing-actions .secondary-button {
+  width: auto;
+  flex-shrink: 0;
+}
+
+.qr-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 8px;
+}
+
+.qr-toggle {
+  align-self: center;
+}
+
+/* The symbol renders dark-on-white for scanner contrast; the white padding is
+   part of the quiet zone in the viewBox, so a small frame is enough here. */
+.qr-code {
+  width: 150px;
+  height: 150px;
+  max-width: 55vh; /* effective width is the post-rotation viewport height */
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px;
+}
+
+.qr-hint {
+  font-size: 12px;
+  text-align: center;
+  margin: 0;
+}
+
+.qr-scanner-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+}
+
+.qr-scanner-box {
+  position: relative;
+  width: min(60vw, 60vh);
+  aspect-ratio: 1;
+}
+
+.qr-scanner-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #000;
+}
+
+.qr-scanner-frame {
+  position: absolute;
+  inset: 12%;
+  border: 3px solid rgba(255, 255, 255, 0.85);
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+.qr-scanner-hint {
+  font-size: 13px;
+  text-align: center;
+  margin: 0;
+  max-width: 80vw;
+}
+
+.qr-scanner-cancel {
+  width: auto;
+}
+
