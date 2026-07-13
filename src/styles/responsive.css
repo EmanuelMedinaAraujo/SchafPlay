@@ -10,6 +10,14 @@ html.narrow .home-grid {
   grid-template-columns: 1fr;
 }
 
+html.narrow .stat-tiles {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+html.narrow .stats-analysis {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 html.narrow .hero-table {
   display: none;
 }
@@ -100,6 +108,10 @@ html.compact .stat-tile strong {
 
 html.compact .stats-game-row {
   min-height: 30px;
+}
+
+html.compact .stats-round-row {
+  min-height: 20px;
 }
 
 html.compact .contract-chip {
