@@ -18,15 +18,16 @@ test.describe("qr pairing", () => {
     await expect(inviteArea).toBeVisible({ timeout: 20_000 });
     await expect(inviteArea).not.toHaveValue("");
 
+    // The QR code starts hidden and is only displayed inside the popup.
     const qr = page.locator(".qr-code");
+    await expect(qr).toHaveCount(0);
+
+    // Open the QR popup
+    await page.getByRole("button", { name: de.showQr }).click();
     await expect(qr).toBeVisible();
 
-    // Hiding the QR is a display toggle only — the copy-paste fallback stays.
-    await page.getByRole("button", { name: de.hideQr }).click();
+    // Close the QR popup
+    await page.getByRole("button", { name: de.cancel }).click();
     await expect(qr).toHaveCount(0);
-    await expect(inviteArea).toBeVisible();
-
-    await page.getByRole("button", { name: de.showQr }).click();
-    await expect(page.locator(".qr-code")).toBeVisible();
   });
 });

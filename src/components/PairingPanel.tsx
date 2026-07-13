@@ -4,7 +4,7 @@ import { Transport, TransportState } from "../net/Transport";
 import { createWebRTCPeer } from "../net/WebRTCPeer";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
-import { CopyIcon, CheckIcon, LoaderIcon, LinkIcon, ShareIcon, QrCodeIcon, ScanIcon } from "./icons";
+import { CopyIcon, CheckIcon, LoaderIcon, LinkIcon, ShareIcon, QrCodeIcon, ScanIcon, XIcon } from "./icons";
 import QRCodeView from "./QRCodeView";
 import QRScanner, { detectQrScanSupport } from "./QRScanner";
 
@@ -45,11 +45,11 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
-  // QR pairing (issue #7, Option C): scanning is only offered where the
-  // native BarcodeDetector + camera exist; QR *display* is always available.
+  // QR pairing (issue #7, Option C): scanning is only offered where camera is
+  // supported; QR *display* is always available.
   const [scanSupported, setScanSupported] = useState(false);
   const [scanning, setScanning] = useState(false);
-  const [showQr, setShowQr] = useState(true);
+  const [showingQrModal, setShowingQrModal] = useState(false);
   const peerRef = useRef<(Transport & HostSignaling & GuestSignaling) | null>(null);
   const onPeerRef = useRef(onPeer);
   onPeerRef.current = onPeer;
@@ -257,52 +257,49 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
               >
                 <ShareIcon />
               </button>
+              <button
+                className="secondary-button"
+                onClick={() => setShowingQrModal(true)}
+                type="button"
+                title={t.showQr}
+                aria-label={t.showQr}
+              >
+                <QrCodeIcon />
+              </button>
             </div>
-
-            {connectionState !== "connected" && (
-              <div className="qr-block">
-                <button
-                  className="text-button qr-toggle"
-                  onClick={() => setShowQr((v) => !v)}
-                  type="button"
-                >
-                  <QrCodeIcon /> {showQr ? t.hideQr : t.showQr}
-                </button>
-                {showQr && (
-                  <>
-                    <QRCodeView data={inviteCode} label={t.inviteCode} />
-                    <p className="muted qr-hint">{t.inviteQrHint}</p>
-                  </>
-                )}
-              </div>
-            )}
 
             {connectionState !== "connected" && (
               <>
                 <label className="field-label">{t.pasteReply}</label>
-                <textarea
-                  className="input code-textarea"
-                  value={pastedCode}
-                  onChange={(e) => setPastedCode(e.target.value)}
-                  placeholder={t.pasteReplyHint}
-                  rows={2}
-                />
-                <div className="pairing-actions">
-                  <button
-                    className="primary-button"
-                    onClick={() => hostAcceptReply()}
-                    disabled={busy || !pastedCode.trim()}
-                    type="button"
-                  >
-                    {busy ? <LoaderIcon /> : <LinkIcon />}
-                    {t.connect}
-                  </button>
+                <div className="code-row">
+                  <textarea
+                    className="input code-textarea"
+                    value={pastedCode}
+                    onChange={(e) => setPastedCode(e.target.value)}
+                    placeholder={t.pasteReplyHint}
+                    rows={2}
+                  />
                   {scanSupported && (
-                    <button className="secondary-button" onClick={() => setScanning(true)} type="button">
-                      <ScanIcon /> {t.scanReplyQr}
+                    <button
+                      className="secondary-button"
+                      onClick={() => setScanning(true)}
+                      type="button"
+                      title={t.scanReplyQr}
+                      aria-label={t.scanReplyQr}
+                    >
+                      <ScanIcon />
                     </button>
                   )}
                 </div>
+                <button
+                  className="primary-button"
+                  onClick={() => hostAcceptReply()}
+                  disabled={busy || !pastedCode.trim()}
+                  type="button"
+                >
+                  {busy ? <LoaderIcon /> : <LinkIcon />}
+                  {t.connect}
+                </button>
               </>
             )}
 
@@ -330,6 +327,23 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
             onClose={() => setScanning(false)}
           />
         )}
+
+        {showingQrModal && (
+          <div className="qr-popup-overlay" role="dialog" aria-label={t.showQr}>
+            <div className="qr-popup-box">
+              <QRCodeView data={inviteCode} label={t.inviteCode} />
+              <p className="muted qr-hint">{t.inviteQrHint}</p>
+              <button
+                className="secondary-button qr-scanner-cancel"
+                onClick={() => setShowingQrModal(false)}
+                type="button"
+                style={{ marginTop: "8px" }}
+              >
+                <XIcon size={16} /> {t.cancel}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -340,29 +354,35 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
       {!replyCode && (
         <>
           <label className="field-label">{t.pasteInvite}</label>
-          <textarea
-            className="input code-textarea"
-            value={pastedCode}
-            onChange={(e) => setPastedCode(e.target.value)}
-            placeholder={t.pasteInviteHint}
-            rows={2}
-          />
-          <div className="pairing-actions">
-            <button
-              className="primary-button"
-              onClick={() => guestGenerateReply()}
-              disabled={busy || !pastedCode.trim()}
-              type="button"
-            >
-              {busy ? <LoaderIcon /> : <LinkIcon />}
-              {t.generateReply}
-            </button>
+          <div className="code-row">
+            <textarea
+              className="input code-textarea"
+              value={pastedCode}
+              onChange={(e) => setPastedCode(e.target.value)}
+              placeholder={t.pasteInviteHint}
+              rows={2}
+            />
             {scanSupported && (
-              <button className="secondary-button" onClick={() => setScanning(true)} type="button">
-                <ScanIcon /> {t.scanInviteQr}
+              <button
+                className="secondary-button"
+                onClick={() => setScanning(true)}
+                type="button"
+                title={t.scanInviteQr}
+                aria-label={t.scanInviteQr}
+              >
+                <ScanIcon />
               </button>
             )}
           </div>
+          <button
+            className="primary-button"
+            onClick={() => guestGenerateReply()}
+            disabled={busy || !pastedCode.trim()}
+            type="button"
+          >
+            {busy ? <LoaderIcon /> : <LinkIcon />}
+            {t.generateReply}
+          </button>
         </>
       )}
 
@@ -395,25 +415,16 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
             >
               <ShareIcon />
             </button>
+            <button
+              className="secondary-button"
+              onClick={() => setShowingQrModal(true)}
+              type="button"
+              title={t.showQr}
+              aria-label={t.showQr}
+            >
+              <QrCodeIcon />
+            </button>
           </div>
-
-          {connectionState !== "connected" && (
-            <div className="qr-block">
-              <button
-                className="text-button qr-toggle"
-                onClick={() => setShowQr((v) => !v)}
-                type="button"
-              >
-                <QrCodeIcon /> {showQr ? t.hideQr : t.showQr}
-              </button>
-              {showQr && (
-                <>
-                  <QRCodeView data={replyCode} label={t.replyCode} />
-                  <p className="muted qr-hint">{t.replyQrHint}</p>
-                </>
-              )}
-            </div>
-          )}
         </>
       )}
 
@@ -434,6 +445,23 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
           }}
           onClose={() => setScanning(false)}
         />
+      )}
+
+      {showingQrModal && (
+        <div className="qr-popup-overlay" role="dialog" aria-label={t.showQr}>
+          <div className="qr-popup-box">
+            <QRCodeView data={replyCode} label={t.replyCode} />
+            <p className="muted qr-hint">{t.replyQrHint}</p>
+            <button
+              className="secondary-button qr-scanner-cancel"
+              onClick={() => setShowingQrModal(false)}
+              type="button"
+              style={{ marginTop: "8px" }}
+            >
+              <XIcon size={16} /> {t.cancel}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
