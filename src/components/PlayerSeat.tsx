@@ -85,8 +85,21 @@ export default function PlayerSeat({ player, position, active, contract, languag
   const role: Role = isDeclarer ? "declarer" : isPartner ? "partner" : null;
   const badgeRef = useRoleBadgeReveal(role);
 
+  // Select avatar image based on player's name/ID
+  let avatarUrl = "";
+  if (player.id === "p2" || player.name === "Resi") {
+    avatarUrl = "/avatar_resi.jpg";
+  } else if (player.id === "p4" || player.name === "Sepp") {
+    avatarUrl = "/avatar_sepp.jpg";
+  } else {
+    avatarUrl = "/avatar_woman2.jpg";
+  }
+
   return (
     <div className={`seat seat-${position} ${active ? "active" : ""} ${player.connected === false ? "offline" : ""}`}>
+      <div className="seat-avatar-container">
+        <img src={avatarUrl} alt={player.name} className="seat-avatar-img" />
+      </div>
       <div className="seat-name">
         {player.isHuman ? <UserIcon /> : <BotIcon />}
         <strong>{player.name}</strong>

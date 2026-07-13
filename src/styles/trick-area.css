@@ -3,9 +3,6 @@
 .trick-area {
   grid-column: 2;
   grid-row: 1;
-  border-radius: 14px;
-  border: 1px solid rgba(220, 38, 38, 0.28);
-  background: radial-gradient(circle at center, var(--felt), #0d1510 78%);
   position: relative;
   overflow: visible;
   z-index: 15;
@@ -15,6 +12,8 @@
 .trick-felt {
   position: absolute;
   inset: 0;
+  transform: perspective(800px) rotateX(28deg);
+  transform-style: preserve-3d;
 }
 
 .trick-slot {

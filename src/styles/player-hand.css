@@ -80,6 +80,8 @@
   border-radius: 8px;
   cursor: pointer;
   margin-left: -22px;
+  transform: rotate(var(--card-rot, 0deg)) translate(var(--card-x, 0px), var(--card-y, 0px));
+  transform-origin: center bottom;
   transition: transform 0.18s ease, opacity 0.2s ease, filter 0.2s ease;
   touch-action: none;
 }
@@ -94,10 +96,11 @@
   aspect-ratio: 62 / 92;
 }
 
-/* The global hover lift replaces the card transform and made cards look
-   shifted (sticky :hover on touch) — hand cards are exempt. */
-button.playing-card:not(:disabled):hover {
-  transform: none;
+@media (hover: hover) {
+  button.playing-card:not(:disabled):not(.dragging):hover {
+    transform: rotate(var(--card-rot, 0deg)) translate(var(--card-x, 0px), calc(var(--card-y, 0px) - 22px)) scale(1.08);
+    z-index: 50 !important;
+  }
 }
 
 .playing-card:disabled {
