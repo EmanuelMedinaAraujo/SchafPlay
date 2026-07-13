@@ -2,7 +2,6 @@ import { Card, Contract, GameType, Suit } from "../types";
 import { isTrump } from "../game/rules";
 import { getSuitEmoji } from "../lib/cardDisplay";
 import { CardDesign } from "../lib/settings";
-import BavarianCardArt from "./BavarianCardArt";
 
 interface CardFaceProps {
   card: Card;
@@ -27,9 +26,16 @@ export default function CardFace({ card, contract, design = "bavarian", small = 
   } ${small ? "small" : ""}`;
 
   if (design === "bavarian") {
+    const filename = `${card.suit.toLowerCase()}-${card.value.toLowerCase()}.svg`;
+    const src = `${import.meta.env.BASE_URL}bavarian-cards/${filename}`;
     return (
       <span className={classes}>
-        <BavarianCardArt suit={card.suit} value={card.value} trump={trump} />
+        <img
+          src={src}
+          alt={`${card.value} of ${card.suit}`}
+          className="bavarian-card-img"
+          draggable={false}
+        />
       </span>
     );
   }

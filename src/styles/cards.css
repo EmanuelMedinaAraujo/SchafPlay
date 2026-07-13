@@ -31,9 +31,11 @@
   overflow: hidden;
 }
 
-.bavarian-card-svg {
+.bavarian-card-svg,
+.bavarian-card-img {
   width: 100%;
   height: 100%;
+  display: block;
 }
 
 /* Rank + suit stacked in the corner so overlapping fanned cards stay readable. */

@@ -8,6 +8,7 @@
     "build": "vite build",
     "start": "vite preview",
     "clean": "rm -rf dist",
+    "generate:svgs": "node scripts/generate-svgs.cjs",
     "lint": "tsc --noEmit && tsc --noEmit -p tests/e2e",
     "test:e2e": "playwright test"
   },
