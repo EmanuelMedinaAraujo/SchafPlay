@@ -81,8 +81,34 @@ html.rotated .round-cards-panel {
   padding: 3px;
 }
 
+.round-cards-panel .card-face.small .card-corner {
+  font-size: 10px;
+  gap: 0px;
+}
+
+.round-cards-panel .card-face.small .card-corner-suit {
+  font-size: 8px;
+}
+
+.round-cards-panel .card-face.small .card-emoji {
+  font-size: 13px;
+}
+
 html.compact .round-cards-panel .card-face.small {
   width: 37px;
   height: 50px;
 }
+
+html.compact .round-cards-panel .card-face.small .card-corner {
+  font-size: 9px;
+}
+
+html.compact .round-cards-panel .card-face.small .card-corner-suit {
+  font-size: 7px;
+}
+
+html.compact .round-cards-panel .card-face.small .card-emoji {
+  font-size: 11px;
+}
+
 
