@@ -1,51 +1,26 @@
 import { useEffect, useRef, useState } from "react";
+import jsQR from "jsqr";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
 import { XIcon } from "./icons";
 
 /**
- * Camera QR scanning via `getUserMedia` + the native `BarcodeDetector` API —
- * no scanning library. Chromium-family browsers support it; everywhere else
- * `detectQrScanSupport()` resolves false and the pairing UI simply never
- * offers the scan button (the copy-paste flow is always available).
+ * Camera QR scanning via `getUserMedia` + the `jsQR` library for decoding.
+ * Supports all modern browsers (including iOS Safari and Firefox) where
+ * camera API is present.
  */
-
-interface DetectedBarcode {
-  rawValue: string;
-}
-
-interface BarcodeDetectorInstance {
-  detect(source: CanvasImageSource): Promise<DetectedBarcode[]>;
-}
-
-interface BarcodeDetectorCtor {
-  new (options?: { formats?: string[] }): BarcodeDetectorInstance;
-  getSupportedFormats(): Promise<string[]>;
-}
-
-function getBarcodeDetector(): BarcodeDetectorCtor | undefined {
-  return (window as unknown as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector;
-}
 
 let supportProbe: Promise<boolean> | null = null;
 
 /**
- * True when this device can scan QR codes: camera API present and the
- * BarcodeDetector actually lists `qr_code` (some desktop builds expose the
- * constructor but support no formats). Result is cached for the session.
+ * True when this device can scan QR codes: camera API (`getUserMedia`) is present.
+ * Result is cached for the session.
  */
 export function detectQrScanSupport(): Promise<boolean> {
   if (!supportProbe) {
-    supportProbe = (async () => {
-      try {
-        const Detector = getBarcodeDetector();
-        if (!Detector || !navigator.mediaDevices?.getUserMedia) return false;
-        const formats = await Detector.getSupportedFormats();
-        return formats.includes("qr_code");
-      } catch {
-        return false;
-      }
-    })();
+    supportProbe = Promise.resolve(
+      !!(navigator.mediaDevices?.getUserMedia)
+    );
   }
   return supportProbe;
 }
@@ -76,9 +51,6 @@ export default function QRScanner({ language, onResult, onClose }: QRScannerProp
 
     (async () => {
       try {
-        const Detector = getBarcodeDetector();
-        if (!Detector) throw new Error("unsupported");
-        const detector = new Detector({ formats: ["qr_code"] });
         // Prefer the rear camera on phones; laptops fall back to whatever exists.
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "environment" },
@@ -90,14 +62,22 @@ export default function QRScanner({ language, onResult, onClose }: QRScannerProp
         video.srcObject = stream;
         await video.play();
 
+        // Create an off-screen canvas to grab frames
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+
         let detecting = false;
-        intervalId = setInterval(async () => {
-          if (detecting || cancelled || video.readyState < 2) return;
+        intervalId = setInterval(() => {
+          if (detecting || cancelled || video.readyState < 2 || !context) return;
           detecting = true;
           try {
-            const codes = await detector.detect(video);
-            if (!cancelled && codes.length > 0 && codes[0].rawValue) {
-              onResultRef.current(codes[0].rawValue);
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+            if (!cancelled && code && code.data) {
+              onResultRef.current(code.data);
             }
           } catch {
             // A single failed detection pass is not fatal — keep polling.
