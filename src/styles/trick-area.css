@@ -1,0 +1,94 @@
+/* ---------- Trick area ---------- */
+
+.trick-area {
+  grid-column: 2;
+  grid-row: 1;
+  border-radius: 14px;
+  border: 1px solid rgba(220, 38, 38, 0.28);
+  background: radial-gradient(circle at center, var(--felt), #0d1510 78%);
+  position: relative;
+  overflow: visible;
+  z-index: 15;
+  min-height: 220px;
+}
+
+.trick-felt {
+  position: absolute;
+  inset: 0;
+}
+
+.trick-slot {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  transition: transform 0.25s ease;
+}
+
+.slot-bottom {
+  left: 50%;
+  bottom: 8%;
+  transform: translateX(-50%);
+}
+
+.slot-top {
+  left: 50%;
+  top: 8%;
+  transform: translateX(-50%) rotate(3deg);
+}
+
+.slot-left {
+  left: 12%;
+  top: 50%;
+  transform: translateY(-50%) rotate(-8deg);
+}
+
+.slot-right {
+  right: 12%;
+  top: 50%;
+  transform: translateY(-50%) rotate(8deg);
+}
+
+.trick-card {
+  position: relative;
+  z-index: 20;
+}
+
+/* Trick collection: TrickArea.tsx measures per-card vectors and sets
+   --gather-x/y (to the felt center) and --fly-x/y (to the winner's name)
+   as inline CSS vars. All cards first meet in the center, pause, then fly
+   together to the same point. */
+
+/* Straighten the slots while collecting so the card translations run in
+   unrotated coordinates and the stacked cards sit parallel. */
+.slot-top.collecting {
+  transform: translateX(-50%);
+}
+
+.slot-left.collecting {
+  transform: translateY(-50%);
+}
+
+.slot-right.collecting {
+  transform: translateY(-50%);
+}
+
+.trick-slot.collecting .trick-card {
+  animation: gather-and-fly 1.3s ease-in-out forwards;
+}
+
+@keyframes gather-and-fly {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  35%,
+  62% {
+    transform: translate(var(--gather-x, 0px), var(--gather-y, 0px)) rotate(var(--stack-rot, 0deg));
+  }
+  100% {
+    transform: translate(var(--fly-x, 0px), var(--fly-y, 0px)) rotate(var(--stack-rot, 0deg)) scale(0.3);
+    opacity: 0;
+  }
+}
+

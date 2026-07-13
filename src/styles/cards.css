@@ -1,0 +1,94 @@
+/* ---------- Cards ---------- */
+
+.card-face {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 62px;
+  height: 92px;
+  padding: 6px;
+  border-radius: 8px;
+  border: 1px solid #d4d4d8;
+  background: linear-gradient(160deg, #ffffff, #ececf1);
+  color: #18181b;
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.3);
+}
+
+.card-face.small {
+  width: 52px;
+  height: 76px;
+  padding: 4px;
+}
+
+.card-face.trump {
+  border-color: var(--amber);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(245, 158, 11, 0.35);
+}
+
+.card-face.bavarian {
+  padding: 0;
+  background: #fdfaf3;
+  overflow: hidden;
+}
+
+.bavarian-card-svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Rank + suit stacked in the corner so overlapping fanned cards stay readable. */
+.card-corner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  align-self: flex-start;
+  gap: 2px;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.card-corner-suit {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.card-face.small .card-corner {
+  font-size: 12px;
+}
+
+.card-face.small .card-corner-suit {
+  font-size: 9px;
+}
+
+.card-corner.flipped {
+  transform: rotate(180deg);
+  align-self: flex-end;
+}
+
+.card-emoji {
+  align-self: center;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.card-face.small .card-emoji {
+  font-size: 19px;
+}
+
+.suit-hearts .card-corner {
+  color: #dc2626;
+}
+
+.suit-bells .card-corner {
+  color: #b45309;
+}
+
+.suit-leaves .card-corner {
+  color: #15803d;
+}
+
+.suit-acorns .card-corner {
+  color: #78350f;
+}
+
