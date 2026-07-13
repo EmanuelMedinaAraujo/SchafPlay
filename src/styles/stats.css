@@ -24,7 +24,7 @@
 
 .stat-tiles {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 8px;
 }
 
@@ -68,17 +68,27 @@
   flex-direction: column;
 }
 
+.stats-game-item {
+  border-bottom: 1px solid var(--line);
+}
+
+.stats-game-item:last-child {
+  border-bottom: none;
+}
+
+/* The row is a button (click expands the per-round detail) — reset chrome. */
 .stats-game-row {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
   min-height: 34px;
-  border-bottom: 1px solid var(--line);
+  padding: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
   font-size: 13px;
-}
-
-.stats-game-row:last-child {
-  border-bottom: none;
+  cursor: pointer;
 }
 
 .stats-date {
@@ -124,5 +134,123 @@
 
 .stats-result.lost {
   color: var(--red-2);
+}
+
+/* Trend + per-contract analysis, side by side in landscape. */
+.stats-analysis {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.stats-trend-panel,
+.stats-contracts-panel {
+  padding: 14px 16px;
+}
+
+.stats-panel-hint {
+  margin: -8px 0 10px;
+  font-size: 12px;
+}
+
+.stats-trend-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.stats-trend-chart .grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.stats-trend-chart .zero {
+  stroke: var(--muted);
+  stroke-width: 1;
+  opacity: 0.6;
+}
+
+.stats-trend-chart .axis {
+  fill: var(--muted);
+  font-size: 10px;
+  text-anchor: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.stats-trend-chart .bar.pos {
+  fill: var(--green);
+  opacity: 0.85;
+}
+
+.stats-trend-chart .bar.neg {
+  fill: var(--red-2);
+  opacity: 0.85;
+}
+
+.stats-contract-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.stats-contract-table th {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.stats-contract-table th,
+.stats-contract-table td {
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--line);
+  text-align: right;
+}
+
+.stats-contract-table th:first-child,
+.stats-contract-table td:first-child {
+  text-align: left;
+}
+
+.stats-contract-table tbody tr:last-child th,
+.stats-contract-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.stats-contract-table tr.empty td {
+  color: var(--muted);
+}
+
+/* Per-round detail under an expanded game row. */
+.stats-round-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 0 8px;
+}
+
+.stats-round-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 24px;
+  padding-right: 32px;
+  font-size: 12.5px;
+}
+
+.stats-round-num {
+  flex: none;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.stats-round-contract {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
