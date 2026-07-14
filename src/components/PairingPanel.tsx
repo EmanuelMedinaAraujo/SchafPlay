@@ -4,7 +4,7 @@ import { Transport, TransportState } from "../net/Transport";
 import { createWebRTCPeer } from "../net/WebRTCPeer";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
-import { CopyIcon, CheckIcon, LoaderIcon, LinkIcon, ShareIcon } from "./icons";
+import { CopyIcon, CheckIcon, LoaderIcon, LinkIcon, ShareIcon, PasteIcon } from "./icons";
 
 interface PairingPanelProps {
   language: Language;
@@ -190,6 +190,17 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
     }
   }
 
+  function pasteFromClipboard() {
+    navigator.clipboard
+      ?.readText()
+      .then((text) => {
+        if (text) {
+          setPastedCode(text.trim());
+        }
+      })
+      .catch(() => undefined);
+  }
+
   if (mode === "host") {
     return (
       <div className="pairing-flow">
@@ -242,13 +253,24 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
             {connectionState !== "connected" && (
               <>
                 <label className="field-label">{t.pasteReply}</label>
-                <textarea
-                  className="input code-textarea"
-                  value={pastedCode}
-                  onChange={(e) => setPastedCode(e.target.value)}
-                  placeholder={t.pasteReplyHint}
-                  rows={2}
-                />
+                <div className="code-row">
+                  <textarea
+                    className="input code-textarea"
+                    value={pastedCode}
+                    onChange={(e) => setPastedCode(e.target.value)}
+                    placeholder={t.pasteReplyHint}
+                    rows={2}
+                  />
+                  <button
+                    className="secondary-button"
+                    onClick={pasteFromClipboard}
+                    type="button"
+                    title={t.paste}
+                    aria-label={t.paste}
+                  >
+                    <PasteIcon />
+                  </button>
+                </div>
                 <button
                   className="primary-button"
                   onClick={hostAcceptReply}
@@ -284,13 +306,24 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
       {!replyCode && (
         <>
           <label className="field-label">{t.pasteInvite}</label>
-          <textarea
-            className="input code-textarea"
-            value={pastedCode}
-            onChange={(e) => setPastedCode(e.target.value)}
-            placeholder={t.pasteInviteHint}
-            rows={2}
-          />
+          <div className="code-row">
+            <textarea
+              className="input code-textarea"
+              value={pastedCode}
+              onChange={(e) => setPastedCode(e.target.value)}
+              placeholder={t.pasteInviteHint}
+              rows={2}
+            />
+            <button
+              className="secondary-button"
+              onClick={pasteFromClipboard}
+              type="button"
+              title={t.paste}
+              aria-label={t.paste}
+            >
+              <PasteIcon />
+            </button>
+          </div>
           <button
             className="primary-button"
             onClick={() => guestGenerateReply()}
