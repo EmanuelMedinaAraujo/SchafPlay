@@ -22,11 +22,6 @@
   grid-template-columns: 1fr 1fr;
 }
 
-.card-design-preview {
-  display: flex;
-  gap: 10px;
-}
-
 .settings-update-btn {
   align-self: flex-start;
 }

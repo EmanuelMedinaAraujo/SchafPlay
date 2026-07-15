@@ -1,9 +1,7 @@
 import { useState } from "react";
-import { Card, CardValue, Language, Suit } from "../types";
-import { CardDesign } from "../lib/settings";
+import { Language } from "../types";
 import { translations } from "../lib/i18n";
 import { checkForUpdate } from "../lib/pwa";
-import CardFace from "./CardFace";
 import { CheckIcon, LoaderIcon, RefreshIcon, SettingsIcon } from "./icons";
 
 interface SettingsScreenProps {
@@ -11,15 +9,7 @@ interface SettingsScreenProps {
   onLanguageChange: (language: Language) => void;
   disableLaufende: boolean;
   onDisableLaufendeChange: (disable: boolean) => void;
-  cardDesign: CardDesign;
-  onCardDesignChange: (design: CardDesign) => void;
 }
-
-/** A couple of sample cards so the design toggle previews what it changes. */
-const PREVIEW_CARDS: Card[] = [
-  { id: "preview-ober", suit: Suit.ACORNS, value: CardValue.OBER, points: 3 },
-  { id: "preview-ace", suit: Suit.HEARTS, value: CardValue.ACE, points: 11 },
-];
 
 type UpdateStatus = "idle" | "checking" | "uptodate" | "installing" | "unsupported";
 
@@ -33,8 +23,6 @@ export default function SettingsScreen({
   onLanguageChange,
   disableLaufende,
   onDisableLaufendeChange,
-  cardDesign,
-  onCardDesignChange,
 }: SettingsScreenProps) {
   const t = translations[language];
   const [status, setStatus] = useState<UpdateStatus>("idle");
@@ -113,34 +101,6 @@ export default function SettingsScreen({
             type="button"
           >
             {t.settingsLaufendeOff}
-          </button>
-        </div>
-      </section>
-
-      <section className="panel settings-panel">
-        <h2>{t.settingsCardDesign}</h2>
-        <p className="muted">{t.settingsCardDesignHint}</p>
-        <div className="card-design-preview">
-          {PREVIEW_CARDS.map((card) => (
-            <CardFace key={card.id} card={card} contract={null} design={cardDesign} small />
-          ))}
-        </div>
-        <div className="mode-switch" role="group" aria-label={t.settingsCardDesign}>
-          <button
-            className={cardDesign === "bavarian" ? "active" : ""}
-            onClick={() => onCardDesignChange("bavarian")}
-            aria-pressed={cardDesign === "bavarian"}
-            type="button"
-          >
-            {t.settingsCardDesignBavarian}
-          </button>
-          <button
-            className={cardDesign === "minimal" ? "active" : ""}
-            onClick={() => onCardDesignChange("minimal")}
-            aria-pressed={cardDesign === "minimal"}
-            type="button"
-          >
-            {t.settingsCardDesignMinimal}
           </button>
         </div>
       </section>

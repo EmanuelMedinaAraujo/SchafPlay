@@ -41,7 +41,7 @@ const PlugZapIcon = () => (
 export default function App() {
   // All persisted device preferences flow through one store (see lib/settings).
   const [settings, updateSetting] = useSettings();
-  const { language, playerName, totalRounds, disableLaufende, lastMode, cardDesign } = settings;
+  const { language, playerName, totalRounds, disableLaufende, lastMode } = settings;
   const [screen, setScreen] = useState<"home" | "game" | "stats" | "settings">("home");
   const [rulesOpen, setRulesOpen] = useState(false);
   // Captured once at startup, before we scrub the fragment below. Reading the
@@ -169,8 +169,6 @@ export default function App() {
           onLanguageChange={(value) => updateSetting("language", value)}
           disableLaufende={disableLaufende}
           onDisableLaufendeChange={(value) => updateSetting("disableLaufende", value)}
-          cardDesign={cardDesign}
-          onCardDesignChange={(value) => updateSetting("cardDesign", value)}
         />
       ) : !inGame ? (
         <HomeScreen
@@ -192,7 +190,6 @@ export default function App() {
           state={gameState}
           language={language}
           myPlayerId={myPlayerId}
-          cardDesign={cardDesign}
           onAction={session.dispatch}
           onReady={handleReady}
           onQuit={quitGame}

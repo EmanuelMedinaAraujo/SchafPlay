@@ -10,6 +10,3 @@ coverage/
 # Playwright
 test-results/
 playwright-report/
-
-# PR screenshots
-docs/pr-screenshots/
