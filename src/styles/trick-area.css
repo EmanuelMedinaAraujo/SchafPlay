@@ -12,8 +12,6 @@
 .trick-felt {
   position: absolute;
   inset: 0;
-  transform: perspective(800px) rotateX(28deg);
-  transform-style: preserve-3d;
 }
 
 .trick-slot {
@@ -33,7 +31,7 @@
 
 .slot-top {
   left: 50%;
-  top: 8%;
+  top: 95px; /* Pushed down on desktop to prevent overlapping Zenzi's name */
   transform: translateX(-50%) rotate(3deg);
 }
 

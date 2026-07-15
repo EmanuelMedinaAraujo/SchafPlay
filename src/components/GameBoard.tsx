@@ -98,8 +98,8 @@ export default function GameBoard({
     <main className="game-screen">
       <div className="game-toolbar">
         <span ref={contractChipRef} className="contract-chip">{contractLabel}</span>
-        <span className="muted">
-          {t.round} {state.roundNumber}/{state.totalRounds}
+        <span className="round-chip">
+          {t.round} <strong>{state.roundNumber}</strong>/{state.totalRounds}
         </span>
         {import.meta.env.DEV && state.status === "PLAYING" && onDevSkip && (
           <button className="text-button dev-header-btn dev-trick-btn" onClick={onDevSkip} type="button">
