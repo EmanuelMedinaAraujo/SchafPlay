@@ -36,6 +36,13 @@ export enum GameType {
   SOLO_LEAVES = "SOLO_LEAVES",
   SOLO_HEARTS = "SOLO_HEARTS",
   SOLO_BELLS = "SOLO_BELLS",
+  /**
+   * Ramsch (#11) is never bid — it starts automatically on an all-pass when
+   * the house rule is enabled. Everyone plays for themselves with normal
+   * (Sauspiel-style) trumps; there is no declarer and no partner, so it needs
+   * no `GamePriority` slot. Its contract carries `declarerId: ""`.
+   */
+  RAMSCH = "RAMSCH",
 }
 
 export enum GamePriority {
@@ -118,6 +125,20 @@ export interface BiddingState {
 
 export type ReadyState = Record<string, boolean>;
 
+/** Ramsch-only round detail (#11); present on a RoundResult iff the contract type is RAMSCH. */
+export interface RamschResult {
+  /**
+   * The round's key player: on a Durchmarsch the player who took every trick
+   * and WINS; otherwise the player with the most card points, who pays everyone.
+   */
+  playerId: string;
+  isDurchmarsch: boolean;
+  /** Players who took no trick (Jungfrau) — each doubles the payout. Empty on a Durchmarsch. */
+  jungfrauIds: string[];
+  /** Card points each player collected this round. */
+  pointsByPlayer: Record<string, number>;
+}
+
 export interface RoundResult {
   contract: Contract;
   declarerPoints: number;
@@ -128,6 +149,11 @@ export interface RoundResult {
   laufende: number;
   scoreChanges: Record<string, number>;
   winnerIds: string[];
+  /**
+   * Ramsch detail (#11). Optional and additive — stored RoundRecords from
+   * older versions simply lack it (no DB version bump needed).
+   */
+  ramsch?: RamschResult;
 }
 
 export interface GameState {

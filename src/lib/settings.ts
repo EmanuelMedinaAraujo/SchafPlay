@@ -18,6 +18,8 @@ export interface Settings {
   playerName: string;
   totalRounds: number;
   disableLaufende: boolean;
+  /** House rule (#11): an all-pass starts a Ramsch instead of a redeal. The HOST's setting governs a game. */
+  enableRamsch: boolean;
   /** The mode tab last used on the home screen, preselected next open. */
   lastMode: GameMode;
 }
@@ -27,6 +29,7 @@ export const DEFAULT_SETTINGS: Settings = {
   playerName: "Bazi",
   totalRounds: 8,
   disableLaufende: false,
+  enableRamsch: false,
   lastMode: "host",
 };
 
@@ -82,6 +85,11 @@ const CODECS: { [K in keyof Settings]: FieldCodec<Settings[K]> } = {
   },
   disableLaufende: {
     key: "schafplay.disableLaufende",
+    parse: (raw) => raw === "true",
+    serialize: String,
+  },
+  enableRamsch: {
+    key: "schafplay.enableRamsch",
     parse: (raw) => raw === "true",
     serialize: String,
   },

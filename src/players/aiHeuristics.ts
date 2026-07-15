@@ -98,6 +98,12 @@ export function getAICardPlay(player: Player, currentTrick: Trick | null, contra
   if (legalCards.length === 1 || difficulty === Difficulty.EASY) return legalCards[0];
   const gameType = contract?.type ?? GameType.SAUSPIEL;
 
+  // Ramsch (#11): everyone plays for themselves and wants to AVOID points —
+  // the team logic below does not apply.
+  if (contract?.type === GameType.RAMSCH) {
+    return getRamschCardPlay(player.id, currentTrick, legalCards);
+  }
+
   // Leading the trick: the declaring side pulls trumps, defenders open safely.
   if (!contract || !currentTrick || currentTrick.playedCards.length === 0) {
     return chooseLead(player, legalCards, contract, gameType);
@@ -126,6 +132,31 @@ export function getAICardPlay(player: Player, currentTrick: Trick | null, contra
     return [...winners].sort((a, b) => getCardRank(a, gameType) - getCardRank(b, gameType))[0];
   }
   return lowestValueCard(legalCards, gameType);
+}
+
+/**
+ * Ramsch card play (#11): dodge points instead of collecting them.
+ * - Leading: open with the lowest-ranked card — least likely to hold the trick.
+ * - Following, when a non-winning card exists: dump the most valuable one.
+ *   A card that does not beat the current winner can never take the trick no
+ *   matter what falls later, so this safely schmiers points onto whichever
+ *   opponent has to take it.
+ * - Forced to win (every legal card beats the trick): take it as cheaply as
+ *   possible — fewest points, then lowest rank.
+ */
+function getRamschCardPlay(playerId: string, currentTrick: Trick | null, legal: Card[]): Card {
+  const gameType = GameType.RAMSCH;
+  const played = currentTrick?.playedCards ?? [];
+  if (played.length === 0) {
+    return [...legal].sort((a, b) => getCardRank(a, gameType) - getCardRank(b, gameType) || a.points - b.points)[0];
+  }
+  const losers = legal.filter(
+    (card) => determineTrickWinner([...played, { playerId, card }], gameType) !== playerId,
+  );
+  if (losers.length > 0) {
+    return [...losers].sort((a, b) => b.points - a.points || getCardRank(b, gameType) - getCardRank(a, gameType))[0];
+  }
+  return lowestValueCard(legal, gameType);
 }
 
 /** True when both players sit on the same side of the current contract. */
