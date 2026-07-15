@@ -29,10 +29,36 @@ export default defineConfig(({ command }) => {
             const assets = fs.existsSync(assetsDir)
               ? fs.readdirSync(assetsDir).map((file) => `${base}assets/${file}`)
               : [];
-            const precache = [base, `${base}index.html`, `${base}icon-192.png`, `${base}icon-512.png`, `${base}manifest.json`, ...assets];
-            content = content.replace(/const PRECACHE = \[[^\]]*\];/, `const PRECACHE = ${JSON.stringify(precache)};`);
+            const cardsDir = path.resolve(__dirname, 'dist/bavarian-cards');
+            const cards = fs.existsSync(cardsDir)
+              ? fs.readdirSync(cardsDir).map((file) => `${base}bavarian-cards/${file}`)
+              : [];
+            // Precache the static images copied from public/ (avatars, game
+            // background, …). They are referenced by absolute URL at runtime,
+            // so without this they'd only be cached after a first online fetch
+            // and the app would show broken images when opened offline first.
+            const distRoot = path.resolve(__dirname, 'dist');
+            const rootImages = fs.existsSync(distRoot)
+              ? fs
+                  .readdirSync(distRoot)
+                  .filter((file) => /\.(png|jpe?g|webp|svg|gif)$/i.test(file))
+                  .map((file) => `${base}${file}`)
+              : [];
+            const precache = [
+              base,
+              `${base}index.html`,
+              `${base}icon-192.png`,
+              `${base}icon-512.png`,
+              `${base}manifest.json`,
+              ...assets,
+              ...cards,
+              ...rootImages,
+            ];
+            // Drop duplicates (e.g. the icons already listed explicitly).
+            const uniquePrecache = [...new Set(precache)];
+            content = content.replace(/const PRECACHE = \[[^\]]*\];/, `const PRECACHE = ${JSON.stringify(uniquePrecache)};`);
             fs.writeFileSync(swPath, content, 'utf8');
-            console.log(`[sw-version-injector] Injected cache version ${version}, base ${base} and ${precache.length} precache entries`);
+            console.log(`[sw-version-injector] Injected cache version ${version}, base ${base} and ${uniquePrecache.length} precache entries`);
           }
         }
       }

@@ -18,7 +18,12 @@ const LANGUAGES: Array<{ code: Language; label: string }> = [
   { code: "en", label: "English" },
 ];
 
-export default function SettingsScreen({ language, onLanguageChange, disableLaufende, onDisableLaufendeChange }: SettingsScreenProps) {
+export default function SettingsScreen({
+  language,
+  onLanguageChange,
+  disableLaufende,
+  onDisableLaufendeChange,
+}: SettingsScreenProps) {
   const t = translations[language];
   const [status, setStatus] = useState<UpdateStatus>("idle");
 

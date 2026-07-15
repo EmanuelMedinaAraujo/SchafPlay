@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 96" preserveAspectRatio="xMidYMid meet">
+  <!-- Corner ranks: top-left upright, bottom-right rotated 180°. -->
+  <g fill="#e0a51e" font-weight="700" font-family="'Georgia', serif">
+    <text x="6" y="15" font-size="13">10</text>
+  </g>
+  <g transform="translate(4 16.5) scale(0.4583333333333333)">
+  <path d="M9.6 7C9.6 4.6 14.4 4.6 14.4 7" fill="none" stroke="#a9740c" stroke-width="1.5" />
+  <circle cx="12" cy="14" r="7" fill="#e0a51e" />
+  <circle cx="9.6" cy="11.4" r="1.9" fill="#f6d264" opacity="0.6" />
+  <rect x="6.6" y="15.4" width="10.8" height="1.9" rx="0.9" fill="#a9740c" />
+  <circle cx="12" cy="19.4" r="1.1" fill="#a9740c" />
+</g>
+
+  <g transform="rotate(180 32 48)">
+    <text x="6" y="15" font-size="13" fill="#e0a51e" font-weight="700" font-family="'Georgia', serif">10</text>
+    <g transform="translate(4 16.5) scale(0.4583333333333333)">
+  <path d="M9.6 7C9.6 4.6 14.4 4.6 14.4 7" fill="none" stroke="#a9740c" stroke-width="1.5" />
+  <circle cx="12" cy="14" r="7" fill="#e0a51e" />
+  <circle cx="9.6" cy="11.4" r="1.9" fill="#f6d264" opacity="0.6" />
+  <rect x="6.6" y="15.4" width="10.8" height="1.9" rx="0.9" fill="#a9740c" />
+  <circle cx="12" cy="19.4" r="1.1" fill="#a9740c" />
+</g>
+  </g>
+
+  <!-- Centre motif -->
+<g transform="translate(19 41) scale(1.0833333333333333)">
+  <path d="M9.6 7C9.6 4.6 14.4 4.6 14.4 7" fill="none" stroke="#a9740c" stroke-width="1.5" />
+  <circle cx="12" cy="14" r="7" fill="#e0a51e" />
+  <circle cx="9.6" cy="11.4" r="1.9" fill="#f6d264" opacity="0.6" />
+  <rect x="6.6" y="15.4" width="10.8" height="1.9" rx="0.9" fill="#a9740c" />
+  <circle cx="12" cy="19.4" r="1.1" fill="#a9740c" />
+</g>
+</svg>

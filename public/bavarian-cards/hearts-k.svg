@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 96" preserveAspectRatio="xMidYMid meet">
+  <!-- Corner ranks: top-left upright, bottom-right rotated 180°. -->
+  <g fill="#cc2b2b" font-weight="700" font-family="'Georgia', serif">
+    <text x="6" y="15" font-size="13">K</text>
+  </g>
+  <g transform="translate(4 16.5) scale(0.4583333333333333)">
+  <path d="M12 21.5C4.8 15.4 3 10.4 6.6 6.4C9.1 3.7 12 5.6 12 8.2C12 5.6 14.9 3.7 17.4 6.4C21 10.4 19.2 15.4 12 21.5Z" fill="#cc2b2b" />
+  <path d="M12 8.2C12 5.6 9.1 3.7 6.6 6.4C4.7 8.5 4.6 11 5.5 13.4C6 9.9 8.4 7.5 12 8.2Z" fill="#ef6a5c" opacity="0.5" />
+</g>
+
+  <g transform="rotate(180 32 48)">
+    <text x="6" y="15" font-size="13" fill="#cc2b2b" font-weight="700" font-family="'Georgia', serif">K</text>
+    <g transform="translate(4 16.5) scale(0.4583333333333333)">
+  <path d="M12 21.5C4.8 15.4 3 10.4 6.6 6.4C9.1 3.7 12 5.6 12 8.2C12 5.6 14.9 3.7 17.4 6.4C21 10.4 19.2 15.4 12 21.5Z" fill="#cc2b2b" />
+  <path d="M12 8.2C12 5.6 9.1 3.7 6.6 6.4C4.7 8.5 4.6 11 5.5 13.4C6 9.9 8.4 7.5 12 8.2Z" fill="#ef6a5c" opacity="0.5" />
+</g>
+  </g>
+
+  <!-- Centre motif -->
+<g>
+  <!-- Robe -->
+  <path d="M20 82 L26 42 L38 42 L44 82 Z" fill="#cc2b2b" />
+  <path d="M32 42 L32 82" stroke="#8f1b1b" stroke-width="1" opacity="0.5" />
+  <rect x="25" y="60" width="14" height="3" fill="#8f1b1b" />
+  <!-- Cape / shoulders -->
+  <path d="M24 44 Q32 34 40 44 L38 49 Q32 44 26 49 Z" fill="#8f1b1b" />
+  <!-- Neck + head -->
+  <rect x="30" y="35" width="4" height="4" fill="#e8bd93" />
+  <circle cx="32" cy="30" r="6" fill="#e8bd93" />
+  <circle cx="30" cy="30" r="0.7" fill="#8f1b1b" />
+  <circle cx="34" cy="30" r="0.7" fill="#8f1b1b" />
+  <g>
+      <path d="M25 21 L27 13 L30 19 L32 11 L34 19 L37 13 L39 21 Z" fill="#ef6a5c" stroke="#8f1b1b" stroke-width="0.5" />
+      <rect x="25" y="21" width="14" height="3" fill="#ef6a5c" stroke="#8f1b1b" stroke-width="0.5" />
+      <circle cx="32" cy="22.5" r="1" fill="#cc2b2b" />
+    </g>
+  <!-- Suit emblem, placed high (Ober/König) or low (Unter) -->
+  <g transform="translate(23 21) scale(0.75)">
+  <path d="M12 21.5C4.8 15.4 3 10.4 6.6 6.4C9.1 3.7 12 5.6 12 8.2C12 5.6 14.9 3.7 17.4 6.4C21 10.4 19.2 15.4 12 21.5Z" fill="#cc2b2b" />
+  <path d="M12 8.2C12 5.6 9.1 3.7 6.6 6.4C4.7 8.5 4.6 11 5.5 13.4C6 9.9 8.4 7.5 12 8.2Z" fill="#ef6a5c" opacity="0.5" />
+</g>
+</g>
+</svg>

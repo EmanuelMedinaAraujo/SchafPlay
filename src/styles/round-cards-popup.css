@@ -78,11 +78,11 @@ html.rotated .round-cards-panel {
 .round-cards-panel .card-face.small {
   width: 39px;
   height: 52px;
-  padding: 3px;
 }
 
 html.compact .round-cards-panel .card-face.small {
   width: 37px;
   height: 50px;
 }
+
 
