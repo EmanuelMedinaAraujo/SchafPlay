@@ -116,32 +116,15 @@ export default function PlayerHand({
       <span className="player-hand-name">{playerName}</span>
 
       <div className="player-hand-cards">
-        {sorted.map((card, idx) => {
+        {sorted.map((card) => {
           const isLegal = legalCards.some((candidate) => candidate.id === card.id);
           const isGrayed = showIllegal && !isLegal;
-
-          // Calculate fan angle and translations
-          const N = sorted.length;
-          const center = (N - 1) / 2;
-          const offset = idx - center;
-          
-          const angle = offset * 4.5; // degrees per card
-          const translateX = offset * 4; // px horizontal offset to spread them
-          const translateY = Math.pow(Math.abs(offset), 1.5) * 2.5; // curved downward curve
-          
-          const cardStyle = {
-            "--card-rot": `${angle}deg`,
-            "--card-x": `${translateX}px`,
-            "--card-y": `${translateY}px`,
-            zIndex: idx,
-          } as React.CSSProperties;
 
           return (
             <button
               key={card.id}
               data-card-id={card.id}
               className={`playing-card ${isGrayed ? "grayed-out" : ""}`}
-              style={cardStyle}
               onPointerDown={(event) => startDrag(event, card.id, isLegal)}
               onPointerMove={moveDrag}
               onPointerUp={(event) => endDrag(event)}
