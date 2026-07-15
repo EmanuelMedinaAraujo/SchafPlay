@@ -3,7 +3,11 @@
 .table {
   min-height: 290px;
   display: grid;
-  grid-template-columns: minmax(120px, auto) minmax(200px, 1fr) minmax(120px, auto);
+  /* Side columns share the free space equally (1fr each) so they stay the
+     same width regardless of seat content — e.g. the wider "SPIELER" badge on
+     one side must not shove the center column (and the played cards) off the
+     screen centerline. The center column takes twice the share. */
+  grid-template-columns: minmax(120px, 1fr) minmax(200px, 2fr) minmax(120px, 1fr);
   grid-template-rows: minmax(220px, 1fr);
   gap: 10px;
   align-items: stretch;
