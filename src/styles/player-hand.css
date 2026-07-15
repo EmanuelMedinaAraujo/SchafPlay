@@ -80,6 +80,7 @@
   border-radius: 8px;
   cursor: pointer;
   margin-left: -22px;
+  transform-origin: center bottom;
   transition: transform 0.18s ease, opacity 0.2s ease, filter 0.2s ease;
   touch-action: none;
 }
@@ -94,10 +95,11 @@
   aspect-ratio: 62 / 92;
 }
 
-/* The global hover lift replaces the card transform and made cards look
-   shifted (sticky :hover on touch) — hand cards are exempt. */
-button.playing-card:not(:disabled):hover {
-  transform: none;
+@media (hover: hover) {
+  button.playing-card:not(:disabled):not(.dragging):hover {
+    transform: translateY(-22px) scale(1.08);
+    z-index: 50 !important;
+  }
 }
 
 .playing-card:disabled {

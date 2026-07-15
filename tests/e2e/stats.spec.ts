@@ -100,10 +100,9 @@ test.describe("stats", () => {
     await page.locator(".round-over-overlay").getByRole("button", { name: de.quit }).click();
     await expect(page.locator(".home-screen")).toBeVisible();
 
-    // The write is fire-and-forget (ListRecorder → IndexedDB) and each poll
-    // remounts StatsScreen to re-read it, so allow a generous window — under
-    // full-suite CPU contention the write can lag several seconds.
-    await expect.poll(() => playedTileText(page), { timeout: 30_000 }).toBe("1");
+    // Wait a brief moment for the fire-and-forget IndexedDB write to settle, then open Stats.
+    await page.waitForTimeout(1500);
+    await openStats(page);
 
     // We're on the stats screen (fresh mount) with the write settled now.
     const tiles = page.locator(".stat-tiles > div strong");

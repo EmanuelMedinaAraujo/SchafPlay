@@ -32,7 +32,8 @@ html.narrow .rules-modal-grid {
 }
 
 html.narrow .table {
-  grid-template-columns: minmax(100px, auto) minmax(140px, 1fr) minmax(100px, auto);
+  /* Keep the side columns equal (see seats.css) so the trick stays centered. */
+  grid-template-columns: minmax(100px, 1fr) minmax(140px, 2fr) minmax(100px, 1fr);
 }
 
 html.narrow .seat {
@@ -114,7 +115,8 @@ html.compact .stats-round-row {
   min-height: 20px;
 }
 
-html.compact .contract-chip {
+html.compact .contract-chip,
+html.compact .round-chip {
   padding: 4px 10px;
 }
 
@@ -168,7 +170,7 @@ html.compact .seat {
 }
 
 html.compact .seat-name {
-  font-size: 12px;
+  font-size: 13px;
 }
 
 html.compact .seat-name strong {
@@ -240,4 +242,8 @@ html.compact .slot-left {
 
 html.compact .slot-right {
   right: 7%;
+}
+
+html.compact .slot-top {
+  top: 55px;
 }
