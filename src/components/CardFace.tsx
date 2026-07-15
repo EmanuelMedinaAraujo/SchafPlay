@@ -1,6 +1,5 @@
-import { Card, Contract, GameType, Suit } from "../types";
+import { Card, Contract, GameType } from "../types";
 import { isTrump } from "../game/rules";
-import { getSuitEmoji } from "../lib/cardDisplay";
 
 interface CardFaceProps {
   card: Card;
@@ -8,29 +7,22 @@ interface CardFaceProps {
   small?: boolean;
 }
 
-const SUIT_CLASS: Record<Suit, string> = {
-  [Suit.ACORNS]: "suit-acorns",
-  [Suit.LEAVES]: "suit-leaves",
-  [Suit.HEARTS]: "suit-hearts",
-  [Suit.BELLS]: "suit-bells",
-};
-
-/** Emoji-based Bavarian card face. */
+/** A single card face, drawn from the traditional Bavarian SVG art (#15).
+ * Trump cards get an amber border via `.card-face.trump`. */
 export default function CardFace({ card, contract, small = false }: CardFaceProps) {
   const trump = isTrump(card, contract?.type ?? GameType.SAUSPIEL);
-  const emoji = getSuitEmoji(card.suit);
+  const classes = `card-face ${trump ? "trump" : ""} ${small ? "small" : ""}`;
+  const filename = `${card.suit.toLowerCase()}-${card.value.toLowerCase()}.svg`;
+  const src = `${import.meta.env.BASE_URL}bavarian-cards/${filename}`;
+
   return (
-    <span className={`card-face ${SUIT_CLASS[card.suit]} ${trump ? "trump" : ""} ${small ? "small" : ""}`}>
-      {/* Rank + suit stacked in the corner: still readable when cards overlap. */}
-      <span className="card-corner">
-        {card.value}
-        <span className="card-corner-suit">{emoji}</span>
-      </span>
-      <span className="card-emoji">{emoji}</span>
-      <span className="card-corner flipped">
-        {card.value}
-        <span className="card-corner-suit">{emoji}</span>
-      </span>
+    <span className={classes}>
+      <img
+        src={src}
+        alt={`${card.value} of ${card.suit}`}
+        className="bavarian-card-img"
+        draggable={false}
+      />
     </span>
   );
 }

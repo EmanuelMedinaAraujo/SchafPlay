@@ -29,7 +29,19 @@ export default defineConfig(({ command }) => {
             const assets = fs.existsSync(assetsDir)
               ? fs.readdirSync(assetsDir).map((file) => `${base}assets/${file}`)
               : [];
-            const precache = [base, `${base}index.html`, `${base}icon-192.png`, `${base}icon-512.png`, `${base}manifest.json`, ...assets];
+            const cardsDir = path.resolve(__dirname, 'dist/bavarian-cards');
+            const cards = fs.existsSync(cardsDir)
+              ? fs.readdirSync(cardsDir).map((file) => `${base}bavarian-cards/${file}`)
+              : [];
+            const precache = [
+              base,
+              `${base}index.html`,
+              `${base}icon-192.png`,
+              `${base}icon-512.png`,
+              `${base}manifest.json`,
+              ...assets,
+              ...cards,
+            ];
             content = content.replace(/const PRECACHE = \[[^\]]*\];/, `const PRECACHE = ${JSON.stringify(precache)};`);
             fs.writeFileSync(swPath, content, 'utf8');
             console.log(`[sw-version-injector] Injected cache version ${version}, base ${base} and ${precache.length} precache entries`);
