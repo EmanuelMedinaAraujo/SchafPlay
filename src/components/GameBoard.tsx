@@ -95,7 +95,7 @@ export default function GameBoard({
   const lastCompletedTrick = state.tricks.length > 0 ? state.tricks[state.tricks.length - 1] : null;
 
   return (
-    <main className="game-screen">
+    <main className="game-screen" style={{ backgroundImage: `url(${import.meta.env.BASE_URL}game_background.png)` }}>
       <div className="game-toolbar">
         <span ref={contractChipRef} className="contract-chip">{contractLabel}</span>
         <span className="round-chip">

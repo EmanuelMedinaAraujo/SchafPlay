@@ -88,11 +88,11 @@ export default function PlayerSeat({ player, position, active, contract, languag
   // Select avatar image based on player's name/ID
   let avatarUrl = "";
   if (player.id === "p2" || player.name === "Resi") {
-    avatarUrl = "/avatar_resi.jpg";
+    avatarUrl = `${import.meta.env.BASE_URL}avatar_resi.jpg`;
   } else if (player.id === "p4" || player.name === "Sepp") {
-    avatarUrl = "/avatar_sepp.jpg";
+    avatarUrl = `${import.meta.env.BASE_URL}avatar_sepp.jpg`;
   } else {
-    avatarUrl = "/avatar_woman2.jpg";
+    avatarUrl = `${import.meta.env.BASE_URL}avatar_woman2.jpg`;
   }
 
   return (
