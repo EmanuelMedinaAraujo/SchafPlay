@@ -44,7 +44,7 @@ export interface SDPBundle {
 
 async function deflateToBase64Url(bytes: Uint8Array): Promise<string> {
   const cs = new CompressionStream("deflate");
-  const compressed = new Blob([bytes]).stream().pipeThrough(cs);
+  const compressed = new Blob([bytes as any]).stream().pipeThrough(cs);
   const buf = await new Response(compressed).arrayBuffer();
   return bytesToBase64Url(new Uint8Array(buf));
 }
@@ -52,7 +52,7 @@ async function deflateToBase64Url(bytes: Uint8Array): Promise<string> {
 async function inflateFromBase64Url(b64url: string): Promise<Uint8Array> {
   const raw = base64UrlToBytes(b64url);
   const ds = new DecompressionStream("deflate");
-  const decompressed = new Blob([raw]).stream().pipeThrough(ds);
+  const decompressed = new Blob([raw as any]).stream().pipeThrough(ds);
   const buf = await new Response(decompressed).arrayBuffer();
   return new Uint8Array(buf);
 }
