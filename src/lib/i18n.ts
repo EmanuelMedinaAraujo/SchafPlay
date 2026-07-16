@@ -127,6 +127,11 @@ export const translations = {
     updateUpToDate: "Du hast die neueste Version.",
     updateInstalling: "Update gefunden – wird geladen …",
     updateUnsupported: "Updates gibt es nur in der veröffentlichten App.",
+    settingsExport: "Daten-Export",
+    settingsExportHint: "Hier kannst du deine gespielten Spiele als Textdatei herunterladen.",
+    exportGames: "Spiele exportieren",
+    exportNoGames: "Es sind noch keine Spiele zum Exportieren vorhanden.",
+    exportFailed: "Der Export ist fehlgeschlagen.",
 
     gameTypes: {
       [GameType.SAUSPIEL]: "Sauspiel",
@@ -263,6 +268,11 @@ export const translations = {
     updateUpToDate: "You have the latest version.",
     updateInstalling: "Update found – reloading …",
     updateUnsupported: "Updates are only available in the published app.",
+    settingsExport: "Data Export",
+    settingsExportHint: "Here you can download your played games as a text file.",
+    exportGames: "Export games",
+    exportNoGames: "There are no games to export yet.",
+    exportFailed: "The export failed.",
 
     gameTypes: {
       [GameType.SAUSPIEL]: "Sauspiel",

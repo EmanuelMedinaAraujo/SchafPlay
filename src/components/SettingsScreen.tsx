@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
 import { checkForUpdate } from "../lib/pwa";
-import { CheckIcon, LoaderIcon, RefreshIcon, SettingsIcon } from "./icons";
+import { CheckIcon, DownloadIcon, LoaderIcon, RefreshIcon, SettingsIcon } from "./icons";
+import { gameHistoryStore } from "../persistence";
+import { formatGamesForExport } from "../lib/export";
 
 interface SettingsScreenProps {
   language: Language;
@@ -26,6 +28,31 @@ export default function SettingsScreen({
 }: SettingsScreenProps) {
   const t = translations[language];
   const [status, setStatus] = useState<UpdateStatus>("idle");
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  async function onExportGames() {
+    setExportError(null);
+    try {
+      const games = await gameHistoryStore.loadGames();
+      if (games.length === 0) {
+        setExportError(t.exportNoGames);
+        return;
+      }
+      const text = formatGamesForExport(games, language);
+      const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `schafplay-history-${new Date().toISOString().slice(0, 10)}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+      setExportError(t.exportFailed);
+    }
+  }
 
   async function onCheckForUpdate() {
     setStatus("checking");
@@ -124,6 +151,20 @@ export default function SettingsScreen({
           {t.checkForUpdate}
         </button>
         {statusText && <p className="settings-update-status muted">{statusText}</p>}
+      </section>
+
+      <section className="panel settings-panel">
+        <h2>{t.settingsExport}</h2>
+        <p className="muted">{t.settingsExportHint}</p>
+        <button
+          className="secondary-button settings-export-btn"
+          onClick={onExportGames}
+          type="button"
+        >
+          <DownloadIcon />
+          {t.exportGames}
+        </button>
+        {exportError && <p className="settings-update-status error-message muted">{exportError}</p>}
       </section>
     </main>
   );
