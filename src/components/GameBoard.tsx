@@ -144,6 +144,7 @@ export default function GameBoard({
         language={language}
         onPlay={playCard}
         onLastTrick={() => setLastTrickOpen(true)}
+        tricks={state.tricks}
       />
 
       {lastTrickOpen && lastCompletedTrick && (

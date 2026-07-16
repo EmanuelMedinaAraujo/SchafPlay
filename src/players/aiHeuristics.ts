@@ -3,7 +3,7 @@
  * decision. Stateless per call; the engine owns pacing and validation.
  */
 
-import { Card, CardValue, Contract, Difficulty, GameDeclaration, GameType, Player, Suit, Trick } from "../game/types";
+import { Card, CardValue, Contract, Difficulty, GameDeclaration, GameType, Player, Suit, Trick, WillBid } from "../game/types";
 import {
   canOverrideBid,
   countPoints,
@@ -15,7 +15,23 @@ import {
   isTrump,
 } from "../game/rules";
 
-export function getAIWillBid(player: Player): boolean {
+export function getAIWillBid(player: Player, willBids: WillBid[] = []): boolean {
+  // If another player already bid wantsToPlay: true, the AI only bids
+  // if it holds a hand strong enough to play solo or wenz.
+  const someoneElseWantsToPlay = willBids.some((bid) => bid.playerId !== player.id && bid.wantsToPlay);
+
+  if (someoneElseWantsToPlay) {
+    const hand = player.cards;
+    const unters = hand.filter((card) => card.value === CardValue.UNTER);
+    const obers = hand.filter((card) => card.value === CardValue.OBER);
+    const aces = hand.filter((card) => card.value === CardValue.ACE);
+    const trumpsInNormal = hand.filter((card) => isTrump(card, GameType.SAUSPIEL));
+
+    const wenzWorthy = (unters.length >= 3 && aces.length >= 1) || (unters.length >= 2 && aces.length >= 2);
+    const soloWorthy = obers.length >= 3 && trumpsInNormal.length >= 7;
+    return wenzWorthy || soloWorthy;
+  }
+
   // Only announce interest when there is actually a declarable game. Since a
   // "will" can no longer be taken back once a Sauspiel stands ("Doch passen",
   // #24) — the player would be forced up to a Wenz/Solo — the AI commits only
@@ -93,8 +109,14 @@ function bestSoloType(hand: Card[]): GameType {
   return GameType.SOLO_HEARTS;
 }
 
-export function getAICardPlay(player: Player, currentTrick: Trick | null, contract: Contract | null, difficulty = Difficulty.MEDIUM): Card {
-  const legalCards = getLegalCards(player.cards, currentTrick, contract);
+export function getAICardPlay(
+  player: Player,
+  currentTrick: Trick | null,
+  contract: Contract | null,
+  difficulty = Difficulty.MEDIUM,
+  tricks: Trick[] = []
+): Card {
+  const legalCards = getLegalCards(player.cards, currentTrick, contract, tricks);
   if (legalCards.length === 1 || difficulty === Difficulty.EASY) return legalCards[0];
   const gameType = contract?.type ?? GameType.SAUSPIEL;
 

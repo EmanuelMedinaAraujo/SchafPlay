@@ -14,6 +14,7 @@ interface PlayerHandProps {
   language: Language;
   onPlay: (cardId: string) => void;
   onLastTrick: () => void;
+  tricks?: Trick[];
 }
 
 interface DragState {
@@ -35,10 +36,11 @@ export default function PlayerHand({
   language,
   onPlay,
   onLastTrick,
+  tricks,
 }: PlayerHandProps) {
   const t = translations[language];
   const gameType = contract?.type ?? GameType.SAUSPIEL;
-  const legalCards = disabled ? [] : getLegalCards(hand, currentTrick, contract);
+  const legalCards = disabled ? [] : getLegalCards(hand, currentTrick, contract, tricks);
   const dragRef = useRef<DragState | null>(null);
   const [showIllegal, setShowIllegal] = useState(false);
 

@@ -1,4 +1,5 @@
 import { CardValue, GameState, GameType, Suit } from "../game/types";
+import { getPlaySuit } from "../game/rules";
 
 /**
  * State as seen by one player: every other hand is replaced by face-down
@@ -30,7 +31,7 @@ export function redactStateFor(state: GameState, viewerId: string): GameState {
     redacted.status === "PLAYING" &&
     redacted.currentContract?.type === GameType.SAUSPIEL &&
     redacted.currentContract.partnerId !== viewerId &&
-    !calledAceWasPlayed(state)
+    !isPartnerRevealed(state)
   ) {
     redacted.currentContract = { ...redacted.currentContract, partnerId: undefined };
     // The engine stores the SAME contract object in currentContract and
@@ -48,10 +49,26 @@ export function redactStateFor(state: GameState, viewerId: string): GameState {
   return redacted;
 }
 
-function calledAceWasPlayed(state: GameState): boolean {
-  const calledSuit = state.currentContract?.calledSuit;
-  if (!calledSuit) return true;
-  return [...state.tricks.flatMap((trick) => trick.playedCards), ...(state.currentTrick?.playedCards ?? [])].some(
-    (played) => played.card.suit === calledSuit && played.card.value === CardValue.ACE,
-  );
+function isPartnerRevealed(state: GameState): boolean {
+  const contract = state.currentContract;
+  if (!contract || contract.type !== GameType.SAUSPIEL || !contract.calledSuit || !contract.partnerId) return true;
+
+  const allTricks = [...state.tricks];
+  if (state.currentTrick) allTricks.push(state.currentTrick);
+
+  for (const trick of allTricks) {
+    if (trick.playedCards.length === 0) continue;
+    const ledPlaySuit = getPlaySuit(trick.playedCards[0].card, contract.type);
+    const isCalledSuitLed = ledPlaySuit === contract.calledSuit;
+
+    for (const played of trick.playedCards) {
+      if (played.playerId === contract.partnerId && played.card.suit === contract.calledSuit && played.card.value === CardValue.ACE) {
+        return true;
+      }
+      if (isCalledSuitLed && played.playerId === contract.partnerId) {
+        return true;
+      }
+    }
+  }
+  return false;
 }

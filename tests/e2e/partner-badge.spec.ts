@@ -18,9 +18,31 @@ test.describe("Sauspiel partner reveal", () => {
         if (r.contract.declarerId !== "p1" || !r.contract.partnerId || r.contract.partnerId === "p1") return false;
         const aceIdx = calledAcePlayIndex(r);
         const firstP1 = r.plays.findIndex((p) => p.playerId === "p1");
-        return aceIdx >= 5 && firstP1 >= 0 && firstP1 < aceIdx;
+        if (!(aceIdx >= 5 && firstP1 >= 0 && firstP1 < aceIdx)) return false;
+
+        const calledSuit = r.contract.calledSuit!;
+        const findCard = (cardId: string) => {
+          for (const playerHand of Object.values(r.hands)) {
+            const card = playerHand.find((c) => c.id === cardId);
+            if (card) return card;
+          }
+          return null;
+        };
+
+        const isTrumpCard = (card: any) => {
+          if (card.value === "O" || card.value === "U") return true;
+          return card.suit === "HEARTS";
+        };
+
+        const calledSuitLedBeforeAce = r.plays.slice(0, aceIdx).some((play, idx) => {
+          if (idx % 4 !== 0) return false;
+          const card = findCard(play.cardId);
+          return card && card.suit === calledSuit && !isTrumpCard(card);
+        });
+
+        return !calledSuitLedBeforeAce;
       },
-      { limit: 400, totalRounds: 8 },
+      { limit: 800, totalRounds: 8 },
     );
 
     const round = trace[0];
