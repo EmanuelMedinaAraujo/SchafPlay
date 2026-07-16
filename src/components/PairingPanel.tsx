@@ -4,7 +4,9 @@ import { Transport, TransportState } from "../net/Transport";
 import { createWebRTCPeer } from "../net/WebRTCPeer";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
-import { CopyIcon, CheckIcon, LoaderIcon, LinkIcon, ShareIcon, PasteIcon } from "./icons";
+import { CopyIcon, CheckIcon, LoaderIcon, LinkIcon, ShareIcon, QrCodeIcon, ScanIcon, XIcon, PasteIcon } from "./icons";
+import QRCodeView from "./QRCodeView";
+import QRScanner, { detectQrScanSupport } from "./QRScanner";
 
 interface PairingPanelProps {
   language: Language;
@@ -42,6 +44,12 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  // QR pairing (issue #7, Option C): scanning is only offered where camera is
+  // supported; QR *display* is always available.
+  const [scanSupported, setScanSupported] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [showingQrModal, setShowingQrModal] = useState(false);
   const peerRef = useRef<(Transport & HostSignaling & GuestSignaling) | null>(null);
   const onPeerRef = useRef(onPeer);
   onPeerRef.current = onPeer;
@@ -52,6 +60,17 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
       if (peerRef.current && !peerRef.current.isConnected()) {
         peerRef.current.disconnect();
       }
+    };
+  }, []);
+
+  // Feature-detect QR scanning once; the scan buttons stay hidden otherwise.
+  useEffect(() => {
+    let alive = true;
+    detectQrScanSupport().then((ok) => {
+      if (alive) setScanSupported(ok);
+    });
+    return () => {
+      alive = false;
     };
   }, []);
 
@@ -95,13 +114,15 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionState, mode]);
 
-  async function hostAcceptReply() {
+  async function hostAcceptReply(codeArg?: string) {
     const peer = peerRef.current;
-    if (!peer || !pastedCode.trim()) return;
+    const code = (codeArg ?? pastedCode).trim();
+    if (!peer || !code) return;
+    setPastedCode(code);
     setBusy(true);
     setError("");
     try {
-      await peer.acceptAnswer(pastedCode.trim());
+      await peer.acceptAnswer(code);
       setAccepted(true);
     } catch (err) {
       if (err instanceof Error && err.message === "INVALID_CODE") {
@@ -220,6 +241,15 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
               >
                 <ShareIcon />
               </button>
+              <button
+                className="secondary-button"
+                onClick={() => setShowingQrModal(true)}
+                type="button"
+                title={t.showQr}
+                aria-label={t.showQr}
+              >
+                <QrCodeIcon />
+              </button>
             </div>
 
             {connectionState !== "connected" && (
@@ -242,10 +272,21 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
                   >
                     <PasteIcon />
                   </button>
+                  {scanSupported && (
+                    <button
+                      className="secondary-button"
+                      onClick={() => setScanning(true)}
+                      type="button"
+                      title={t.scanReplyQr}
+                      aria-label={t.scanReplyQr}
+                    >
+                      <ScanIcon />
+                    </button>
+                  )}
                 </div>
                 <button
                   className="primary-button"
-                  onClick={hostAcceptReply}
+                  onClick={() => hostAcceptReply()}
                   disabled={busy || !pastedCode.trim()}
                   type="button"
                 >
@@ -268,6 +309,38 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
         )}
 
         {error && <p className="error-text">{error}</p>}
+
+        {scanning && (
+          <QRScanner
+            language={language}
+            onResult={(code) => {
+              setScanning(false);
+              hostAcceptReply(code);
+            }}
+            onClose={() => setScanning(false)}
+          />
+        )}
+
+        {showingQrModal && (
+          <div
+            className="qr-popup-overlay"
+            role="dialog"
+            aria-label={t.showQr}
+            onClick={() => setShowingQrModal(false)}
+          >
+            <div className="qr-popup-box" onClick={(e) => e.stopPropagation()}>
+              <button
+                className="qr-popup-close"
+                onClick={() => setShowingQrModal(false)}
+                type="button"
+                aria-label={t.cancel}
+              >
+                <XIcon size={20} />
+              </button>
+              <QRCodeView data={inviteCode} label={t.inviteCode} />
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -295,6 +368,17 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
             >
               <PasteIcon />
             </button>
+            {scanSupported && (
+              <button
+                className="secondary-button"
+                onClick={() => setScanning(true)}
+                type="button"
+                title={t.scanInviteQr}
+                aria-label={t.scanInviteQr}
+              >
+                <ScanIcon />
+              </button>
+            )}
           </div>
           <button
             className="primary-button"
@@ -337,6 +421,15 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
             >
               <ShareIcon />
             </button>
+            <button
+              className="secondary-button"
+              onClick={() => setShowingQrModal(true)}
+              type="button"
+              title={t.showQr}
+              aria-label={t.showQr}
+            >
+              <QrCodeIcon />
+            </button>
           </div>
         </>
       )}
@@ -347,6 +440,39 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
 
       {busy && <p className="muted pulse-soft">{t.connecting}</p>}
       {error && <p className="error-text">{error}</p>}
+
+      {scanning && (
+        <QRScanner
+          language={language}
+          onResult={(code) => {
+            setScanning(false);
+            setPastedCode(code);
+            guestGenerateReply(code);
+          }}
+          onClose={() => setScanning(false)}
+        />
+      )}
+
+      {showingQrModal && (
+        <div
+          className="qr-popup-overlay"
+          role="dialog"
+          aria-label={t.showQr}
+          onClick={() => setShowingQrModal(false)}
+        >
+          <div className="qr-popup-box" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="qr-popup-close"
+              onClick={() => setShowingQrModal(false)}
+              type="button"
+              aria-label={t.cancel}
+            >
+              <XIcon size={20} />
+            </button>
+            <QRCodeView data={replyCode} label={t.replyCode} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

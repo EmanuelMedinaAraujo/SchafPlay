@@ -253,6 +253,11 @@ html.compact .slot-right {
   right: 7%;
 }
 
+html.compact .qr-code {
+  width: 116px;
+  height: 116px;
+}
+
 html.compact .slot-top {
   top: 55px;
 }
