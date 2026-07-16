@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:network": "vite --host --https",
+    "dev:network": "vite --host",
     "build": "vite build",
     "start": "vite preview",
     "clean": "rm -rf dist",

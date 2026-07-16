@@ -263,6 +263,15 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
                     placeholder={t.pasteReplyHint}
                     rows={2}
                   />
+                  <button
+                    className="secondary-button"
+                    onClick={pasteFromClipboard}
+                    type="button"
+                    title={t.paste}
+                    aria-label={t.paste}
+                  >
+                    <PasteIcon />
+                  </button>
                   {scanSupported && (
                     <button
                       className="secondary-button"
@@ -274,15 +283,6 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
                       <ScanIcon />
                     </button>
                   )}
-                  <button
-                    className="secondary-button"
-                    onClick={pasteFromClipboard}
-                    type="button"
-                    title={t.paste}
-                    aria-label={t.paste}
-                  >
-                    <PasteIcon />
-                  </button>
                 </div>
                 <button
                   className="primary-button"
@@ -355,6 +355,15 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
               placeholder={t.pasteInviteHint}
               rows={2}
             />
+            <button
+              className="secondary-button"
+              onClick={pasteFromClipboard}
+              type="button"
+              title={t.paste}
+              aria-label={t.paste}
+            >
+              <PasteIcon />
+            </button>
             {scanSupported && (
               <button
                 className="secondary-button"
@@ -366,15 +375,6 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
                 <ScanIcon />
               </button>
             )}
-            <button
-              className="secondary-button"
-              onClick={pasteFromClipboard}
-              type="button"
-              title={t.paste}
-              aria-label={t.paste}
-            >
-              <PasteIcon />
-            </button>
           </div>
           <button
             className="primary-button"

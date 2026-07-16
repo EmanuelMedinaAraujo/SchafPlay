@@ -52,8 +52,13 @@ export default function QRScanner({ language, onResult, onClose }: QRScannerProp
     (async () => {
       try {
         // Prefer the rear camera on phones; laptops fall back to whatever exists.
+        // We request a higher resolution (720p or 1080p) to ensure dense QR codes can be easily read.
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
+          video: {
+            facingMode: "environment",
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
           audio: false,
         });
         if (cancelled) return;
@@ -69,6 +74,7 @@ export default function QRScanner({ language, onResult, onClose }: QRScannerProp
         let detecting = false;
         intervalId = setInterval(() => {
           if (detecting || cancelled || video.readyState < 2 || !context) return;
+          if (video.videoWidth === 0 || video.videoHeight === 0) return;
           detecting = true;
           try {
             canvas.width = video.videoWidth;
@@ -79,13 +85,14 @@ export default function QRScanner({ language, onResult, onClose }: QRScannerProp
             if (!cancelled && code && code.data) {
               onResultRef.current(code.data);
             }
-          } catch {
-            // A single failed detection pass is not fatal — keep polling.
+          } catch (err) {
+            console.error("QR Scanner capture/detection error:", err);
           } finally {
             detecting = false;
           }
         }, 250);
-      } catch {
+      } catch (err) {
+        console.error("Failed to acquire camera stream:", err);
         if (!cancelled) setError(true);
       }
     })();
