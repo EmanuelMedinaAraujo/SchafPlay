@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 96" preserveAspectRatio="xMidYMid meet">
+  <!-- Corner ranks: top-left upright, bottom-right rotated 180°. -->
+  <g fill="#7a4a23" font-weight="700" font-family="'Georgia', serif">
+    <text x="6" y="15" font-size="13">U</text>
+  </g>
+  <g transform="translate(4 16.5) scale(0.4583333333333333)">
+  <rect x="11" y="3" width="2" height="4" rx="0.8" fill="#4f2f14" />
+  <ellipse cx="12" cy="15" rx="5.6" ry="6.9" fill="#7a4a23" />
+  <ellipse cx="10" cy="13.5" rx="1.4" ry="2.4" fill="#a07a3c" opacity="0.55" />
+  <path d="M5.8 11C5.8 6.4 18.2 6.4 18.2 11C18.2 13.4 5.8 13.4 5.8 11Z" fill="#a07a3c" />
+  <path d="M6.6 10.2H17.4M7.4 12.2H16.6" stroke="#4f2f14" stroke-width="0.5" opacity="0.5" />
+</g>
+
+  <g transform="rotate(180 32 48)">
+    <text x="6" y="15" font-size="13" fill="#7a4a23" font-weight="700" font-family="'Georgia', serif">U</text>
+    <g transform="translate(4 16.5) scale(0.4583333333333333)">
+  <rect x="11" y="3" width="2" height="4" rx="0.8" fill="#4f2f14" />
+  <ellipse cx="12" cy="15" rx="5.6" ry="6.9" fill="#7a4a23" />
+  <ellipse cx="10" cy="13.5" rx="1.4" ry="2.4" fill="#a07a3c" opacity="0.55" />
+  <path d="M5.8 11C5.8 6.4 18.2 6.4 18.2 11C18.2 13.4 5.8 13.4 5.8 11Z" fill="#a07a3c" />
+  <path d="M6.6 10.2H17.4M7.4 12.2H16.6" stroke="#4f2f14" stroke-width="0.5" opacity="0.5" />
+</g>
+  </g>
+
+  <!-- Centre motif -->
+<g>
+  <!-- Robe -->
+  <path d="M20 82 L26 42 L38 42 L44 82 Z" fill="#7a4a23" />
+  <path d="M32 42 L32 82" stroke="#4f2f14" stroke-width="1" opacity="0.5" />
+  <rect x="25" y="60" width="14" height="3" fill="#4f2f14" />
+  <!-- Cape / shoulders -->
+  <path d="M24 44 Q32 34 40 44 L38 49 Q32 44 26 49 Z" fill="#4f2f14" />
+  <!-- Neck + head -->
+  <rect x="30" y="35" width="4" height="4" fill="#e8bd93" />
+  <circle cx="32" cy="30" r="6" fill="#e8bd93" />
+  <circle cx="30" cy="30" r="0.7" fill="#4f2f14" />
+  <circle cx="34" cy="30" r="0.7" fill="#4f2f14" />
+  <g>
+      <path d="M25 22 Q32 12 39 22 Z" fill="#4f2f14" />
+      <ellipse cx="32" cy="22" rx="9" ry="2.2" fill="#4f2f14" />
+    </g>
+  <!-- Suit emblem, placed high (Ober/König) or low (Unter) -->
+  <g transform="translate(23 51) scale(0.75)">
+  <rect x="11" y="3" width="2" height="4" rx="0.8" fill="#4f2f14" />
+  <ellipse cx="12" cy="15" rx="5.6" ry="6.9" fill="#7a4a23" />
+  <ellipse cx="10" cy="13.5" rx="1.4" ry="2.4" fill="#a07a3c" opacity="0.55" />
+  <path d="M5.8 11C5.8 6.4 18.2 6.4 18.2 11C18.2 13.4 5.8 13.4 5.8 11Z" fill="#a07a3c" />
+  <path d="M6.6 10.2H17.4M7.4 12.2H16.6" stroke="#4f2f14" stroke-width="0.5" opacity="0.5" />
+</g>
+</g>
+</svg>

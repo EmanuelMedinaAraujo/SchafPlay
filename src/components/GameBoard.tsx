@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { GameState, Language, PlayerAction, PlayerActionType } from "../types";
 import { gameLabel, translations } from "../lib/i18n";
 import BiddingPanel from "./BiddingPanel";
@@ -21,6 +21,45 @@ interface GameBoardProps {
   onDevSkipRound?: () => void;
 }
 
+/** The contract chip is the red game indicator. When the contract is first
+ * decided it takes centre stage: it appears enlarged over the table centre,
+ * holds for ~a second, then scales down and flies up to its resting spot in
+ * the toolbar. Fires once on the undecided -> decided edge; state snapshots
+ * re-emit on pause/resume with the contract still set, so they don't
+ * retrigger it. Mirrors the FLIP measurement TrickArea uses for trick cards. */
+function useContractChipReveal(decided: boolean) {
+  const chipRef = useRef<HTMLSpanElement>(null);
+  const prevDecidedRef = useRef(false);
+
+  useLayoutEffect(() => {
+    const prevDecided = prevDecidedRef.current;
+    prevDecidedRef.current = decided;
+    if (!decided || prevDecided) return;
+
+    const chip = chipRef.current;
+    const center = document.querySelector(".trick-area");
+    if (!chip || !center) return;
+
+    const chipRect = chip.getBoundingClientRect();
+    const centerRect = center.getBoundingClientRect();
+    let dx = centerRect.left + centerRect.width / 2 - (chipRect.left + chipRect.width / 2);
+    let dy = centerRect.top + centerRect.height / 2 - (chipRect.top + chipRect.height / 2);
+    // Forced-landscape mode rotates the page 90°, so screen-space deltas
+    // must be mapped into the rotated local coordinate space.
+    if (document.documentElement.classList.contains("rotated")) {
+      [dx, dy] = [dy, -dx];
+    }
+    chip.style.setProperty("--reveal-x", `${dx}px`);
+    chip.style.setProperty("--reveal-y", `${dy}px`);
+    chip.classList.add("contract-chip-reveal");
+    const clear = () => chip.classList.remove("contract-chip-reveal");
+    chip.addEventListener("animationend", clear, { once: true });
+    return () => chip.removeEventListener("animationend", clear);
+  }, [decided]);
+
+  return chipRef;
+}
+
 export default function GameBoard({
   state,
   language,
@@ -33,6 +72,7 @@ export default function GameBoard({
 }: GameBoardProps) {
   const t = translations[language];
   const [lastTrickOpen, setLastTrickOpen] = useState(false);
+  const contractChipRef = useContractChipReveal(!!state.currentContract);
 
   const myIdx = Math.max(
     0,
@@ -55,11 +95,11 @@ export default function GameBoard({
   const lastCompletedTrick = state.tricks.length > 0 ? state.tricks[state.tricks.length - 1] : null;
 
   return (
-    <main className="game-screen">
+    <main className="game-screen" style={{ backgroundImage: `url(${import.meta.env.BASE_URL}game_background.png)` }}>
       <div className="game-toolbar">
-        <span className="contract-chip">{contractLabel}</span>
-        <span className="muted">
-          {t.round} {state.roundNumber}/{state.totalRounds}
+        <span ref={contractChipRef} className="contract-chip">{contractLabel}</span>
+        <span className="round-chip">
+          {t.round} <strong>{state.roundNumber}</strong>/{state.totalRounds}
         </span>
         {import.meta.env.DEV && state.status === "PLAYING" && onDevSkip && (
           <button className="text-button dev-header-btn dev-trick-btn" onClick={onDevSkip} type="button">
@@ -99,6 +139,7 @@ export default function GameBoard({
         currentTrick={state.currentTrick}
         contract={state.currentContract}
         disabled={state.status !== "PLAYING" || !isMyTurn}
+        active={activePlayer?.id === myPlayerId}
         playerName={me.name}
         showLastTrick={state.tricks.length > 0}
         language={language}

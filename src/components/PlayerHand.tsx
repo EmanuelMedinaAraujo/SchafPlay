@@ -3,12 +3,14 @@ import { Card, Contract, GameType, Language, Trick } from "../types";
 import { getLegalCards, sortCardsForHand } from "../game/rules";
 import { translations } from "../lib/i18n";
 import CardFace from "./CardFace";
+import { UserIcon } from "./icons";
 
 interface PlayerHandProps {
   hand: Card[];
   currentTrick: Trick | null;
   contract: Contract | null;
   disabled: boolean;
+  active: boolean;
   playerName: string;
   showLastTrick: boolean;
   language: Language;
@@ -30,6 +32,7 @@ export default function PlayerHand({
   currentTrick,
   contract,
   disabled,
+  active,
   playerName,
   showLastTrick,
   language,
@@ -113,7 +116,12 @@ export default function PlayerHand({
 
   return (
     <div className={`player-hand-container ${disabled ? "" : "my-turn"}`}>
-      <span className="player-hand-name">{playerName}</span>
+      <div className="player-hand-col-left">
+        <div className={`seat-name player-hand-name ${active ? "active" : ""}`}>
+          <UserIcon />
+          <strong>{playerName}</strong>
+        </div>
+      </div>
 
       <div className="player-hand-cards">
         {sorted.map((card) => {
@@ -123,6 +131,7 @@ export default function PlayerHand({
           return (
             <button
               key={card.id}
+              data-card-id={card.id}
               className={`playing-card ${isGrayed ? "grayed-out" : ""}`}
               onPointerDown={(event) => startDrag(event, card.id, isLegal)}
               onPointerMove={moveDrag}
@@ -138,11 +147,13 @@ export default function PlayerHand({
         })}
       </div>
 
-      {showLastTrick && (
-        <button className="secondary-button last-trick-btn" onClick={onLastTrick} type="button">
-          {t.lastTrick}
-        </button>
-      )}
+      <div className="player-hand-col-right">
+        {showLastTrick && (
+          <button className="secondary-button last-trick-btn" onClick={onLastTrick} type="button">
+            {t.lastTrick}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

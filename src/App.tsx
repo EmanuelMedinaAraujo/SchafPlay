@@ -6,12 +6,25 @@ import RulesModal from "./components/RulesModal";
 import SettingsScreen from "./components/SettingsScreen";
 import StatsScreen from "./components/StatsScreen";
 import { useGameSession } from "./session/useGameSession";
-import { Language, PlayerActionType } from "./types";
+import { PlayerActionType } from "./types";
 import { translations } from "./lib/i18n";
+import { useSettings } from "./lib/settings";
 import { BookOpenIcon, BotIcon, ChartColumnIcon, HomeIcon, SettingsIcon } from "./components/icons";
 
-const NAME_KEY = "schafplay.name";
-const LANG_KEY = "schafplay.language";
+
+/**
+ * Deep-link join (#7, Option A): read an invite code from the URL fragment
+ * (`…#invite=<code>`). Returns "" when absent. The code is an opaque string
+ * that was percent-encoded when the host copied the link.
+ */
+function readInviteFromHash(): string {
+  try {
+    const match = window.location.hash.match(/[#&]invite=([^&]*)/);
+    return match ? decodeURIComponent(match[1]) : "";
+  } catch {
+    return "";
+  }
+}
 
 /** Inline SVG icons — replaces lucide-react */
 const WifiIcon = () => (
@@ -26,26 +39,35 @@ const PlugZapIcon = () => (
 );
 
 export default function App() {
-  const [language, setLanguage] = useState<Language>(() => (localStorage.getItem(LANG_KEY) as Language) || "de");
-  const [playerName, setPlayerName] = useState(() => localStorage.getItem(NAME_KEY) || "Bazi");
+  // All persisted device preferences flow through one store (see lib/settings).
+  const [settings, updateSetting] = useSettings();
+  const { language, playerName, totalRounds, disableLaufende, enableRamsch, lastMode } = settings;
   const [screen, setScreen] = useState<"home" | "game" | "stats" | "settings">("home");
   const [rulesOpen, setRulesOpen] = useState(false);
-  const [totalRounds, setTotalRounds] = useState<number>(8);
+  // Captured once at startup, before we scrub the fragment below. Reading the
+  // hash is synchronous and independent of the service-worker update check in
+  // main.tsx, so nothing can race away the invite before we see it.
+  const [initialInvite] = useState(readInviteFromHash);
 
   const session = useGameSession({
     getPlayerName: () => playerName,
     getTotalRounds: () => totalRounds,
+    getDisableLaufende: () => disableLaufende,
+    getEnableRamsch: () => enableRamsch,
     onEnterGame: () => setScreen("game"),
   });
   const { gameState, connectionState, role, myPlayerId } = session;
 
+  // Strip the `#invite=…` fragment once we've captured it so a reload doesn't
+  // re-trigger a stale invite. Uses replaceState (no navigation / history entry).
   useEffect(() => {
-    localStorage.setItem(NAME_KEY, playerName);
-  }, [playerName]);
-
-  useEffect(() => {
-    localStorage.setItem(LANG_KEY, language);
-  }, [language]);
+    if (!initialInvite) return;
+    try {
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+    } catch {
+      // Ignore — a lingering fragment is harmless (it's only read on startup).
+    }
+  }, [initialInvite]);
 
   // Landscape-only UI: on portrait screens the whole app is rotated 90°
   // via CSS (html.rotated). html.compact / html.narrow drive the phone
@@ -143,18 +165,28 @@ export default function App() {
       {!inGame && screen === "stats" ? (
         <StatsScreen language={language} />
       ) : !inGame && screen === "settings" ? (
-        <SettingsScreen language={language} onLanguageChange={setLanguage} />
+        <SettingsScreen
+          language={language}
+          onLanguageChange={(value) => updateSetting("language", value)}
+          disableLaufende={disableLaufende}
+          onDisableLaufendeChange={(value) => updateSetting("disableLaufende", value)}
+          enableRamsch={enableRamsch}
+          onEnableRamschChange={(value) => updateSetting("enableRamsch", value)}
+        />
       ) : !inGame ? (
         <HomeScreen
           language={language}
           playerName={playerName}
-          onPlayerNameChange={setPlayerName}
+          onPlayerNameChange={(value) => updateSetting("playerName", value)}
           connectionState={connectionState}
           onHostPeer={session.attachHostPeer}
           onGuestPeer={session.attachGuestPeer}
           totalRounds={totalRounds}
-          onTotalRoundsChange={setTotalRounds}
+          onTotalRoundsChange={(value) => updateSetting("totalRounds", value)}
           onSoloStart={session.startSolo}
+          lastMode={lastMode}
+          onLastModeChange={(value) => updateSetting("lastMode", value)}
+          initialInvite={initialInvite}
         />
       ) : (
         <GameBoard

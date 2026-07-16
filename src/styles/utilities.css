@@ -1,0 +1,32 @@
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Attention pulse without transparency: brightness only. */
+.pulse-soft {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  animation: pulse-soft 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.7);
+  }
+}
+
+.muted {
+  color: var(--muted);
+}
+

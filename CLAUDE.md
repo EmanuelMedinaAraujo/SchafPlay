@@ -10,13 +10,14 @@ SchafPlay: Bavarian Schafkopf for two human players as an offline-first PWA. Sea
 
 ```bash
 npm install
-npm run dev      # Vite dev server
-npm run lint     # tsc --noEmit (this is the project's "lint")
-npm run build    # production build (dist/)
-npm run start    # vite preview of the built dist/
+npm run dev       # Vite dev server
+npm run lint      # tsc --noEmit (app) && tsc --noEmit -p tests/e2e (E2E tests)
+npm run build     # production build (dist/)
+npm run start     # vite preview of the built dist/
+npm run test:e2e  # Playwright E2E suite (see Testing below)
 ```
 
-There is no separate lint tool (no ESLint config) — `npm run lint` is a TypeScript type-check. There is no `test` script — see Testing policy below.
+There is no separate lint tool (no ESLint config) — `npm run lint` is a TypeScript type-check, run over two projects: the app (`tsconfig.json`) and the E2E tests (`tests/e2e/tsconfig.json`), so a broken test file fails lint too.
 
 ## Architecture
 
@@ -30,7 +31,7 @@ net/         Transport & Signaling interfaces, WebRTCPeer, sdpCodec, protocol
 persistence/ GameHistoryStore interface, IndexedDB store, ListRecorder
 session/     Host/Guest/SoloSession + useGameSession (orchestration)
 components/  presentational React; App.tsx is the UI shell
-lib/         i18n, pwa, cardDisplay
+lib/         i18n, pwa, cardDisplay, settings
 ```
 
 ### Host-authoritative state machine over P2P
@@ -91,9 +92,14 @@ Terminology (see issue #22): a **list** is a whole session; it consists of **rou
 
 - Landscape-only design: `src/App.tsx` rotates the whole app 90° via a `rotated` class on `<html>` when the viewport is portrait, and adds a `compact` class for short *effective* height (post-rotation) that plain CSS media queries can't detect on their own — both are driven by a `resize`/orientation-change listener, not CSS alone.
 - `src/components/` are presentational, one per screen/panel (`GameBoard`, `PlayerHand`, `BiddingPanel`, `TrickArea`, `PlayerSeat`, `RoundOverScreen`, `PairingPanel`, `HomeScreen`, `StatsScreen`, `RulesModal`); they receive `GameState` and an `onAction`/`onReady` callback from `App.tsx` and don't talk to the engine directly. Two exceptions depend on lower layers by nature: `PairingPanel` constructs a transport via `createWebRTCPeer()` and drives signaling; `StatsScreen` reads through the `gameHistoryStore`.
+- **Device settings** (`src/lib/settings.ts`): every persisted local preference — `language`, `playerName`, `totalRounds`, `disableLaufende`, `lastMode` (#44) — lives in one `Settings` shape behind a `SettingsStore` seam (the same swap-the-backend pattern as `GameHistoryStore`, but synchronous so the right value is on screen at first paint). `App.tsx` holds the single `useSettings()` and passes values + `updateSetting(key, value)` setters down. Add a new preference by extending `Settings` + `DEFAULT_SETTINGS` + the `CODECS` map (which owns the tolerant parse/serialize and the historical `schafplay.*` `localStorage` keys) — never hand-roll a `localStorage` read/write in a component again. The default `LocalStorageSettingsStore` degrades silently when storage is unavailable, same contract as the persistence layer.
 
-## Testing policy — NO CODE TESTS FOR NOW
+## Testing
 
-**Do not add, run, or restore any automated tests (unit, integration, E2E) until the user explicitly says otherwise.** All tests (`tests/engine.test.ts`, `tests/scoring.test.ts`), `vitest.config.ts`, the `test` npm script, and the `vitest`/`jsdom`/`@testing-library/react` devDependencies have been deliberately removed. The user is testing the application manually themselves. If you notice test-shaped work to do, don't write it — mention it and move on.
+A Playwright E2E suite exists (`tests/e2e/*.spec.ts`, 19 tests, resolves issue #5) and **must be kept green** — it runs in CI (`.github/workflows/e2e.yml`) on every pull request and on push to `main`. It covers WebRTC pairing/reconnect, bidding legality, card-play rule enforcement, scored full rounds, a full 4-round list, partner-badge redaction over the wire, settings persistence, and stats recording. `TEST_INFRA.md` maps which documented test cases each spec file covers.
 
-`TEST_INFRA.md` still documents a planned E2E suite (WebRTC, bidding, card play, scoring, reconnect flows) as a design/backlog reference — it's not something to implement right now.
+- **Running it**: `npm run test:e2e` runs the whole suite headless against the Vite dev server (`playwright.config.ts` starts/reuses it on `127.0.0.1:5173`). `npx playwright install --with-deps chromium` is needed once to fetch the browser. Run a single file with `npx playwright test tests/e2e/gameplay.spec.ts`. `npm run lint` type-checks the app **and** the E2E tests (`tests/e2e/tsconfig.json`) as separate `tsc` projects — a broken spec fails lint.
+- **Determinism model**: tests append `?e2e-seed=<int>` to the URL, which `src/lib/e2e.ts` (DEV-only, dead code in production builds) reads to inject a seeded shuffle (`src/lib/seededShuffle.ts`) and fast AI pacing into the `HostSession`/`SoloSession` engines. `tests/e2e/helpers/simulate.ts` runs a Node-side mirror of the *same* `GameEngine` code with the same seed to precompute the full hand/contract/trick trace before the first click, so gameplay specs can assert exact scores. Because the sim imports the real engine rather than reimplementing it, most engine/AI/shuffle behavior changes are mirrored automatically — but a change that shifts which seeds produce a given bidding/contract scenario can break `findSeed`-located scenarios, so re-run the suite after touching `game/`, `players/aiHeuristics.ts`, or `engine/GameEngine.ts`.
+- **Unit tests are still deliberately absent.** The user tests the application manually; this Playwright suite is the only sanctioned automated testing. Do not add unit/integration tests (vitest, jsdom, `@testing-library/react`, etc.) unless the user explicitly asks.
+- **Product test seams** (DEV builds only): `src/lib/e2e.ts` (seed injection), `src/lib/seededShuffle.ts`, and `data-card-id` attributes on hand cards (`PlayerHand.tsx`) and trick cards (`TrickArea.tsx`). These are dead code in production builds — don't remove them casually, and don't rely on them for any production behavior.
+- Any change to `src/engine/redaction.ts` or the partner-reveal logic must keep `tests/e2e/partner-badge.spec.ts` passing — it exercises the "Mitspieler" badge redaction (hidden until the called Ace is played) across a real WebRTC channel between two browser contexts, not just in solo.

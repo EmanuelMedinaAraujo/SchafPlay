@@ -1,5 +1,6 @@
 import { GameEngine } from "../engine/GameEngine";
 import { PlayerAction, SeatId } from "../game/types";
+import { getE2EOverrides } from "../lib/e2e";
 import { ListRecorder } from "../persistence";
 import { createMessage, P2PMessageType } from "../net/protocol";
 import { Transport } from "../net/Transport";
@@ -71,6 +72,9 @@ export class HostSession implements GameSession {
   private createEngine(): void {
     const engine = new GameEngine(this.deps.getPlayerName(), "Gast", this.deps.getTotalRounds(), {
       devToolsEnabled: import.meta.env.DEV,
+      disableLaufende: this.deps.getDisableLaufende(),
+      enableRamsch: this.deps.getEnableRamsch(),
+      ...getE2EOverrides(),
     });
     this.engine = engine;
     this.recorder = new ListRecorder("multiplayer", "host", "p1");

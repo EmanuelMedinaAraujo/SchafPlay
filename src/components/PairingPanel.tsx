@@ -4,7 +4,7 @@ import { Transport, TransportState } from "../net/Transport";
 import { createWebRTCPeer } from "../net/WebRTCPeer";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
-import { CopyIcon, CheckIcon, LoaderIcon, LinkIcon, ShareIcon } from "./icons";
+import { CopyIcon, CheckIcon, LoaderIcon, LinkIcon, ShareIcon, PasteIcon } from "./icons";
 
 interface PairingPanelProps {
   language: Language;
@@ -12,6 +12,12 @@ interface PairingPanelProps {
   connectionState: TransportState | "idle";
   /** Called with every freshly created transport so the app can attach handlers. */
   onPeer: (peer: Transport) => void;
+  /**
+   * Guest-only: an invite code delivered via a deep link (`#invite=…`). When
+   * present it pre-fills the paste field and is processed automatically on
+   * mount, exactly as if the user had pasted it and clicked "Generate reply".
+   */
+  initialInvite?: string;
 }
 
 /**
@@ -27,11 +33,11 @@ interface PairingPanelProps {
  *   2. Clicks "Generate reply" → generates reply code.
  *   3. Displays reply code for copying. Connection completes once host pastes it.
  */
-export default function PairingPanel({ language, mode, connectionState, onPeer }: PairingPanelProps) {
+export default function PairingPanel({ language, mode, connectionState, onPeer, initialInvite }: PairingPanelProps) {
   const t = translations[language];
   const [inviteCode, setInviteCode] = useState("");
   const [replyCode, setReplyCode] = useState("");
-  const [pastedCode, setPastedCode] = useState("");
+  const [pastedCode, setPastedCode] = useState(initialInvite?.trim() ?? "");
   const [busy, setBusy] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState("");
@@ -113,15 +119,16 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
     }
   }
 
-  async function guestGenerateReply() {
-    if (!pastedCode.trim()) return;
+  async function guestGenerateReply(codeArg?: string) {
+    const code = (codeArg ?? pastedCode).trim();
+    if (!code) return;
     setBusy(true);
     setError("");
     const peer = createWebRTCPeer();
     peerRef.current = peer;
     onPeer(peer);
     try {
-      const reply = await peer.join(pastedCode.trim());
+      const reply = await peer.join(code);
       setReplyCode(reply);
     } catch {
       peer.disconnect();
@@ -130,6 +137,19 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
       setBusy(false);
     }
   }
+
+  // Deep-link (`#invite=…`) join: process the supplied invite code once on
+  // mount, exactly as if the user had pasted it and clicked "Generate reply".
+  // A bad/expired code surfaces the same error UI as a bad pasted code.
+  const autoSubmittedRef = useRef(false);
+  useEffect(() => {
+    if (mode !== "join" || autoSubmittedRef.current) return;
+    const code = initialInvite?.trim();
+    if (!code) return;
+    autoSubmittedRef.current = true;
+    guestGenerateReply(code);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   function copyText(text: string) {
     navigator.clipboard
@@ -149,6 +169,17 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
     } else {
       copyText(text);
     }
+  }
+
+  function pasteFromClipboard() {
+    navigator.clipboard
+      ?.readText()
+      .then((text) => {
+        if (text) {
+          setPastedCode(text.trim());
+        }
+      })
+      .catch(() => undefined);
   }
 
   if (mode === "host") {
@@ -194,13 +225,24 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
             {connectionState !== "connected" && (
               <>
                 <label className="field-label">{t.pasteReply}</label>
-                <textarea
-                  className="input code-textarea"
-                  value={pastedCode}
-                  onChange={(e) => setPastedCode(e.target.value)}
-                  placeholder={t.pasteReplyHint}
-                  rows={2}
-                />
+                <div className="code-row">
+                  <textarea
+                    className="input code-textarea"
+                    value={pastedCode}
+                    onChange={(e) => setPastedCode(e.target.value)}
+                    placeholder={t.pasteReplyHint}
+                    rows={2}
+                  />
+                  <button
+                    className="secondary-button"
+                    onClick={pasteFromClipboard}
+                    type="button"
+                    title={t.paste}
+                    aria-label={t.paste}
+                  >
+                    <PasteIcon />
+                  </button>
+                </div>
                 <button
                   className="primary-button"
                   onClick={hostAcceptReply}
@@ -236,16 +278,27 @@ export default function PairingPanel({ language, mode, connectionState, onPeer }
       {!replyCode && (
         <>
           <label className="field-label">{t.pasteInvite}</label>
-          <textarea
-            className="input code-textarea"
-            value={pastedCode}
-            onChange={(e) => setPastedCode(e.target.value)}
-            placeholder={t.pasteInviteHint}
-            rows={2}
-          />
+          <div className="code-row">
+            <textarea
+              className="input code-textarea"
+              value={pastedCode}
+              onChange={(e) => setPastedCode(e.target.value)}
+              placeholder={t.pasteInviteHint}
+              rows={2}
+            />
+            <button
+              className="secondary-button"
+              onClick={pasteFromClipboard}
+              type="button"
+              title={t.paste}
+              aria-label={t.paste}
+            >
+              <PasteIcon />
+            </button>
+          </div>
           <button
             className="primary-button"
-            onClick={guestGenerateReply}
+            onClick={() => guestGenerateReply()}
             disabled={busy || !pastedCode.trim()}
             type="button"
           >

@@ -8,18 +8,20 @@
     "build": "vite build",
     "start": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit && tsc --noEmit -p tests/e2e",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
-    "react": "^19.0.1",
-    "react-dom": "^19.0.1"
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^26.1.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.0.4",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.3"
+    "@vitejs/plugin-react": "^6.0.3",
+    "typescript": "~7.0.2",
+    "vite": "^8.1.4"
   }
 }

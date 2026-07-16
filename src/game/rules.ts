@@ -21,7 +21,8 @@ export function getSoloSuit(type: GameType): Suit | null {
 export function isTrump(card: Card, gameType: GameType): boolean {
   if (gameType === GameType.WENZ) return card.value === CardValue.UNTER;
   if (card.value === CardValue.OBER || card.value === CardValue.UNTER) return true;
-  const trumpSuit = gameType === GameType.SAUSPIEL ? Suit.HEARTS : getSoloSuit(gameType);
+  // Ramsch (#11) is played with the normal trump order: Ober > Unter > Hearts.
+  const trumpSuit = gameType === GameType.SAUSPIEL || gameType === GameType.RAMSCH ? Suit.HEARTS : getSoloSuit(gameType);
   return card.suit === trumpSuit;
 }
 
