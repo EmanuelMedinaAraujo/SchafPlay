@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 96" preserveAspectRatio="xMidYMid meet">
+  <!-- Corner ranks: top-left upright, bottom-right rotated 180°. -->
+  <g fill="#7a4a23" font-weight="700" font-family="'Georgia', serif">
+    <text x="6" y="15" font-size="13">8</text>
+  </g>
+  <g transform="translate(4 16.5) scale(0.4583333333333333)">
+  <rect x="11" y="3" width="2" height="4" rx="0.8" fill="#4f2f14" />
+  <ellipse cx="12" cy="15" rx="5.6" ry="6.9" fill="#7a4a23" />
+  <ellipse cx="10" cy="13.5" rx="1.4" ry="2.4" fill="#a07a3c" opacity="0.55" />
+  <path d="M5.8 11C5.8 6.4 18.2 6.4 18.2 11C18.2 13.4 5.8 13.4 5.8 11Z" fill="#a07a3c" />
+  <path d="M6.6 10.2H17.4M7.4 12.2H16.6" stroke="#4f2f14" stroke-width="0.5" opacity="0.5" />
+</g>
+
+  <g transform="rotate(180 32 48)">
+    <text x="6" y="15" font-size="13" fill="#7a4a23" font-weight="700" font-family="'Georgia', serif">8</text>
+    <g transform="translate(4 16.5) scale(0.4583333333333333)">
+  <rect x="11" y="3" width="2" height="4" rx="0.8" fill="#4f2f14" />
+  <ellipse cx="12" cy="15" rx="5.6" ry="6.9" fill="#7a4a23" />
+  <ellipse cx="10" cy="13.5" rx="1.4" ry="2.4" fill="#a07a3c" opacity="0.55" />
+  <path d="M5.8 11C5.8 6.4 18.2 6.4 18.2 11C18.2 13.4 5.8 13.4 5.8 11Z" fill="#a07a3c" />
+  <path d="M6.6 10.2H17.4M7.4 12.2H16.6" stroke="#4f2f14" stroke-width="0.5" opacity="0.5" />
+</g>
+  </g>
+
+  <!-- Centre motif -->
+<g transform="translate(19 41) scale(1.0833333333333333)">
+  <rect x="11" y="3" width="2" height="4" rx="0.8" fill="#4f2f14" />
+  <ellipse cx="12" cy="15" rx="5.6" ry="6.9" fill="#7a4a23" />
+  <ellipse cx="10" cy="13.5" rx="1.4" ry="2.4" fill="#a07a3c" opacity="0.55" />
+  <path d="M5.8 11C5.8 6.4 18.2 6.4 18.2 11C18.2 13.4 5.8 13.4 5.8 11Z" fill="#a07a3c" />
+  <path d="M6.6 10.2H17.4M7.4 12.2H16.6" stroke="#4f2f14" stroke-width="0.5" opacity="0.5" />
+</g>
+</svg>

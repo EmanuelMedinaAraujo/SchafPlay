@@ -13,15 +13,19 @@
   flex: 1;
 }
 
-.contract-chip {
-  border: 1px solid rgba(220, 38, 38, 0.45);
+.contract-chip,
+.round-chip {
+  border: 1px solid var(--red-2);
   border-radius: 999px;
   padding: 6px 12px;
-  background: rgba(220, 38, 38, 0.12);
-  color: #fecaca;
+  background: var(--red);
+  color: var(--text);
   font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.contract-chip {
   position: relative;
   transform: translate(0, 0) scale(1);
 }
@@ -54,5 +58,11 @@
     transform: translate(0, 0) scale(1);
     opacity: 1;
   }
+}
+
+.game-toolbar .icon-button {
+  background: #0f1e3d;
+  color: #ffffff;
+  border-color: var(--line);
 }
 

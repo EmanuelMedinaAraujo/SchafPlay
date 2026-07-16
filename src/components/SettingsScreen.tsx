@@ -9,6 +9,8 @@ interface SettingsScreenProps {
   onLanguageChange: (language: Language) => void;
   disableLaufende: boolean;
   onDisableLaufendeChange: (disable: boolean) => void;
+  enableRamsch: boolean;
+  onEnableRamschChange: (enable: boolean) => void;
 }
 
 type UpdateStatus = "idle" | "checking" | "uptodate" | "installing" | "unsupported";
@@ -18,7 +20,14 @@ const LANGUAGES: Array<{ code: Language; label: string }> = [
   { code: "en", label: "English" },
 ];
 
-export default function SettingsScreen({ language, onLanguageChange, disableLaufende, onDisableLaufendeChange }: SettingsScreenProps) {
+export default function SettingsScreen({
+  language,
+  onLanguageChange,
+  disableLaufende,
+  onDisableLaufendeChange,
+  enableRamsch,
+  onEnableRamschChange,
+}: SettingsScreenProps) {
   const t = translations[language];
   const [status, setStatus] = useState<UpdateStatus>("idle");
 
@@ -96,6 +105,29 @@ export default function SettingsScreen({ language, onLanguageChange, disableLauf
             type="button"
           >
             {t.settingsLaufendeOff}
+          </button>
+        </div>
+      </section>
+
+      <section className="panel settings-panel">
+        <h2>{t.settingsRamsch}</h2>
+        <p className="muted">{t.settingsRamschHint}</p>
+        <div className="mode-switch" role="group" aria-label={t.settingsRamsch}>
+          <button
+            className={!enableRamsch ? "active" : ""}
+            onClick={() => onEnableRamschChange(false)}
+            aria-pressed={!enableRamsch}
+            type="button"
+          >
+            {t.settingsRamschOff}
+          </button>
+          <button
+            className={enableRamsch ? "active" : ""}
+            onClick={() => onEnableRamschChange(true)}
+            aria-pressed={enableRamsch}
+            type="button"
+          >
+            {t.settingsRamschPlay}
           </button>
         </div>
       </section>

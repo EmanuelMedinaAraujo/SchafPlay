@@ -29,6 +29,9 @@ html.in-game .game-screen {
   flex-direction: column;
   overflow-y: auto;
   overscroll-behavior: contain;
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: cover;
 }
 
 html.in-game .table {

@@ -73,6 +73,7 @@ export class HostSession implements GameSession {
     const engine = new GameEngine(this.deps.getPlayerName(), "Gast", this.deps.getTotalRounds(), {
       devToolsEnabled: import.meta.env.DEV,
       disableLaufende: this.deps.getDisableLaufende(),
+      enableRamsch: this.deps.getEnableRamsch(),
       ...getE2EOverrides(),
     });
     this.engine = engine;

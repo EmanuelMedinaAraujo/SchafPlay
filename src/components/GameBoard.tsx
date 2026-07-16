@@ -95,11 +95,11 @@ export default function GameBoard({
   const lastCompletedTrick = state.tricks.length > 0 ? state.tricks[state.tricks.length - 1] : null;
 
   return (
-    <main className="game-screen">
+    <main className="game-screen" style={{ backgroundImage: `url(${import.meta.env.BASE_URL}game_background.png)` }}>
       <div className="game-toolbar">
         <span ref={contractChipRef} className="contract-chip">{contractLabel}</span>
-        <span className="muted">
-          {t.round} {state.roundNumber}/{state.totalRounds}
+        <span className="round-chip">
+          {t.round} <strong>{state.roundNumber}</strong>/{state.totalRounds}
         </span>
         {import.meta.env.DEV && state.status === "PLAYING" && onDevSkip && (
           <button className="text-button dev-header-btn dev-trick-btn" onClick={onDevSkip} type="button">
@@ -139,6 +139,7 @@ export default function GameBoard({
         currentTrick={state.currentTrick}
         contract={state.currentContract}
         disabled={state.status !== "PLAYING" || !isMyTurn}
+        active={activePlayer?.id === myPlayerId}
         playerName={me.name}
         showLastTrick={state.tricks.length > 0}
         language={language}

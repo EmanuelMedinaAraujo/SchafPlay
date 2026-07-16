@@ -79,6 +79,19 @@ test.describe("pairing", () => {
     }
   });
 
+  test("paste button fills the invite code from clipboard", async ({ context, page }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+
+    await bootHome(page);
+    await page.evaluate(() => navigator.clipboard.writeText("test-clipboard-value"));
+    await page.getByRole("tab", { name: de.joinGame }).click();
+
+    const flow = page.locator(".pairing-flow");
+    await flow.getByRole("button", { name: de.paste }).click();
+
+    await expect(flow.getByPlaceholder(de.pasteInviteHint)).toHaveValue("test-clipboard-value");
+  });
+
   // Name propagation in both directions (guest→host and host→guest seats, plus
   // the local hand labels) is already fully asserted by smoke.spec.ts, so it is
   // deliberately not duplicated here.

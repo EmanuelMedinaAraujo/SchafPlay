@@ -4,7 +4,7 @@ import { Transport, TransportState } from "../net/Transport";
 import { createWebRTCPeer } from "../net/WebRTCPeer";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
-import { CopyIcon, CheckIcon, LoaderIcon, LinkIcon, ShareIcon, QrCodeIcon, ScanIcon, XIcon } from "./icons";
+import { CopyIcon, CheckIcon, LoaderIcon, LinkIcon, ShareIcon, QrCodeIcon, ScanIcon, XIcon, PasteIcon } from "./icons";
 import QRCodeView from "./QRCodeView";
 import QRScanner, { detectQrScanSupport } from "./QRScanner";
 
@@ -182,24 +182,6 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
       .catch(() => undefined);
   }
 
-  /**
-   * Copy a deep link that carries the invite code in the URL fragment. Built
-   * from `window.location` so it works on GitHub Pages subpaths, localhost and
-   * the installed PWA alike. The code is treated as an opaque string and
-   * percent-encoded so any codec output survives the round-trip.
-   */
-  function copyInviteLink() {
-    const { origin, pathname } = window.location;
-    const link = `${origin}${pathname}#invite=${encodeURIComponent(inviteCode)}`;
-    navigator.clipboard
-      ?.writeText(link)
-      .then(() => {
-        setLinkCopied(true);
-        setTimeout(() => setLinkCopied(false), 1800);
-      })
-      .catch(() => undefined);
-  }
-
   function shareText(text: string) {
     if (navigator.share) {
       navigator.share({
@@ -208,6 +190,17 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
     } else {
       copyText(text);
     }
+  }
+
+  function pasteFromClipboard() {
+    navigator.clipboard
+      ?.readText()
+      .then((text) => {
+        if (text) {
+          setPastedCode(text.trim());
+        }
+      })
+      .catch(() => undefined);
   }
 
   if (mode === "host") {
@@ -238,15 +231,6 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
                 aria-label={copied ? t.copied : t.copy}
               >
                 {copied ? <CheckIcon /> : <CopyIcon />}
-              </button>
-              <button
-                className="secondary-button"
-                onClick={copyInviteLink}
-                type="button"
-                title={linkCopied ? t.linkCopied : t.copyLink}
-                aria-label={linkCopied ? t.linkCopied : t.copyLink}
-              >
-                {linkCopied ? <CheckIcon /> : <LinkIcon size={16} />}
               </button>
               <button
                 className="secondary-button"
@@ -290,6 +274,15 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
                       <ScanIcon />
                     </button>
                   )}
+                  <button
+                    className="secondary-button"
+                    onClick={pasteFromClipboard}
+                    type="button"
+                    title={t.paste}
+                    aria-label={t.paste}
+                  >
+                    <PasteIcon />
+                  </button>
                 </div>
                 <button
                   className="primary-button"
@@ -373,6 +366,15 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
                 <ScanIcon />
               </button>
             )}
+            <button
+              className="secondary-button"
+              onClick={pasteFromClipboard}
+              type="button"
+              title={t.paste}
+              aria-label={t.paste}
+            >
+              <PasteIcon />
+            </button>
           </div>
           <button
             className="primary-button"
