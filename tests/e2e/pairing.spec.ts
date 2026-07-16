@@ -46,6 +46,14 @@ test.describe("pairing", () => {
     await expect(flow.locator("textarea[readonly]").first()).toHaveValue(invite);
   });
 
+  test("host flow does not expose invite-link copy button", async ({ page }) => {
+    await bootHome(page);
+    await hostInvite(page);
+    const flow = page.locator(".pairing-flow");
+    await expect(flow.getByRole("button", { name: "Einladungslink kopieren" })).toHaveCount(0);
+    await expect(flow.getByRole("button", { name: "Copy invite link" })).toHaveCount(0);
+  });
+
   test("deep-link opens the join flow with the invite pre-filled and pairs", async ({ browser }) => {
     const hostContext = await browser.newContext();
     const guestContext = await browser.newContext();
@@ -96,4 +104,3 @@ test.describe("pairing", () => {
   // the local hand labels) is already fully asserted by smoke.spec.ts, so it is
   // deliberately not duplicated here.
 });
-

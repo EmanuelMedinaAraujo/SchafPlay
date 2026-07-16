@@ -42,7 +42,6 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
-  const [linkCopied, setLinkCopied] = useState(false);
   const peerRef = useRef<(Transport & HostSignaling & GuestSignaling) | null>(null);
   const onPeerRef = useRef(onPeer);
   onPeerRef.current = onPeer;
@@ -162,24 +161,6 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
       .catch(() => undefined);
   }
 
-  /**
-   * Copy a deep link that carries the invite code in the URL fragment. Built
-   * from `window.location` so it works on GitHub Pages subpaths, localhost and
-   * the installed PWA alike. The code is treated as an opaque string and
-   * percent-encoded so any codec output survives the round-trip.
-   */
-  function copyInviteLink() {
-    const { origin, pathname } = window.location;
-    const link = `${origin}${pathname}#invite=${encodeURIComponent(inviteCode)}`;
-    navigator.clipboard
-      ?.writeText(link)
-      .then(() => {
-        setLinkCopied(true);
-        setTimeout(() => setLinkCopied(false), 1800);
-      })
-      .catch(() => undefined);
-  }
-
   function shareText(text: string) {
     if (navigator.share) {
       navigator.share({
@@ -229,15 +210,6 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
                 aria-label={copied ? t.copied : t.copy}
               >
                 {copied ? <CheckIcon /> : <CopyIcon />}
-              </button>
-              <button
-                className="secondary-button"
-                onClick={copyInviteLink}
-                type="button"
-                title={linkCopied ? t.linkCopied : t.copyLink}
-                aria-label={linkCopied ? t.linkCopied : t.copyLink}
-              >
-                {linkCopied ? <CheckIcon /> : <LinkIcon size={16} />}
               </button>
               <button
                 className="secondary-button"
