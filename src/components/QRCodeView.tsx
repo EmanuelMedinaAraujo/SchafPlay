@@ -1,8 +1,5 @@
-import { useMemo } from "react";
-import { encodeQR, matrixToSvgPath } from "../lib/qr";
-
-/** Quiet zone width in modules, as the QR spec requires. */
-const QUIET = 4;
+import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 
 interface QRCodeViewProps {
   /** Payload text (a pairing code); rendered as a byte-mode QR symbol. */
@@ -12,32 +9,36 @@ interface QRCodeViewProps {
 }
 
 /**
- * Crisp SVG rendering of a QR code via the in-repo encoder (src/lib/qr.ts).
+ * Crisp rendering of a QR code via the standard qrcode library.
  * Always dark-on-white regardless of theme — scanners want maximum contrast,
  * and the light quiet zone is part of the symbol.
  */
 export default function QRCodeView({ data, label }: QRCodeViewProps) {
-  const path = useMemo(() => {
-    try {
-      const matrix = encodeQR(data);
-      return { d: matrixToSvgPath(matrix), size: matrix.length };
-    } catch {
-      return null; // payload too large for QR — the copy-paste flow still works
-    }
+  const [dataUrl, setDataUrl] = useState<string>("");
+
+  useEffect(() => {
+    QRCode.toDataURL(data, {
+      margin: 4,
+      errorCorrectionLevel: "L",
+    })
+      .then((url) => {
+        setDataUrl(url);
+      })
+      .catch((err) => {
+        console.error("QR Code generation failed", err);
+      });
   }, [data]);
 
-  if (!path) return null;
-  const dim = path.size + QUIET * 2;
+  if (!dataUrl) {
+    // Return a placeholder of the same size to prevent layout shifts while loading
+    return <div className="qr-code" style={{ opacity: 0 }} />;
+  }
+
   return (
-    <svg
+    <img
+      src={dataUrl}
       className="qr-code"
-      viewBox={`0 0 ${dim} ${dim}`}
-      role="img"
-      aria-label={label}
-      shapeRendering="crispEdges"
-    >
-      <rect width={dim} height={dim} fill="#ffffff" />
-      <path d={path.d} fill="#000000" transform={`translate(${QUIET} ${QUIET})`} />
-    </svg>
+      alt={label}
+    />
   );
 }
