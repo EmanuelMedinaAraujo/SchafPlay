@@ -322,18 +322,22 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
         )}
 
         {showingQrModal && (
-          <div className="qr-popup-overlay" role="dialog" aria-label={t.showQr}>
-            <div className="qr-popup-box">
-              <QRCodeView data={inviteCode} label={t.inviteCode} />
-              <p className="muted qr-hint">{t.inviteQrHint}</p>
+          <div
+            className="qr-popup-overlay"
+            role="dialog"
+            aria-label={t.showQr}
+            onClick={() => setShowingQrModal(false)}
+          >
+            <div className="qr-popup-box" onClick={(e) => e.stopPropagation()}>
               <button
-                className="secondary-button qr-scanner-cancel"
+                className="qr-popup-close"
                 onClick={() => setShowingQrModal(false)}
                 type="button"
-                style={{ marginTop: "8px" }}
+                aria-label={t.cancel}
               >
-                <XIcon size={16} /> {t.cancel}
+                <XIcon size={20} />
               </button>
+              <QRCodeView data={inviteCode} label={t.inviteCode} />
             </div>
           </div>
         )}
@@ -450,18 +454,22 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
       )}
 
       {showingQrModal && (
-        <div className="qr-popup-overlay" role="dialog" aria-label={t.showQr}>
-          <div className="qr-popup-box">
-            <QRCodeView data={replyCode} label={t.replyCode} />
-            <p className="muted qr-hint">{t.replyQrHint}</p>
+        <div
+          className="qr-popup-overlay"
+          role="dialog"
+          aria-label={t.showQr}
+          onClick={() => setShowingQrModal(false)}
+        >
+          <div className="qr-popup-box" onClick={(e) => e.stopPropagation()}>
             <button
-              className="secondary-button qr-scanner-cancel"
+              className="qr-popup-close"
               onClick={() => setShowingQrModal(false)}
               type="button"
-              style={{ marginTop: "8px" }}
+              aria-label={t.cancel}
             >
-              <XIcon size={16} /> {t.cancel}
+              <XIcon size={20} />
             </button>
+            <QRCodeView data={replyCode} label={t.replyCode} />
           </div>
         </div>
       )}
