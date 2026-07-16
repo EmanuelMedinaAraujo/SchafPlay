@@ -1,13 +1,7 @@
 import { P2PMessage, P2PMessageType } from "./protocol";
 import { GuestSignaling, HostSignaling } from "./Signaling";
 import { Transport, TransportState } from "./Transport";
-import { compressSDP, decompressSDP } from "./sdpCodec";
-
-interface SDPBundle {
-  sdp: string;
-  type: RTCSdpType;
-  candidates: RTCIceCandidateInit[];
-}
+import { decodeSignal, encodeSignal, SDPBundle } from "./sdpCodec";
 
 /**
  * Factory used by the pairing UI — the one line to touch when a
@@ -55,7 +49,7 @@ export class WebRTCPeer implements Transport, HostSignaling, GuestSignaling {
     // Gather all ICE candidates (LAN-only, so they arrive quickly).
     const candidates = await candidatesPromise;
 
-    return compressSDP({
+    return encodeSignal({
       sdp: pc.localDescription!.sdp,
       type: pc.localDescription!.type,
       candidates,
@@ -71,7 +65,7 @@ export class WebRTCPeer implements Transport, HostSignaling, GuestSignaling {
 
     let bundle: SDPBundle;
     try {
-      bundle = await decompressSDP<SDPBundle>(replyCode.trim());
+      bundle = await decodeSignal(replyCode.trim());
     } catch {
       // The paste itself is garbage — the connection is still usable,
       // the user can simply paste again.
@@ -100,7 +94,7 @@ export class WebRTCPeer implements Transport, HostSignaling, GuestSignaling {
       this.setupDataChannel(event.channel);
     };
 
-    const bundle = await decompressSDP<SDPBundle>(inviteCode.trim());
+    const bundle = await decodeSignal(inviteCode.trim());
     await pc.setRemoteDescription({ type: bundle.type, sdp: bundle.sdp });
 
     for (const c of bundle.candidates) {
@@ -113,7 +107,7 @@ export class WebRTCPeer implements Transport, HostSignaling, GuestSignaling {
 
     const candidates = await candidatesPromise;
 
-    return compressSDP({
+    return encodeSignal({
       sdp: pc.localDescription!.sdp,
       type: pc.localDescription!.type,
       candidates,
