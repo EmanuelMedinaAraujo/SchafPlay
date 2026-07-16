@@ -51,9 +51,11 @@ export function getAIBid(
   const goodSauspielHand = (trumpsInNormal.length >= 4 && obers.length >= 1) || trumpsInNormal.length >= 5;
   if (goodSauspielHand && callableSuit) declarations.push({ type: GameType.SAUSPIEL, calledSuit: callableSuit });
 
-  // Wenz: only with genuine Unter strength backed by a high card — at least
-  // two Unter plus an Ace, or three Unter. Kept intentionally rare (#19).
-  const wenzWorthy = (unters.length >= 3 && aces.length >= 1) || (unters.length >= 2 && aces.length >= 2);
+  // Wenz: at least two Unter, at least two Aces, and at least two Tens matching the suits of the Aces.
+  const tensMatchingAces = hand.filter(
+    (card) => card.value === CardValue.TEN && aces.some((ace) => ace.suit === card.suit)
+  );
+  const wenzWorthy = unters.length >= 2 && aces.length >= 2 && tensMatchingAces.length >= 2;
   if (wenzWorthy) declarations.push({ type: GameType.WENZ, isTout: unters.length === 4 && aces.length >= 2 });
 
   // Solo: the AI should basically never go solo — only when the hand is almost
