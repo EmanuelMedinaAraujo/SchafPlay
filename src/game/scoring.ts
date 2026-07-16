@@ -3,7 +3,7 @@
  * Change point values in TARIFF, not in the engine.
  */
 
-import { Card, CardValue, Contract, GameType, Player, RoundResult, Suit, Trick } from "./types";
+import { Card, CardValue, Contract, GameType, Player, RamschResult, RoundResult, Suit, Trick } from "./types";
 import { isSolo } from "./rules";
 
 /**
@@ -19,10 +19,16 @@ import { isSolo } from "./rules";
  *   base 1, Schneider 2, Schwarz 3, Tout 4, Sie 6, plus 1 per Laufendem.
  *   Soloist totals: 3 / 6 / 9 / 12 / 18 (+3 per Laufendem).
  * Laufende count from 3 upwards (Wenz from 2), "mit" and "ohne" alike.
+ * Ramsch (#11): the loser pays `base` (Sauspiel level) to EACH opponent,
+ *   doubled once per Jungfrau (a player without a trick). A Durchmarsch
+ *   (one player takes every trick) WINS and receives `durchmarsch` from each
+ *   opponent — the Schwarz-solo level (+9 total), since sweeping all tricks
+ *   is the Ramsch equivalent of a solo won schwarz. No Laufende in Ramsch.
  */
 export const TARIFF = {
   rufspiel: { base: 1, schneider: 2, schwarz: 3, perLaufendem: 1 },
   solo: { base: 1, schneider: 2, schwarz: 3, tout: 4, sie: 6, perLaufendem: 1 },
+  ramsch: { base: 1, durchmarsch: 3 },
   minLaufende: 3,
   minLaufendeWenz: 2,
   maxLaufende: 8,
@@ -36,6 +42,8 @@ export const TARIFF = {
 export interface ScoringOptions {
   /** When true, Laufende (matadors) pay nothing — laufende is forced to 0. Default false. */
   disableLaufende?: boolean;
+  /** Index of the dealer seat; used only for the Ramsch tiebreak (#11). Defaults to seat 4. */
+  dealerIdx?: number;
 }
 
 export function calculateRoundResult(
@@ -45,6 +53,9 @@ export function calculateRoundResult(
   initialHands: Record<string, Card[]>,
   options: ScoringOptions = {},
 ): RoundResult {
+  if (contract.type === GameType.RAMSCH) {
+    return calculateRamschResult(players, contract, tricks, options.dealerIdx ?? 3);
+  }
   const declarerTeam = [contract.declarerId, contract.partnerId].filter(Boolean) as string[];
   const defenderTeam: string[] = players.map((player) => player.id).filter((id) => !declarerTeam.includes(id));
   const declarerPoints = players.filter((player) => declarerTeam.includes(player.id)).reduce((sum, player) => sum + player.pointsCollected, 0);
@@ -115,6 +126,79 @@ function scoreTournament(
     changes[player.id] = (isDeclarerSide === declarerWon ? 1 : -1) * stake;
   }
   return changes;
+}
+
+/**
+ * Ramsch scoring (#11). Everyone plays for themselves; the player who
+ * collected the MOST card points loses and pays TARIFF.ramsch.base to each
+ * opponent, doubled once per Jungfrau (a player who took no trick).
+ *
+ * Tiebreak for "most points" (documented house choice): among the tied
+ * players, the one with MORE tricks loses; if still tied, the tied player
+ * seated LATER in play order from the dealer (forehand counts as first,
+ * the dealer as last) loses.
+ *
+ * Durchmarsch: a player who takes ALL tricks wins instead and receives
+ * TARIFF.ramsch.durchmarsch from each opponent. Schneider/Schwarz and
+ * Laufende do not apply to Ramsch.
+ */
+function calculateRamschResult(players: Player[], contract: Contract, tricks: Trick[], dealerIdx: number): RoundResult {
+  const pointsByPlayer: Record<string, number> = {};
+  const trickCounts: Record<string, number> = {};
+  for (const player of players) {
+    pointsByPlayer[player.id] = player.pointsCollected;
+    trickCounts[player.id] = 0;
+  }
+  for (const trick of tricks) {
+    if (trick.winnerId) trickCounts[trick.winnerId] = (trickCounts[trick.winnerId] ?? 0) + 1;
+  }
+
+  const sweeper = players.find((player) => tricks.length > 0 && trickCounts[player.id] === tricks.length);
+  // Position in play order: forehand (dealer's left) = 0 … dealer = 3.
+  const posFromDealer = (player: Player) => (player.seatIndex - dealerIdx + 3) % 4;
+
+  const changes: Record<string, number> = {};
+  let ramsch: RamschResult;
+
+  if (sweeper) {
+    // Durchmarsch: the sweeper wins the premium from every opponent.
+    ramsch = { playerId: sweeper.id, isDurchmarsch: true, jungfrauIds: [], pointsByPlayer };
+    for (const player of players) {
+      changes[player.id] =
+        player.id === sweeper.id ? TARIFF.ramsch.durchmarsch * (players.length - 1) : -TARIFF.ramsch.durchmarsch;
+    }
+  } else {
+    const loser = [...players].sort(
+      (a, b) =>
+        pointsByPlayer[b.id] - pointsByPlayer[a.id] ||
+        trickCounts[b.id] - trickCounts[a.id] ||
+        posFromDealer(b) - posFromDealer(a),
+    )[0];
+    const jungfrauIds = players.filter((player) => trickCounts[player.id] === 0).map((player) => player.id);
+    // Each Jungfrau doubles the payout.
+    const perOpponent = TARIFF.ramsch.base * 2 ** jungfrauIds.length;
+    ramsch = { playerId: loser.id, isDurchmarsch: false, jungfrauIds, pointsByPlayer };
+    for (const player of players) {
+      changes[player.id] = player.id === loser.id ? -perOpponent * (players.length - 1) : perOpponent;
+    }
+  }
+
+  const keyPoints = pointsByPlayer[ramsch.playerId] ?? 0;
+  return {
+    contract,
+    // "Declarer" framing for a game without one: the key player (loser, or
+    // Durchmarsch winner) fills the declarer slots so generic consumers keep
+    // rendering something sensible.
+    declarerPoints: keyPoints,
+    defenderPoints: 120 - keyPoints,
+    declarerWon: ramsch.isDurchmarsch,
+    isSchneider: false,
+    isSchwarz: false,
+    laufende: 0,
+    scoreChanges: changes,
+    winnerIds: ramsch.isDurchmarsch ? [ramsch.playerId] : players.map((p) => p.id).filter((id) => id !== ramsch.playerId),
+    ramsch,
+  };
 }
 
 /**

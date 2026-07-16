@@ -8,6 +8,10 @@ import { CardValue, GameState, GameType, Suit } from "../game/types";
  * This is THE privacy boundary of the host-authoritative model — nothing may
  * reach a guest that did not pass through here. Callers pass a snapshot
  * (`engine.getState()` already clones); the input object is not mutated.
+ *
+ * Ramsch (#11) needs no contract redaction: its contract carries no
+ * partnerId and an empty declarerId, so beyond the hand placeholders there
+ * is nothing to hide.
  */
 export function redactStateFor(state: GameState, viewerId: string): GameState {
   const redacted: GameState = {

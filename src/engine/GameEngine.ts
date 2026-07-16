@@ -45,6 +45,8 @@ export interface EngineOptions {
   devToolsEnabled?: boolean;
   /** House rule (#31): when true, Laufende (matadors) pay nothing. Default false. */
   disableLaufende?: boolean;
+  /** House rule (#11): when true, an all-pass starts a Ramsch instead of a redeal. Default false. */
+  enableRamsch?: boolean;
 }
 
 /** Dev-skip fallback for seats without a controller of their own. */
@@ -63,6 +65,7 @@ export class GameEngine {
   private controllers: Partial<Record<SeatId, PlayerController>>;
   private devToolsEnabled: boolean;
   private disableLaufende: boolean;
+  private enableRamsch: boolean;
 
   constructor(hostName: string, guestName = "Gast", totalRounds = 8, options: EngineOptions = {}) {
     this.aiDelayMs = options.aiDelayMs ?? 900;
@@ -70,6 +73,7 @@ export class GameEngine {
     this.shuffleFn = options.shuffleFn ?? shuffleDeck;
     this.devToolsEnabled = options.devToolsEnabled ?? false;
     this.disableLaufende = options.disableLaufende ?? false;
+    this.enableRamsch = options.enableRamsch ?? false;
 
     const players: Player[] = [
       makePlayer("p1", hostName || "Host", true, 0),
@@ -214,8 +218,7 @@ export class GameEngine {
       const remaining = currentBidding.interestedPlayerIds;
       if (remaining.length === 0) {
         // Everyone who wanted to play retreated without a standing bid.
-        this.log(state, "log.allPass");
-        this.redealSameDealer(state);
+        this.handleAllPass(state);
         return;
       }
       if (currentBidding.highBid && remaining.length === 1) {
@@ -403,14 +406,44 @@ export class GameEngine {
   private enterDeclarePhaseOrRedeal(state: GameState): void {
     const bidding = state.biddingState!;
     if (bidding.interestedPlayerIds.length === 0) {
-      this.log(state, "log.allPass");
-      this.redealSameDealer(state);
+      this.handleAllPass(state);
       return;
     }
     bidding.phase = "DECLARE_PHASE";
     bidding.interestedPlayerIds = orderFromForehand(bidding.interestedPlayerIds, state.dealerIdx, state.players);
     state.activePlayerIdx = state.players.findIndex((player) => player.id === bidding.interestedPlayerIds[0]);
     bidding.currentBidderIndex = state.activePlayerIdx;
+  }
+
+  /**
+   * Nobody plays: with the Ramsch house rule (#11) the same deal is played out
+   * as a Ramsch; otherwise the cards are thrown in and redealt (unchanged
+   * default behavior).
+   */
+  private handleAllPass(state: GameState): void {
+    if (this.enableRamsch) {
+      this.startRamsch(state);
+    } else {
+      this.log(state, "log.allPass");
+      this.redealSameDealer(state);
+    }
+  }
+
+  /**
+   * Ramsch (#11): no declarer, no partner — everyone plays for themselves
+   * with normal (Sauspiel-style) trumps. `declarerId: ""` marks the missing
+   * declarer; no seat id ever matches it, so nothing in the UI or the AI
+   * treats any seat as the declaring side.
+   */
+  private startRamsch(state: GameState): void {
+    const contract: Contract = { type: GameType.RAMSCH, declarerId: "" };
+    state.currentContract = contract;
+    state.status = "PLAYING";
+    state.biddingState!.phase = "RESOLVED";
+    state.biddingState!.resolvedContract = contract;
+    state.activePlayerIdx = (state.dealerIdx + 1) % 4;
+    state.currentTrick = { id: 1, leaderId: state.players[state.activePlayerIdx].id, playedCards: [] };
+    this.log(state, "log.ramsch");
   }
 
   private redealSameDealer(state: GameState): void {
@@ -439,6 +472,7 @@ export class GameEngine {
   private finishRound(state: GameState): void {
     const result = calculateRoundResult(state.players, state.currentContract!, state.tricks, this.initialHands, {
       disableLaufende: this.disableLaufende,
+      dealerIdx: state.dealerIdx,
     });
     state.lastResult = result;
     Object.entries(result.scoreChanges).forEach(([id, change]) => {
