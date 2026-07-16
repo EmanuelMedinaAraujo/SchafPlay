@@ -241,7 +241,7 @@ export class GameEngine {
       const player = state.players[state.activePlayerIdx];
       const card = player.cards.find((candidate) => candidate.id === cardId);
       if (!card || !state.currentContract || !state.currentTrick) return;
-      const legal = getLegalCards(player.cards, state.currentTrick, state.currentContract);
+      const legal = getLegalCards(player.cards, state.currentTrick, state.currentContract, state.tricks);
       if (!legal.some((candidate) => candidate.id === cardId)) return;
 
       player.cards = player.cards.filter((candidate) => candidate.id !== cardId);
@@ -337,12 +337,12 @@ export class GameEngine {
     if (this.state.status === "BIDDING") {
       const bidding = this.state.biddingState!;
       if (bidding.phase === "WILL_PHASE") {
-        this.processBidWill(player.id, controller.decideWill(player));
+        this.processBidWill(player.id, controller.decideWill(player, bidding.willBids));
       } else {
         this.processBidDeclare(player.id, controller.decideBid(player, this.bidContext(bidding)));
       }
     } else if (this.state.status === "PLAYING") {
-      const card = controller.decideCard(player, this.state.currentTrick, this.state.currentContract);
+      const card = controller.decideCard(player, this.state.currentTrick, this.state.currentContract, this.state.tricks);
       this.processCardPlay(player.id, card.id);
     }
   }
@@ -574,10 +574,10 @@ export class GameEngine {
    * choice, or the first legal card for a human. False when nothing is legal.
    */
   private playStepFor(player: Player): boolean {
-    const legal = getLegalCards(player.cards, this.state.currentTrick, this.state.currentContract);
+    const legal = getLegalCards(player.cards, this.state.currentTrick, this.state.currentContract, this.state.tricks);
     if (legal.length === 0) return false;
     const card =
-      this.controllers[player.id]?.decideCard(player, this.state.currentTrick, this.state.currentContract) ?? legal[0];
+      this.controllers[player.id]?.decideCard(player, this.state.currentTrick, this.state.currentContract, this.state.tricks) ?? legal[0];
     this.processCardPlay(player.id, card.id);
     return true;
   }

@@ -3,7 +3,7 @@
  * decision. Stateless per call; the engine owns pacing and validation.
  */
 
-import { Card, CardValue, Contract, Difficulty, GameDeclaration, GameType, Player, Suit, Trick } from "../game/types";
+import { Card, CardValue, Contract, Difficulty, GameDeclaration, GameType, Player, Suit, Trick, WillBid } from "../game/types";
 import {
   canOverrideBid,
   countPoints,
@@ -15,7 +15,44 @@ import {
   isTrump,
 } from "../game/rules";
 
-export function getAIWillBid(player: Player): boolean {
+/** Card counts extracted once from a hand, shared across worthiness checks. */
+interface HandProfile {
+  unters: Card[];
+  obers: Card[];
+  aces: Card[];
+  trumpsInNormal: Card[];
+}
+
+function analyzeHand(hand: Card[]): HandProfile {
+  return {
+    unters: hand.filter((card) => card.value === CardValue.UNTER),
+    obers: hand.filter((card) => card.value === CardValue.OBER),
+    aces: hand.filter((card) => card.value === CardValue.ACE),
+    trumpsInNormal: hand.filter((card) => isTrump(card, GameType.SAUSPIEL)),
+  };
+}
+
+/** Wenz: genuine Unter strength backed by high cards — at least
+ *  two Unter plus an Ace, or three Unter. Kept intentionally rare (#19). */
+function isWenzWorthy({ unters, aces }: HandProfile): boolean {
+  return (unters.length >= 3 && aces.length >= 1) || (unters.length >= 2 && aces.length >= 2);
+}
+
+/** Solo: almost nothing but trump — three-plus Ober and seven-plus trumps. */
+function isSoloWorthy({ obers, trumpsInNormal }: HandProfile): boolean {
+  return obers.length >= 3 && trumpsInNormal.length >= 7;
+}
+
+export function getAIWillBid(player: Player, willBids: WillBid[] = []): boolean {
+  // If another player already bid wantsToPlay: true, the AI only bids
+  // if it holds a hand strong enough to play solo or wenz.
+  const someoneElseWantsToPlay = willBids.some((bid) => bid.playerId !== player.id && bid.wantsToPlay);
+
+  if (someoneElseWantsToPlay) {
+    const hp = analyzeHand(player.cards);
+    return isWenzWorthy(hp) || isSoloWorthy(hp);
+  }
+
   // Only announce interest when there is actually a declarable game. Since a
   // "will" can no longer be taken back once a Sauspiel stands ("Doch passen",
   // #24) — the player would be forced up to a Wenz/Solo — the AI commits only
@@ -35,10 +72,8 @@ export function getAIBid(
   canRetreat = true,
 ): GameDeclaration | null {
   const hand = player.cards;
-  const unters = hand.filter((card) => card.value === CardValue.UNTER);
-  const obers = hand.filter((card) => card.value === CardValue.OBER);
-  const aces = hand.filter((card) => card.value === CardValue.ACE);
-  const trumpsInNormal = hand.filter((card) => isTrump(card, GameType.SAUSPIEL));
+  const hp = analyzeHand(hand);
+  const { unters, obers, aces, trumpsInNormal } = hp;
 
   const declarations: GameDeclaration[] = [];
 
@@ -51,15 +86,9 @@ export function getAIBid(
   const goodSauspielHand = (trumpsInNormal.length >= 4 && obers.length >= 1) || trumpsInNormal.length >= 5;
   if (goodSauspielHand && callableSuit) declarations.push({ type: GameType.SAUSPIEL, calledSuit: callableSuit });
 
-  // Wenz: only with genuine Unter strength backed by a high card — at least
-  // two Unter plus an Ace, or three Unter. Kept intentionally rare (#19).
-  const wenzWorthy = (unters.length >= 3 && aces.length >= 1) || (unters.length >= 2 && aces.length >= 2);
-  if (wenzWorthy) declarations.push({ type: GameType.WENZ, isTout: unters.length === 4 && aces.length >= 2 });
+  if (isWenzWorthy(hp)) declarations.push({ type: GameType.WENZ, isTout: unters.length === 4 && aces.length >= 2 });
 
-  // Solo: the AI should basically never go solo — only when the hand is almost
-  // nothing but trump (three-plus Ober and seven-plus trumps).
-  const soloWorthy = obers.length >= 3 && trumpsInNormal.length >= 7;
-  if (soloWorthy) declarations.push({ type: bestSoloType(hand), isTout: obers.length >= 4 && trumpsInNormal.length >= 8 });
+  if (isSoloWorthy(hp)) declarations.push({ type: bestSoloType(hand), isTout: obers.length >= 4 && trumpsInNormal.length >= 8 });
 
   // Prefer the lowest-ranking viable game (Sauspiel before Wenz before Solo);
   // a higher game is only reached for when it is needed to overbid.
@@ -93,8 +122,14 @@ function bestSoloType(hand: Card[]): GameType {
   return GameType.SOLO_HEARTS;
 }
 
-export function getAICardPlay(player: Player, currentTrick: Trick | null, contract: Contract | null, difficulty = Difficulty.MEDIUM): Card {
-  const legalCards = getLegalCards(player.cards, currentTrick, contract);
+export function getAICardPlay(
+  player: Player,
+  currentTrick: Trick | null,
+  contract: Contract | null,
+  difficulty = Difficulty.MEDIUM,
+  tricks: Trick[] = []
+): Card {
+  const legalCards = getLegalCards(player.cards, currentTrick, contract, tricks);
   if (legalCards.length === 1 || difficulty === Difficulty.EASY) return legalCards[0];
   const gameType = contract?.type ?? GameType.SAUSPIEL;
 

@@ -87,24 +87,80 @@ export function sortCardsForHand(cards: Card[], gameType: GameType): Card[] {
   });
 }
 
-export function getLegalCards(hand: Card[], currentTrick: Trick | null, contract: Contract | null): Card[] {
-  if (!contract || !currentTrick || currentTrick.playedCards.length === 0) {
-    if (contract?.type === GameType.SAUSPIEL && contract.calledSuit) {
-      const hasCalledAce = hand.some((card) => card.suit === contract.calledSuit && card.value === CardValue.ACE);
-      if (hasCalledAce) {
-        return hand.filter((card) => card.suit !== contract.calledSuit || card.value === CardValue.ACE);
+export function getLegalCards(
+  hand: Card[],
+  currentTrick: Trick | null,
+  contract: Contract | null,
+  tricks: Trick[] = []
+): Card[] {
+  if (!contract) return hand;
+
+  const isSauspiel = contract.type === GameType.SAUSPIEL;
+  const calledSuit = contract.calledSuit;
+
+  // If not Sauspiel, or no called suit, use normal rules
+  if (!isSauspiel || !calledSuit) {
+    if (!currentTrick || currentTrick.playedCards.length === 0) {
+      return hand;
+    }
+    const ledPlaySuit = getPlaySuit(currentTrick.playedCards[0].card, contract.type);
+    const following = hand.filter((card) => getPlaySuit(card, contract.type) === ledPlaySuit);
+    return following.length > 0 ? following : hand;
+  }
+
+  // Sauspiel called Ace rules
+  const hasCalledAce = hand.some((card) => card.suit === calledSuit && card.value === CardValue.ACE);
+  const isAceFreed = tricks.some((trick) => {
+    if (trick.playedCards.length === 0) return false;
+    const ledCard = trick.playedCards[0].card;
+    return getPlaySuit(ledCard, contract.type) === calledSuit;
+  });
+  const isAceAllowed = isAceFreed || hand.length === 1;
+
+  // 1. Leading the trick
+  if (!currentTrick || currentTrick.playedCards.length === 0) {
+    if (hasCalledAce && !isAceAllowed) {
+      const nonCalledSuitCards = hand.filter((card) => card.suit !== calledSuit);
+      if (nonCalledSuitCards.length > 0) {
+        return nonCalledSuitCards;
+      } else {
+        return hand.filter((card) => card.value !== CardValue.ACE);
       }
     }
     return hand;
   }
 
+  // 2. Following the trick
   const ledPlaySuit = getPlaySuit(currentTrick.playedCards[0].card, contract.type);
   const following = hand.filter((card) => getPlaySuit(card, contract.type) === ledPlaySuit);
-  if (following.length === 0) return hand;
 
-  if (contract.type === GameType.SAUSPIEL && contract.calledSuit === ledPlaySuit) {
-    const calledAce = following.find((card) => card.value === CardValue.ACE);
-    return calledAce ? [calledAce] : following;
+  // If cannot follow suit
+  if (following.length === 0) {
+    if (hasCalledAce && !isAceAllowed) {
+      const nonCalledSuitCards = hand.filter((card) => card.suit !== calledSuit);
+      if (nonCalledSuitCards.length > 0) {
+        return nonCalledSuitCards;
+      } else {
+        return hand.filter((card) => card.value !== CardValue.ACE);
+      }
+    }
+    return hand;
+  }
+
+  // If can follow suit
+  if (calledSuit === ledPlaySuit) {
+    if (hasCalledAce) {
+      if (following.length >= 4) {
+        // Davonlaufen: holds 4 or more cards of the called suit.
+        // Can play any card of the called suit (the Ace or any other)
+        return following;
+      } else {
+        // Must play the called Ace
+        const calledAce = following.find((card) => card.value === CardValue.ACE);
+        return calledAce ? [calledAce] : following;
+      }
+    }
+    return following;
   }
 
   return following;
