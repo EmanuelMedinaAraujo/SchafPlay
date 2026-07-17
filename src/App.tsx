@@ -212,6 +212,7 @@ export default function App() {
               mode={role === "guest" ? "join" : "host"}
               connectionState={connectionState}
               onPeer={role === "guest" ? session.attachGuestPeer : session.attachHostPeer}
+              localName={playerName}
             />
             <button className="secondary-button" onClick={quitGame} type="button">
               {t.quit}

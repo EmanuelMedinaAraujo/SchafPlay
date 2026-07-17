@@ -132,6 +132,7 @@ export default function HomeScreen(props: HomeScreenProps) {
               connectionState={props.connectionState}
               onPeer={mode === "host" ? props.onHostPeer : props.onGuestPeer}
               initialInvite={mode === "join" ? props.initialInvite : undefined}
+              localName={props.playerName}
             />
           )}
         </div>

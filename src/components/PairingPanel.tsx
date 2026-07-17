@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { GuestSignaling, HostSignaling } from "../net/Signaling";
 import { Transport, TransportState } from "../net/Transport";
 import { createWebRTCPeer } from "../net/WebRTCPeer";
+import { forgetAllPeers, listKnownPeers } from "../net/knownPeers";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
 import { CopyIcon, CheckIcon, LoaderIcon, LinkIcon, ShareIcon, QrCodeIcon, ScanIcon, XIcon, PasteIcon } from "./icons";
@@ -14,6 +15,8 @@ interface PairingPanelProps {
   connectionState: TransportState | "idle";
   /** Called with every freshly created transport so the app can attach handlers. */
   onPeer: (peer: Transport) => void;
+  /** This device's display name, embedded in the invite so a returning guest can label the pairing (#71). */
+  localName?: string;
   /**
    * Guest-only: an invite code delivered via a deep link (`#invite=…`). When
    * present it pre-fills the paste field and is processed automatically on
@@ -35,13 +38,18 @@ interface PairingPanelProps {
  *   2. Clicks "Generate reply" → generates reply code.
  *   3. Displays reply code for copying. Connection completes once host pastes it.
  */
-export default function PairingPanel({ language, mode, connectionState, onPeer, initialInvite }: PairingPanelProps) {
+export default function PairingPanel({ language, mode, connectionState, onPeer, initialInvite, localName }: PairingPanelProps) {
   const t = translations[language];
   const [inviteCode, setInviteCode] = useState("");
   const [replyCode, setReplyCode] = useState("");
   const [pastedCode, setPastedCode] = useState(initialInvite?.trim() ?? "");
   const [busy, setBusy] = useState(false);
   const [accepted, setAccepted] = useState(false);
+  // #71: a returning guest connects from the invite alone (no reply code).
+  const [fastJoining, setFastJoining] = useState(false);
+  // #71: how many partners this device could 1-message reconnect with — drives
+  // the optional "forget saved partners" affordance in host mode.
+  const [knownCount, setKnownCount] = useState(() => listKnownPeers().length);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -79,11 +87,19 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
     peerRef.current = peer;
     onPeerRef.current(peer);
     try {
-      const code = await peer.host();
+      const code = await peer.host({ localName });
       if (peerRef.current === peer) setInviteCode(code);
     } catch {
       if (peerRef.current === peer) setError(t.failed);
     }
+  }
+
+  function forgetSavedPartners() {
+    forgetAllPeers();
+    setKnownCount(0);
+    // Re-mint the invite so it no longer primes fast offers for the (now
+    // forgotten) partners. Safe pre-connection: replaces the unconnected peer.
+    if (connectionState !== "connected") createHostInvite();
   }
 
   // Host: create offer on mount.
@@ -103,6 +119,7 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
     if (connectionState !== "failed" || prev === "failed") return;
     setPastedCode("");
     setAccepted(false);
+    setFastJoining(false);
     if (mode === "host") {
       setInviteCode("");
       setError(t.codeExpired);
@@ -150,7 +167,14 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
     onPeer(peer);
     try {
       const reply = await peer.join(code);
-      setReplyCode(reply);
+      // #71: an empty reply means the 1-message fast path already connected —
+      // there is nothing to hand back, so show a direct-connect state instead
+      // of the reply textarea.
+      if (reply === "") {
+        setFastJoining(true);
+      } else {
+        setReplyCode(reply);
+      }
     } catch {
       peer.disconnect();
       setError(t.invalidCode);
@@ -310,6 +334,17 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
 
         {error && <p className="error-text">{error}</p>}
 
+        {knownCount > 0 && connectionState !== "connected" && (
+          <button
+            className="link-button"
+            onClick={forgetSavedPartners}
+            type="button"
+            style={{ alignSelf: "flex-start", fontSize: "12px" }}
+          >
+            {t.forgetPartners}
+          </button>
+        )}
+
         {scanning && (
           <QRScanner
             language={language}
@@ -348,7 +383,13 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
   // --- GUEST MODE ---
   return (
     <div className="pairing-flow">
-      {!replyCode && (
+      {fastJoining && connectionState !== "connected" && (
+        <p className="muted pulse-soft">
+          <LoaderIcon /> {t.fastConnecting}
+        </p>
+      )}
+
+      {!replyCode && !fastJoining && (
         <>
           <label className="field-label">{t.pasteInvite}</label>
           <div className="code-row">

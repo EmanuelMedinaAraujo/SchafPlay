@@ -34,10 +34,46 @@
 /** Current on-the-wire format version prefix. Bump on any layout change. */
 const CODE_PREFIX = "SP1";
 
+/**
+ * Invite format version prefix (issue #71). A separate prefix from the reply
+ * codec (`SP1`) so a fast-capable invite — which wraps the classic bundle plus
+ * optional pairing metadata and per-known-peer fast bundles — round-trips
+ * independently and old-format codes still fail cleanly.
+ */
+const INVITE_PREFIX = "SI1";
+
 export interface SDPBundle {
   sdp: string;
   type: RTCSdpType;
   candidates: RTCIceCandidateInit[];
+}
+
+/** First-pairing metadata a new guest stores so it can fast-reconnect later. */
+export interface PairingMeta {
+  /** Shared secret seeding the derived ICE credentials on reconnect. */
+  secret: string;
+  /** Host display name, cosmetic. */
+  name: string;
+}
+
+/** One host offer primed for a specific already-known guest (fast path). */
+export interface FastEntry {
+  /** Fresh per-session salt; guest derives its ICE credentials from it. */
+  salt: string;
+  /** The host offer + candidates the returning guest connects to. */
+  bundle: SDPBundle;
+}
+
+/**
+ * A host invite. `normal` always works for anyone (classic 2-message reply
+ * flow). `meta` lets a brand-new guest remember this pairing. `fast` carries one
+ * primed host offer per remembered guest so a returning guest connects from the
+ * invite alone. A host that has never paired emits `meta: null, fast: []`.
+ */
+export interface InvitePayload {
+  normal: SDPBundle;
+  meta: PairingMeta | null;
+  fast: FastEntry[];
 }
 
 // --- low-level deflate + base64url -----------------------------------------
@@ -300,4 +336,105 @@ export async function decodeSignal(code: string): Promise<SDPBundle> {
   } catch {
     throw new Error("INVALID_CODE");
   }
+}
+
+// --- fast-capable invite (issue #71) ----------------------------------------
+
+// Positional layout mirrors the bundle codec: no JSON keys, so the invite stays
+// compact enough to still fit a scannable QR even with a fast entry attached.
+type MinFastEntry = [salt: string, bundle: MinBundle];
+type MinInvite = [
+  normal: MinBundle,
+  meta: [secret: string, name: string] | 0,
+  fast: MinFastEntry[],
+];
+
+/**
+ * Encode a fast-capable host invite. Reuses the exact same bundle minifier as
+ * {@link encodeSignal}, so a first-time guest's decode path is byte-for-byte the
+ * classic flow once it pulls out `normal`.
+ */
+export async function encodeInvite(payload: InvitePayload): Promise<string> {
+  const min: MinInvite = [
+    minifyBundle(payload.normal),
+    payload.meta ? [payload.meta.secret, payload.meta.name] : 0,
+    payload.fast.map((f) => [f.salt, minifyBundle(f.bundle)] as MinFastEntry),
+  ];
+  const json = JSON.stringify(min);
+  const encoded = await deflateToBase64Url(new TextEncoder().encode(json));
+  return INVITE_PREFIX + encoded;
+}
+
+/**
+ * Decode a fast-capable invite. Throws `Error("INVALID_CODE")` on anything
+ * malformed or from an incompatible version — the guest UI surfaces the same
+ * "invalid code" as a bad classic code.
+ */
+export async function decodeInvite(code: string): Promise<InvitePayload> {
+  const cleaned = code.replace(/[^A-Za-z0-9_-]/g, "");
+  if (!cleaned.startsWith(INVITE_PREFIX)) throw new Error("INVALID_CODE");
+  const encoded = cleaned.slice(INVITE_PREFIX.length);
+  try {
+    const bytes = await inflateFromBase64Url(encoded);
+    const min = JSON.parse(new TextDecoder().decode(bytes)) as MinInvite;
+    if (!Array.isArray(min) || min.length < 3) throw new Error("INVALID_CODE");
+    const [normal, meta, fast] = min;
+    return {
+      normal: reconstructBundle(normal),
+      meta: Array.isArray(meta) ? { secret: meta[0], name: meta[1] } : null,
+      fast: (Array.isArray(fast) ? fast : []).map(([salt, bundle]) => ({
+        salt,
+        bundle: reconstructBundle(bundle),
+      })),
+    };
+  } catch {
+    throw new Error("INVALID_CODE");
+  }
+}
+
+/** Pull the DTLS fingerprint out of an SDP as normalised colon-hex (upper-case). */
+export function extractFingerprint(sdp: string): string {
+  const fp = firstMatch(sdp, /a=fingerprint:\S+ ([0-9A-Fa-f:]+)/);
+  return fp.toUpperCase();
+}
+
+/**
+ * Build the SDP for a peer's answer we never received over the wire (the silent
+ * guest, issue #71). The host feeds this to `setRemoteDescription` using the
+ * guest's pinned fingerprint and the deterministically derived ICE credentials;
+ * it carries no candidates on purpose, so the guest's address is learned via ICE
+ * peer-reflexive discovery from its incoming connectivity checks.
+ */
+export function buildAnswerSdp(opts: {
+  ufrag: string;
+  pwd: string;
+  fingerprint: string;
+  fingerprintAlgo?: string;
+  mid?: string;
+  setup?: string;
+  sctpPort?: number;
+  maxMessageSize?: number;
+}): string {
+  const mid = opts.mid ?? "0";
+  const lines = [
+    "v=0",
+    SDP_ORIGIN,
+    "s=-",
+    "t=0 0",
+    `a=group:BUNDLE ${mid}`,
+    "a=msid-semantic: WMS",
+    "m=application 9 UDP/DTLS/SCTP webrtc-datachannel",
+    "c=IN IP4 0.0.0.0",
+    `a=ice-ufrag:${opts.ufrag}`,
+    `a=ice-pwd:${opts.pwd}`,
+    "a=ice-options:trickle",
+    `a=fingerprint:${opts.fingerprintAlgo ?? "sha-256"} ${opts.fingerprint}`,
+    // The offer is actpass; a browser answering it acts as the DTLS client
+    // (setup:active), so the synthesised answer must say the same.
+    `a=setup:${opts.setup ?? "active"}`,
+    `a=mid:${mid}`,
+    `a=sctp-port:${opts.sctpPort ?? 5000}`,
+    `a=max-message-size:${opts.maxMessageSize ?? 262144}`,
+  ];
+  return lines.join("\r\n") + "\r\n";
 }

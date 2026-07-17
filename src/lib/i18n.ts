@@ -42,6 +42,9 @@ export const translations = {
     failed: "Fehlgeschlagen",
     invalidCode: "Ungültiger Code. Bitte prüfen und erneut versuchen.",
     codeExpired: "Verbindung fehlgeschlagen. Neuer Einladungscode wurde erzeugt – bitte erneut teilen.",
+    // Fast reconnect (issue #71)
+    fastConnecting: "Bekannter Mitspieler erkannt – verbinde direkt, kein Antwortcode nötig …",
+    forgetPartners: "Gespeicherte Mitspieler vergessen",
     // QR pairing (issue #7, Option C)
     scanQr: "QR-Code scannen",
     showQr: "QR-Code zeigen",
@@ -204,6 +207,9 @@ export const translations = {
     failed: "Failed",
     invalidCode: "Invalid code. Please check it and try again.",
     codeExpired: "Connection failed. A new invite code was created — please share it again.",
+    // Fast reconnect (issue #71)
+    fastConnecting: "Known partner recognised — connecting directly, no reply code needed …",
+    forgetPartners: "Forget saved partners",
     // QR pairing (issue #7, Option C)
     scanQr: "Scan QR code",
     showQr: "Show QR code",

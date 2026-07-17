@@ -2,12 +2,13 @@
 
 > **Status: implemented (issue #5).** A Playwright suite now runs against Chromium (`playwright.config.ts`), driving the real Vite dev build with two dev-only test seams: `?e2e-seed=<int>` (`src/lib/e2e.ts`) for a seeded shuffle + fast AI pacing, and `data-card-id` attributes on hand/trick cards. `tests/e2e/helpers/simulate.ts` mirrors the same seeded `GameEngine` on the Node side so specs can assert exact hands, contracts and scores before the first click. It runs in CI on every PR and on push to `main` (`.github/workflows/e2e.yml`) and must stay green — see the "Testing" section of `CLAUDE.md`.
 >
-> Coverage is a **subset** of the catalogue below, not the full 71 cases — this document remains the design reference/backlog. The implemented suite is 7 spec files under `tests/e2e/`:
+> Coverage is a **subset** of the catalogue below, not the full 71 cases — this document remains the design reference/backlog. The implemented suite is 8 spec files under `tests/e2e/`:
 >
 > | Spec file | What it covers | Catalogue cases (partial unless noted) |
 > |---|---|---|
 > | `smoke.spec.ts` | Deterministic seeded deal boots correctly; basic WebRTC host/guest pairing reaches a connected, playable state | TC-1.1 (partial) |
 > | `pairing.spec.ts` | Invalid/corrupt invite & reply codes are rejected without crashing; `#invite` deep-link join flow | TC-1.2, TC-1.3 (partial) |
+> | `fast-reconnect.spec.ts` | Persistent certificates → 1-message reconnection (#71): a pair connects fully once, then on a fresh session the returning guest connects from the invite alone (no reply code) via pinned DTLS fingerprints + derived ICE credentials, over two real WebRTC channels | TC-1.1 (repeat-pairing angle; new feature, not in original catalogue) |
 > | `reconnect.spec.ts` | Mid-game transport drop pauses the host engine; re-pairing with fresh codes resumes with identical state preserved | TC-2.1.5 (covered) |
 > | `rules.spec.ts` | Sauspiel call legality in the bidding panel (own-Ace / no-cards-held / trump-suit restrictions); follow-suit enforcement with illegal-card rejection; hand turn-locking (can't act out of turn) | TC-2.3.1–2.3.3 (partial), TC-4.1, TC-4.2, TC-2.4.1–2.4.3 (partial) |
 > | `gameplay.spec.ts` | Full scripted round verified against the Node-side engine simulation, including exact score deltas; a full 4-round list via dev-skip helpers + rematch flow | TC-5.1–TC-5.5 (partial), TC-6.1, TC-6.4 (partial), Workload 1-like flow (partial) |
