@@ -28,6 +28,7 @@ export class SoloSession implements GameSession {
       soloMode: true,
       devToolsEnabled: import.meta.env.DEV,
       disableLaufende: deps.getDisableLaufende(),
+      enableRamsch: deps.getEnableRamsch(),
       ...getE2EOverrides(),
     });
     this.engine.onStateChange((state) => {

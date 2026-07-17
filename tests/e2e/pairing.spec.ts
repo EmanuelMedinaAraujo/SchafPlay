@@ -96,4 +96,3 @@ test.describe("pairing", () => {
   // the local hand labels) is already fully asserted by smoke.spec.ts, so it is
   // deliberately not duplicated here.
 });
-

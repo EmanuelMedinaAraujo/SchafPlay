@@ -9,6 +9,8 @@ interface SettingsScreenProps {
   onLanguageChange: (language: Language) => void;
   disableLaufende: boolean;
   onDisableLaufendeChange: (disable: boolean) => void;
+  enableRamsch: boolean;
+  onEnableRamschChange: (enable: boolean) => void;
 }
 
 type UpdateStatus = "idle" | "checking" | "uptodate" | "installing" | "unsupported";
@@ -23,6 +25,8 @@ export default function SettingsScreen({
   onLanguageChange,
   disableLaufende,
   onDisableLaufendeChange,
+  enableRamsch,
+  onEnableRamschChange,
 }: SettingsScreenProps) {
   const t = translations[language];
   const [status, setStatus] = useState<UpdateStatus>("idle");
@@ -33,9 +37,6 @@ export default function SettingsScreen({
       const result = await checkForUpdate();
       if (result === "updating") {
         setStatus("installing");
-        // Give the freshly installed worker a moment to take over, then reload
-        // to pick up the new version.
-        setTimeout(() => window.location.reload(), 900);
       } else {
         setStatus(result === "unsupported" ? "unsupported" : "uptodate");
       }
@@ -101,6 +102,29 @@ export default function SettingsScreen({
             type="button"
           >
             {t.settingsLaufendeOff}
+          </button>
+        </div>
+      </section>
+
+      <section className="panel settings-panel">
+        <h2>{t.settingsRamsch}</h2>
+        <p className="muted">{t.settingsRamschHint}</p>
+        <div className="mode-switch" role="group" aria-label={t.settingsRamsch}>
+          <button
+            className={!enableRamsch ? "active" : ""}
+            onClick={() => onEnableRamschChange(false)}
+            aria-pressed={!enableRamsch}
+            type="button"
+          >
+            {t.settingsRamschOff}
+          </button>
+          <button
+            className={enableRamsch ? "active" : ""}
+            onClick={() => onEnableRamschChange(true)}
+            aria-pressed={enableRamsch}
+            type="button"
+          >
+            {t.settingsRamschPlay}
           </button>
         </div>
       </section>

@@ -25,9 +25,19 @@ export function getE2EOverrides(): E2EEngineOverrides | null {
   if (raw === null) return null;
   const seed = Number(raw);
   if (!Number.isInteger(seed)) return null;
+  // Optional pacing overrides (`e2e-ai`, `e2e-hold`) let a demo/recording run
+  // the seeded engine at a human-watchable speed; absent, the fast suite
+  // constants apply, so the Playwright tests are unaffected.
+  const params = new URLSearchParams(window.location.search);
+  const num = (name: string, fallback: number) => {
+    const raw = params.get(name);
+    if (raw === null) return fallback;
+    const v = Number(raw);
+    return Number.isFinite(v) && v >= 0 ? v : fallback;
+  };
   return {
-    aiDelayMs: E2E_AI_DELAY_MS,
-    trickHoldMs: E2E_TRICK_HOLD_MS,
+    aiDelayMs: num("e2e-ai", E2E_AI_DELAY_MS),
+    trickHoldMs: num("e2e-hold", E2E_TRICK_HOLD_MS),
     shuffleFn: seededShuffle(seed),
   };
 }

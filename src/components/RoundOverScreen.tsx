@@ -27,6 +27,21 @@ export default function RoundOverScreen({ state, language, myPlayerId, onReady }
 
   const sortedByScore = [...state.players].sort((a, b) => (state.scores[b.id] ?? 0) - (state.scores[a.id] ?? 0));
 
+  // Ramsch (#11) has no declaring side — the headline names the key player
+  // (the loser who pays all, or a Durchmarsch winner who takes all) instead.
+  const ramsch = result.ramsch;
+  const ramschName = ramsch ? state.players.find((player) => player.id === ramsch.playerId)?.name ?? "" : "";
+  const headline = ramsch
+    ? `${ramschName} ${ramsch.isDurchmarsch ? t.ramschDurchmarsch : t.ramschLoses} · ${result.declarerPoints} ${t.points}`
+    : `${result.declarerWon ? t.declarersWin : t.defendersWin} · ${result.declarerPoints}:${result.defenderPoints} ${t.points}`;
+  const detail = ramsch
+    ? `${t.game}: ${gameLabel(language, result.contract.type)}${
+        ramsch.jungfrauIds.length > 0 ? ` · ${ramsch.jungfrauIds.length}× ${t.jungfrau}` : ""
+      }`
+    : `${t.game}: ${gameLabel(language, result.contract.type, result.contract.calledSuit, result.contract.isTout)}${
+        result.isSchwarz ? ` · ${t.schwarz}` : result.isSchneider ? ` · ${t.schneider}` : ""
+      }${result.laufende > 0 ? ` · ${result.laufende} ${t.laufende}` : ""}`;
+
   return (
     <>
     <div className="round-over-overlay">
@@ -35,14 +50,8 @@ export default function RoundOverScreen({ state, language, myPlayerId, onReady }
           <TrophyIcon />
           {t.roundOver}
         </h2>
-        <p className="round-headline">
-          {result.declarerWon ? t.declarersWin : t.defendersWin} · {result.declarerPoints}:{result.defenderPoints} {t.points}
-        </p>
-        <p className="muted">
-          {t.game}: {gameLabel(language, result.contract.type, result.contract.calledSuit, result.contract.isTout)}
-          {result.isSchwarz ? ` · ${t.schwarz}` : result.isSchneider ? ` · ${t.schneider}` : ""}
-          {result.laufende > 0 ? ` · ${result.laufende} ${t.laufende}` : ""}
-        </p>
+        <p className="round-headline">{headline}</p>
+        <p className="muted">{detail}</p>
 
         <h3>{t.standings}</h3>
         <div className="score-grid">
