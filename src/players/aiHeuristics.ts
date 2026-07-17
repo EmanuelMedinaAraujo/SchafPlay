@@ -21,6 +21,7 @@ interface HandProfile {
   obers: Card[];
   aces: Card[];
   trumpsInNormal: Card[];
+  hand: Card[];
 }
 
 function analyzeHand(hand: Card[]): HandProfile {
@@ -29,13 +30,23 @@ function analyzeHand(hand: Card[]): HandProfile {
     obers: hand.filter((card) => card.value === CardValue.OBER),
     aces: hand.filter((card) => card.value === CardValue.ACE),
     trumpsInNormal: hand.filter((card) => isTrump(card, GameType.SAUSPIEL)),
+    hand,
   };
 }
 
-/** Wenz: genuine Unter strength backed by high cards — at least
- *  two Unter plus an Ace, or three Unter. Kept intentionally rare (#19). */
-function isWenzWorthy({ unters, aces }: HandProfile): boolean {
-  return (unters.length >= 3 && aces.length >= 1) || (unters.length >= 2 && aces.length >= 2);
+/** Wenz: AI declares Wenz if:
+ *  - At least 2 Unters, at least 2 Aces, and at least 2 Tens matching the suits of the Aces, OR
+ *  - At least 3 Unters, at least 2 Aces, and at least 1 Ten matching the suits of the Aces, OR
+ *  - 4 Unters and at least 2 Aces.
+ */
+function isWenzWorthy({ unters, aces, hand }: HandProfile): boolean {
+  const tensMatchingAces = hand.filter(
+    (card) => card.value === CardValue.TEN && aces.some((ace) => ace.suit === card.suit)
+  );
+  const cond1 = unters.length >= 2 && aces.length >= 2 && tensMatchingAces.length >= 2;
+  const cond2 = unters.length >= 3 && aces.length >= 2 && tensMatchingAces.length >= 1;
+  const cond3 = unters.length >= 4 && aces.length >= 2;
+  return cond1 || cond2 || cond3;
 }
 
 /** Solo: almost nothing but trump — three-plus Ober and seven-plus trumps. */
