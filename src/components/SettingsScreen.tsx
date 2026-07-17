@@ -37,9 +37,6 @@ export default function SettingsScreen({
       const result = await checkForUpdate();
       if (result === "updating") {
         setStatus("installing");
-        // Give the freshly installed worker a moment to take over, then reload
-        // to pick up the new version.
-        setTimeout(() => window.location.reload(), 900);
       } else {
         setStatus(result === "unsupported" ? "unsupported" : "uptodate");
       }

@@ -37,7 +37,8 @@ self.addEventListener('install', (event) => {
       return cache.addAll(requests);
     })
   );
-  self.skipWaiting();
+  // #61: don't skipWaiting() here — wait for the page to post SKIP_WAITING
+  // (via checkForUpdate) so updates only apply on explicit user action.
 });
 
 self.addEventListener('activate', (event) => {
@@ -49,12 +50,17 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// Activated only when the page posts SKIP_WAITING (see checkForUpdate).
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  // Navigation: cache-first (offline-first). The app shell is served straight
-  // from the precache so opening the app never depends on the network; the
-  // once-a-day update check (main.tsx) is the only thing that pulls online
-  // (#28). The network is only touched when nothing is cached yet.
+  // Navigation: cache-first (offline-first). Falls back to network only
+  // when nothing is cached yet.
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
