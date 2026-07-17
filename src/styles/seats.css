@@ -114,6 +114,13 @@
   border: 1px solid #fbbf24;
 }
 
+/* Stoß / Retour announcement badge on the announcer's seat. */
+.role-badge.stoss {
+  background: var(--red);
+  color: #ffffff;
+  border: 1px solid var(--red-2);
+}
+
 /* The declarer badge takes over the table centre as the contract chip flies
    away: it appears large over the felt (0%-6%), holds there for ~a second
    (6%-60%), then scales down and flies to its resting spot beside the name

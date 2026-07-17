@@ -44,6 +44,12 @@ export interface ScoringOptions {
   disableLaufende?: boolean;
   /** Index of the dealer seat; used only for the Ramsch tiebreak (#11). Defaults to seat 4. */
   dealerIdx?: number;
+  /**
+   * Stoß/Retour multiplier: the whole round result (base tariff + Laufende) is
+   * multiplied by this. 1 = no Stoß, 2 = one Stoß, 4 = Stoß + Retour. Default 1.
+   * Not applicable to Ramsch (no declaring party, so no Stoß).
+   */
+  stossMultiplier?: number;
 }
 
 export function calculateRoundResult(
@@ -72,6 +78,12 @@ export function calculateRoundResult(
   // is never counted and no bonus flows into the tariff.
   const laufende = options.disableLaufende ? 0 : countLaufende(teamCards, contract.type);
   const scoreChanges = scoreTournament(players, contract, declarerTeam, declarerWon, isSchneider, isSchwarz, laufende, initialHands);
+  // Stoß/Retour multiplies the whole round result. Ramsch already returned
+  // above, so this only ever applies to a game with a declaring party.
+  const stossMultiplier = options.stossMultiplier && options.stossMultiplier > 1 ? options.stossMultiplier : 1;
+  if (stossMultiplier > 1) {
+    for (const id of Object.keys(scoreChanges)) scoreChanges[id] *= stossMultiplier;
+  }
   return {
     contract,
     declarerPoints,
@@ -82,6 +94,7 @@ export function calculateRoundResult(
     laufende,
     scoreChanges,
     winnerIds: declarerWon ? declarerTeam : defenderTeam,
+    stossMultiplier,
   };
 }
 

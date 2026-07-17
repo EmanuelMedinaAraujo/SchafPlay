@@ -13,6 +13,8 @@ interface SettingsScreenProps {
   onDisableLaufendeChange: (disable: boolean) => void;
   enableRamsch: boolean;
   onEnableRamschChange: (enable: boolean) => void;
+  enableStoss: boolean;
+  onEnableStossChange: (enable: boolean) => void;
 }
 
 type UpdateStatus = "idle" | "checking" | "uptodate" | "installing" | "unsupported";
@@ -29,6 +31,8 @@ export default function SettingsScreen({
   onDisableLaufendeChange,
   enableRamsch,
   onEnableRamschChange,
+  enableStoss,
+  onEnableStossChange,
 }: SettingsScreenProps) {
   const t = translations[language];
   const [status, setStatus] = useState<UpdateStatus>("idle");
@@ -152,6 +156,29 @@ export default function SettingsScreen({
             type="button"
           >
             {t.settingsRamschPlay}
+          </button>
+        </div>
+      </section>
+
+      <section className="panel settings-panel">
+        <h2>{t.settingsStoss}</h2>
+        <p className="muted">{t.settingsStossHint}</p>
+        <div className="mode-switch" role="group" aria-label={t.settingsStoss}>
+          <button
+            className={enableStoss ? "active" : ""}
+            onClick={() => onEnableStossChange(true)}
+            aria-pressed={enableStoss}
+            type="button"
+          >
+            {t.settingsStossPlay}
+          </button>
+          <button
+            className={!enableStoss ? "active" : ""}
+            onClick={() => onEnableStossChange(false)}
+            aria-pressed={!enableStoss}
+            type="button"
+          >
+            {t.settingsStossOff}
           </button>
         </div>
       </section>

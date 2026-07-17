@@ -12,6 +12,7 @@ import {
   PlayerAction,
   PlayerActionType,
   SeatId,
+  StossKind,
 } from "../game/types";
 import { createDeck, shuffleDeck } from "../game/deck";
 import {
@@ -47,6 +48,8 @@ export interface EngineOptions {
   disableLaufende?: boolean;
   /** House rule (#11): when true, an all-pass starts a Ramsch instead of a redeal. Default false. */
   enableRamsch?: boolean;
+  /** House rule (#57): when true, defenders may Stoß (double) and the declarer may Retour. Default false. */
+  enableStoss?: boolean;
 }
 
 /** Dev-skip fallback for seats without a controller of their own. */
@@ -66,6 +69,7 @@ export class GameEngine {
   private devToolsEnabled: boolean;
   private disableLaufende: boolean;
   private enableRamsch: boolean;
+  private enableStoss: boolean;
 
   constructor(hostName: string, guestName = "Gast", totalRounds = 8, options: EngineOptions = {}) {
     this.aiDelayMs = options.aiDelayMs ?? 900;
@@ -74,6 +78,7 @@ export class GameEngine {
     this.devToolsEnabled = options.devToolsEnabled ?? false;
     this.disableLaufende = options.disableLaufende ?? false;
     this.enableRamsch = options.enableRamsch ?? false;
+    this.enableStoss = options.enableStoss ?? false;
 
     const players: Player[] = [
       makePlayer("p1", hostName || "Host", true, 0),
@@ -104,6 +109,8 @@ export class GameEngine {
       roundNumber: 0,
       totalRounds,
       logs: [{ key: "log.lobby" }],
+      stoss: [],
+      stossEnabled: this.enableStoss,
     };
   }
 
@@ -159,6 +166,7 @@ export class GameEngine {
     if (action.type === PlayerActionType.PLAY_CARD && action.data?.cardId) this.processCardPlay(action.playerId, action.data.cardId);
     if (action.type === PlayerActionType.READY_NEXT) this.setReady(action.playerId, true);
     if (action.type === PlayerActionType.REMATCH) this.processRematchReady(action.playerId);
+    if (action.type === PlayerActionType.STOSS) this.processStoss(action.playerId);
   }
 
   processBidWill(playerId: string, wantsToPlay: boolean): void {
@@ -261,6 +269,92 @@ export class GameEngine {
       }
     });
     this.scheduleProgress();
+  }
+
+  /**
+   * Announce a Stoß (defender) or Retour (declarer). The doubling window runs
+   * from the moment the contract is announced (PLAYING) until the second card
+   * of the first trick is played. The chain is capped at Stoß + Retour: the
+   * first entry must be a Stoß from a defender (not the declarer and — in a
+   * Sauspiel — not the hidden partner); the second must be a Retour from the
+   * declarer. Retour is restricted to the declarer so the Sauspiel partner is
+   * never revealed early. Each announcement doubles the round value.
+   */
+  processStoss(playerId: string): void {
+    const kind = this.stossKindFor(playerId);
+    if (!kind) return;
+    this.mutate((state) => {
+      state.stoss.push({ playerId, kind });
+      this.log(state, kind === "retour" ? "log.retour" : "log.stoss", { name: this.playerName(playerId) });
+      // A defender's Stoß gives an AI declarer the chance to answer with a Retour.
+      if (kind === "stoss") this.maybeAiRetour(state);
+    });
+  }
+
+  /** The kind of announcement `playerId` may make right now, or null if none. */
+  private stossKindFor(playerId: string): StossKind | null {
+    const state = this.state;
+    if (!state.stossEnabled) return null;
+    if (state.status !== "PLAYING") return null;
+    const contract = state.currentContract;
+    if (!contract || contract.type === GameType.RAMSCH) return null;
+    // Timing window: still in the first trick, before its second card falls.
+    if (state.tricks.length !== 0) return null;
+    if ((state.currentTrick?.playedCards.length ?? 0) >= 2) return null;
+    // Cap the chain at Stoß + Retour.
+    if (state.stoss.length >= 2) return null;
+
+    const isDeclarer = playerId === contract.declarerId;
+    const isPartner = contract.type === GameType.SAUSPIEL && contract.partnerId === playerId;
+
+    if (state.stoss.length === 0) {
+      // First announcement: a Stoß, only from a defender.
+      return isDeclarer || isPartner ? null : "stoss";
+    }
+    // Second announcement: a Retour, only from the declarer, answering a Stoß.
+    if (state.stoss[state.stoss.length - 1].kind !== "stoss") return null;
+    return isDeclarer ? "retour" : null;
+  }
+
+  /**
+   * Give AI defenders the chance to Stoß the instant a contract is fixed (the
+   * whole hand is still in front of them, which is when the decision is made).
+   * Only one Stoß is allowed, so the first willing defender in play order takes
+   * the slot; an AI declarer may then answer with a Retour. Human seats are
+   * skipped — they decide via the UI within the same first-trick window.
+   */
+  private runAiStossPass(state: GameState): void {
+    if (!state.stossEnabled) return;
+    const contract = state.currentContract;
+    if (!contract || contract.type === GameType.RAMSCH) return;
+
+    for (let i = 1; i <= 4 && state.stoss.length === 0; i += 1) {
+      const player = state.players[(state.dealerIdx + i) % 4];
+      const controller = this.controllers[player.id];
+      if (!controller) continue;
+      const isDeclarer = player.id === contract.declarerId;
+      const isPartner = contract.type === GameType.SAUSPIEL && contract.partnerId === player.id;
+      if (isDeclarer || isPartner) continue;
+      if (controller.decideStoss(player, contract, { kind: "stoss" })) {
+        state.stoss.push({ playerId: player.id, kind: "stoss" });
+        this.log(state, "log.stoss", { name: player.name });
+      }
+    }
+    this.maybeAiRetour(state);
+  }
+
+  /** An AI declarer's Retour in answer to a standing Stoß. */
+  private maybeAiRetour(state: GameState): void {
+    const contract = state.currentContract;
+    if (!contract) return;
+    if (state.stoss.length !== 1 || state.stoss[0].kind !== "stoss") return;
+    const declarer = state.players.find((player) => player.id === contract.declarerId);
+    const controller = declarer ? this.controllers[declarer.id] : undefined;
+    if (!declarer || !controller) return; // a human declarer answers via the UI
+    if (controller.decideStoss(declarer, contract, { kind: "retour" })) {
+      state.stoss.push({ playerId: declarer.id, kind: "retour" });
+      this.log(state, "log.retour", { name: declarer.name });
+    }
   }
 
   setReady(playerId: string, ready: boolean): void {
@@ -389,6 +483,7 @@ export class GameEngine {
     state.tricks = [];
     state.collecting = false;
     state.status = "BIDDING";
+    state.stoss = [];
   }
 
   private resetBidding(state: GameState): void {
@@ -467,12 +562,17 @@ export class GameEngine {
     state.activePlayerIdx = (state.dealerIdx + 1) % 4;
     state.currentTrick = { id: 1, leaderId: state.players[state.activePlayerIdx].id, playedCards: [] };
     this.log(state, "log.contract", { name: this.playerName(contract.declarerId), ...declarationParams(declaration) });
+    // With the contract fixed and every hand still full, AI defenders get their
+    // one chance to Stoß; a human defender still has the first-trick window.
+    this.runAiStossPass(state);
   }
 
   private finishRound(state: GameState): void {
     const result = calculateRoundResult(state.players, state.currentContract!, state.tricks, this.initialHands, {
       disableLaufende: this.disableLaufende,
       dealerIdx: state.dealerIdx,
+      // Each Stoß/Retour doubles the round: 0 -> 1x, 1 -> 2x, 2 -> 4x.
+      stossMultiplier: 2 ** state.stoss.length,
     });
     state.lastResult = result;
     Object.entries(result.scoreChanges).forEach(([id, change]) => {

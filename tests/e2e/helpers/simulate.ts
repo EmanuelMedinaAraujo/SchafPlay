@@ -101,6 +101,8 @@ export interface RoundTrace {
     declarerWon: boolean;
     scoreChanges: Record<string, number>;
   } | null;
+  /** Stoß/Retour multiplier applied to this round (1, 2 or 4). */
+  stossMultiplier: number;
   /** Cumulative scores after this round resolved. */
   scores: Record<string, number>;
 }
@@ -127,6 +129,7 @@ function blankRound(roundNumber: number): RoundTrace {
     bids: [],
     willBids: [],
     result: null,
+    stossMultiplier: 1,
     scores: {},
   };
 }
@@ -139,6 +142,9 @@ function simulate(seed: number, options: InternalOptions): Trace {
     trickHoldMs: 0,
     shuffleFn: seededShuffle(seed),
     devToolsEnabled: false,
+    // Mirror the app's default (Stoß enabled) so AI Stoß/Retour decisions —
+    // deterministic and hand-based — resolve identically to the browser.
+    enableStoss: true,
   });
 
   const humans: SeatId[] = soloMode ? ["p1"] : ["p1", "p3"];
@@ -205,6 +211,7 @@ function simulate(seed: number, options: InternalOptions): Trace {
           declarerWon: s.lastResult.declarerWon,
           scoreChanges: { ...s.lastResult.scoreChanges },
         };
+        r.stossMultiplier = s.lastResult.stossMultiplier ?? 1;
         r.plays = s.tricks.flatMap((t) => t.playedCards.map((pc) => ({ playerId: pc.playerId, cardId: pc.card.id })));
         r.scores = { ...s.scores };
       }

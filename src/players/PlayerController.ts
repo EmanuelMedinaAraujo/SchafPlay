@@ -6,6 +6,15 @@ export interface BidContext {
   canRetreat: boolean;
 }
 
+export interface StossContext {
+  /**
+   * "stoss" = a first double as a defender; "retour" = the declarer's counter
+   * after a defender's Stoß. The engine has already checked eligibility and the
+   * timing window; the controller only decides whether it wants to double.
+   */
+  kind: import("../game/types").StossKind;
+}
+
 /**
  * Decision-maker for an engine-driven seat. Human seats have no controller —
  * their decisions arrive as PlayerActions from the UI or the wire.
@@ -19,4 +28,6 @@ export interface PlayerController {
   /** The declaration to bid, or null to retreat. */
   decideBid(player: Player, context: BidContext): GameDeclaration | null;
   decideCard(player: Player, currentTrick: Trick | null, contract: Contract | null, tricks?: Trick[]): Card;
+  /** Whether to announce a Stoß/Retour when offered one (see StossContext). */
+  decideStoss(player: Player, contract: Contract, context: StossContext): boolean;
 }

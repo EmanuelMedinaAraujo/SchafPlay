@@ -19,6 +19,8 @@ export interface SessionDeps {
   getDisableLaufende(): boolean;
   /** House rule (#11): whether an all-pass starts a Ramsch. Read when the engine is created — the host's/solo player's device setting governs the game. */
   getEnableRamsch(): boolean;
+  /** House rule (#57): whether Stoß/Retour is enabled. Read when the engine is created — the host's/solo player's device setting governs the game. */
+  getEnableStoss(): boolean;
   events: SessionEvents;
 }
 

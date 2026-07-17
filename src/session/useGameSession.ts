@@ -13,6 +13,8 @@ export interface UseGameSessionOptions {
   getDisableLaufende(): boolean;
   /** House rule (#11): whether an all-pass starts a Ramsch. Read when a session starts a new engine. */
   getEnableRamsch(): boolean;
+  /** House rule (#57): whether Stoß/Retour is enabled. Read when a session starts a new engine. */
+  getEnableStoss(): boolean;
   /** Show the game screen (also fires on reconnect, where it is a no-op). */
   onEnterGame(): void;
 }
@@ -43,6 +45,7 @@ export function useGameSession(options: UseGameSessionOptions) {
       getTotalRounds: () => optionsRef.current.getTotalRounds(),
       getDisableLaufende: () => optionsRef.current.getDisableLaufende(),
       getEnableRamsch: () => optionsRef.current.getEnableRamsch(),
+      getEnableStoss: () => optionsRef.current.getEnableStoss(),
       events: {
         onGameState: (state) => setGameState(state),
         onConnectionState: (state) => setConnectionState(state),

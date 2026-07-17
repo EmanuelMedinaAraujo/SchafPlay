@@ -74,6 +74,7 @@ export class HostSession implements GameSession {
       devToolsEnabled: import.meta.env.DEV,
       disableLaufende: this.deps.getDisableLaufende(),
       enableRamsch: this.deps.getEnableRamsch(),
+      enableStoss: this.deps.getEnableStoss(),
       ...getE2EOverrides(),
     });
     this.engine = engine;

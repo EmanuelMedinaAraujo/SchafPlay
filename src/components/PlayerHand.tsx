@@ -1,5 +1,5 @@
 import { PointerEvent, useEffect, useRef, useState } from "react";
-import { Card, Contract, GameType, Language, Trick } from "../types";
+import { Card, Contract, GameType, Language, StossKind, Trick } from "../types";
 import { getLegalCards, sortCardsForHand } from "../game/rules";
 import { translations } from "../lib/i18n";
 import CardFace from "./CardFace";
@@ -17,6 +17,11 @@ interface PlayerHandProps {
   onPlay: (cardId: string) => void;
   onLastTrick: () => void;
   tricks?: Trick[];
+  /** The announcement the local player may make now ("stoss"/"retour"), or null. */
+  stossOption?: StossKind | null;
+  /** The announcement the local player already made this round, if any. */
+  myStossKind?: StossKind | null;
+  onStoss?: () => void;
 }
 
 interface DragState {
@@ -40,6 +45,9 @@ export default function PlayerHand({
   onPlay,
   onLastTrick,
   tricks,
+  stossOption,
+  myStossKind,
+  onStoss,
 }: PlayerHandProps) {
   const t = translations[language];
   const gameType = contract?.type ?? GameType.SAUSPIEL;
@@ -123,6 +131,17 @@ export default function PlayerHand({
           <UserIcon />
           <strong>{playerName}</strong>
         </div>
+        {/* Directly beneath the name plate, styled like it: the Stoß/Retour
+            control, or a badge once the local player has announced. */}
+        {myStossKind ? (
+          <div className="seat-name player-hand-stoss announced">
+            <strong>{myStossKind === "retour" ? t.retour : t.stoss}</strong>
+          </div>
+        ) : stossOption && onStoss ? (
+          <button className="seat-name player-hand-stoss" onClick={onStoss} type="button">
+            <strong>{stossOption === "retour" ? t.retour : t.stoss}</strong>
+          </button>
+        ) : null}
       </div>
 
       <div className="player-hand-cards">

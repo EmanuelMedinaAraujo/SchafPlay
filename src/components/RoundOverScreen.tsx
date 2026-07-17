@@ -34,13 +34,18 @@ export default function RoundOverScreen({ state, language, myPlayerId, onReady }
   const headline = ramsch
     ? `${ramschName} ${ramsch.isDurchmarsch ? t.ramschDurchmarsch : t.ramschLoses} · ${result.declarerPoints} ${t.points}`
     : `${result.declarerWon ? t.declarersWin : t.defendersWin} · ${result.declarerPoints}:${result.defenderPoints} ${t.points}`;
+  // Stoß/Retour doubling, if any: shown as "· Stoß ×2" / "· Retour ×4".
+  const stossSuffix =
+    result.stossMultiplier && result.stossMultiplier > 1
+      ? ` · ${result.stossMultiplier >= 4 ? t.retour : t.stoss} ×${result.stossMultiplier}`
+      : "";
   const detail = ramsch
     ? `${t.game}: ${gameLabel(language, result.contract.type)}${
         ramsch.jungfrauIds.length > 0 ? ` · ${ramsch.jungfrauIds.length}× ${t.jungfrau}` : ""
       }`
     : `${t.game}: ${gameLabel(language, result.contract.type, result.contract.calledSuit, result.contract.isTout)}${
         result.isSchwarz ? ` · ${t.schwarz}` : result.isSchneider ? ` · ${t.schneider}` : ""
-      }${result.laufende > 0 ? ` · ${result.laufende} ${t.laufende}` : ""}`;
+      }${result.laufende > 0 ? ` · ${result.laufende} ${t.laufende}` : ""}${stossSuffix}`;
 
   return (
     <>
