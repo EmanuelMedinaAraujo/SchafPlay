@@ -1,7 +1,6 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
-import {UPDATE_CHECK_KEY} from './lib/pwa';
 import './styles/index.css';
 
 createRoot(document.getElementById('root')!).render(
@@ -12,39 +11,29 @@ createRoot(document.getElementById('root')!).render(
 
 if ('serviceWorker' in navigator) {
   if (import.meta.env.PROD) {
-    // Offline-first with a once-a-day online check (#28). The service worker
-    // serves the whole app from cache, so the only thing that ever pulls from
-    // the network is the update check the browser runs when we (re-)register.
-    // We throttle that to at most once every 24h via localStorage, so opening,
-    // closing and reopening the app within a day never hits the network. The
-    // settings page offers a manual "check now" that bypasses this throttle.
-    const DAY_MS = 24 * 60 * 60 * 1000;
+    // #61: only register() on first install (needs network). After that the
+    // app stays fully offline; updates are manual via Settings.
     const swUrl = `${import.meta.env.BASE_URL}sw.js`;
 
-    const registerSW = () => {
-      let last = 0;
-      try {
-        last = Number(localStorage.getItem(UPDATE_CHECK_KEY)) || 0;
-      } catch {
-        // Private mode / storage disabled — treat as "never checked".
-      }
-      const due = Date.now() - last > DAY_MS;
+    // Reload on update activation. Skip the first-install controllerchange
+    // (no prior controller) since that's not an update.
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloaded || !hadController) return;
+      reloaded = true;
+      window.location.reload();
+    });
 
+    const registerSW = () => {
       navigator.serviceWorker.getRegistration().then((existing) => {
-        if (existing && !due) {
-          // Already installed and checked within the last day — stay fully
-          // offline and don't reach out to the network for an update.
-          console.log('[SW] Update check skipped (checked within 24h).');
+        if (existing) {
+          // Already installed — stay offline; updates go through checkForUpdate().
           return;
         }
         navigator.serviceWorker.register(swUrl)
           .then((reg) => {
-            try {
-              localStorage.setItem(UPDATE_CHECK_KEY, String(Date.now()));
-            } catch {
-              // Ignore storage failures; worst case is a check on the next load.
-            }
-            console.log('[SW] Registered / update-checked with scope:', reg.scope);
+            console.log('[SW] Registered with scope:', reg.scope);
           })
           .catch((err) => {
             console.error('[SW] Registration failed:', err);

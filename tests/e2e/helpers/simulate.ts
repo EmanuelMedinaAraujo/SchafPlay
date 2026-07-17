@@ -236,7 +236,7 @@ function simulate(seed: number, options: InternalOptions): Trace {
         }
       }
     } else if (s.status === "PLAYING") {
-      const legal = getLegalCards(active.cards, s.currentTrick, s.currentContract);
+      const legal = getLegalCards(active.cards, s.currentTrick, s.currentContract, s.tricks);
       const chosen = policy.decideCard(legal, active.cards);
       r.turns.push({
         seat: active.id,

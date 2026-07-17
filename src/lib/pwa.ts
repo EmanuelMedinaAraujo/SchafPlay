@@ -1,26 +1,29 @@
 /** Service-worker / PWA update helpers shared by main.tsx and the settings UI. */
 
-/** Timestamp of the last online update check; used to throttle to once a day. */
-export const UPDATE_CHECK_KEY = "schafplay.lastUpdateCheck";
-
 export type UpdateResult =
-  | "updating" // a new version is installing; the caller should reload shortly
+  | "updating" // new version activated; page will reload via controllerchange
   | "uptodate" // already on the newest version
-  | "unsupported"; // no service worker active (dev, or not yet installed)
+  | "unsupported"; // no service worker active (dev / not installed)
+
+/** Resolves once `worker` leaves the "installing" state. Returns false on failure. */
+function waitUntilInstalled(worker: ServiceWorker): Promise<boolean> {
+  if (worker.state !== "installing") return Promise.resolve(worker.state !== "redundant");
+  return new Promise((resolve) => {
+    const onStateChange = () => {
+      if (worker.state === "installing") return;
+      worker.removeEventListener("statechange", onStateChange);
+      resolve(worker.state !== "redundant");
+    };
+    worker.addEventListener("statechange", onStateChange);
+  });
+}
 
 /**
- * Manually check for a new app version, bypassing the once-a-day throttle
- * (#28). Records the check time so the automatic check stays quiet for the
- * next 24h. Returns whether an update is being installed so the caller can
- * reload to pick it up.
+ * Manually check for a new app version (#61). This is the only code path
+ * that calls `registration.update()`. If a new worker is found, posts
+ * SKIP_WAITING to activate it (triggers controllerchange → page reload).
  */
 export async function checkForUpdate(): Promise<UpdateResult> {
-  try {
-    localStorage.setItem(UPDATE_CHECK_KEY, String(Date.now()));
-  } catch {
-    // Storage disabled — the check still runs, it just won't be recorded.
-  }
-
   if (!("serviceWorker" in navigator)) return "unsupported";
   const registration = await navigator.serviceWorker.getRegistration();
   if (!registration) return "unsupported";
@@ -36,8 +39,17 @@ export async function checkForUpdate(): Promise<UpdateResult> {
     registration.removeEventListener("updatefound", onUpdateFound);
   }
 
-  // The worker uses skipWaiting()/clients.claim(), so a newly discovered
-  // version installs and takes over on its own — the caller just reloads.
-  if (updateFound || registration.installing || registration.waiting) return "updating";
-  return "uptodate";
+  const candidate = registration.installing || registration.waiting;
+  if (!updateFound && !candidate) return "uptodate";
+  if (!candidate) return "uptodate";
+
+  const installed = await waitUntilInstalled(candidate);
+  if (!installed) return "uptodate";
+
+  // Tell the waiting worker to activate now.
+  const waiting = registration.waiting;
+  if (!waiting) return "uptodate";
+
+  waiting.postMessage({ type: "SKIP_WAITING" });
+  return "updating";
 }

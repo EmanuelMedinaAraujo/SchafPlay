@@ -3,7 +3,7 @@
  * decision. Stateless per call; the engine owns pacing and validation.
  */
 
-import { Card, CardValue, Contract, Difficulty, GameDeclaration, GameType, Player, Suit, Trick } from "../game/types";
+import { Card, CardValue, Contract, Difficulty, GameDeclaration, GameType, Player, Suit, Trick, WillBid } from "../game/types";
 import {
   canOverrideBid,
   countPoints,
@@ -15,7 +15,55 @@ import {
   isTrump,
 } from "../game/rules";
 
-export function getAIWillBid(player: Player): boolean {
+/** Card counts extracted once from a hand, shared across worthiness checks. */
+interface HandProfile {
+  unters: Card[];
+  obers: Card[];
+  aces: Card[];
+  trumpsInNormal: Card[];
+  hand: Card[];
+}
+
+function analyzeHand(hand: Card[]): HandProfile {
+  return {
+    unters: hand.filter((card) => card.value === CardValue.UNTER),
+    obers: hand.filter((card) => card.value === CardValue.OBER),
+    aces: hand.filter((card) => card.value === CardValue.ACE),
+    trumpsInNormal: hand.filter((card) => isTrump(card, GameType.SAUSPIEL)),
+    hand,
+  };
+}
+
+/** Wenz: AI declares Wenz if:
+ *  - At least 2 Unters, at least 2 Aces, and at least 2 Tens matching the suits of the Aces, OR
+ *  - At least 3 Unters, at least 2 Aces, and at least 1 Ten matching the suits of the Aces, OR
+ *  - 4 Unters and at least 2 Aces.
+ */
+function isWenzWorthy({ unters, aces, hand }: HandProfile): boolean {
+  const tensMatchingAces = hand.filter(
+    (card) => card.value === CardValue.TEN && aces.some((ace) => ace.suit === card.suit)
+  );
+  const cond1 = unters.length >= 2 && aces.length >= 2 && tensMatchingAces.length >= 2;
+  const cond2 = unters.length >= 3 && aces.length >= 2 && tensMatchingAces.length >= 1;
+  const cond3 = unters.length >= 4 && aces.length >= 2;
+  return cond1 || cond2 || cond3;
+}
+
+/** Solo: almost nothing but trump — three-plus Ober and seven-plus trumps. */
+function isSoloWorthy({ obers, trumpsInNormal }: HandProfile): boolean {
+  return obers.length >= 3 && trumpsInNormal.length >= 7;
+}
+
+export function getAIWillBid(player: Player, willBids: WillBid[] = []): boolean {
+  // If another player already bid wantsToPlay: true, the AI only bids
+  // if it holds a hand strong enough to play solo or wenz.
+  const someoneElseWantsToPlay = willBids.some((bid) => bid.playerId !== player.id && bid.wantsToPlay);
+
+  if (someoneElseWantsToPlay) {
+    const hp = analyzeHand(player.cards);
+    return isWenzWorthy(hp) || isSoloWorthy(hp);
+  }
+
   // Only announce interest when there is actually a declarable game. Since a
   // "will" can no longer be taken back once a Sauspiel stands ("Doch passen",
   // #24) — the player would be forced up to a Wenz/Solo — the AI commits only
@@ -35,10 +83,8 @@ export function getAIBid(
   canRetreat = true,
 ): GameDeclaration | null {
   const hand = player.cards;
-  const unters = hand.filter((card) => card.value === CardValue.UNTER);
-  const obers = hand.filter((card) => card.value === CardValue.OBER);
-  const aces = hand.filter((card) => card.value === CardValue.ACE);
-  const trumpsInNormal = hand.filter((card) => isTrump(card, GameType.SAUSPIEL));
+  const hp = analyzeHand(hand);
+  const { unters, obers, aces, trumpsInNormal } = hp;
 
   const declarations: GameDeclaration[] = [];
 
@@ -51,15 +97,9 @@ export function getAIBid(
   const goodSauspielHand = (trumpsInNormal.length >= 4 && obers.length >= 1) || trumpsInNormal.length >= 5;
   if (goodSauspielHand && callableSuit) declarations.push({ type: GameType.SAUSPIEL, calledSuit: callableSuit });
 
-  // Wenz: only with genuine Unter strength backed by a high card — at least
-  // two Unter plus an Ace, or three Unter. Kept intentionally rare (#19).
-  const wenzWorthy = (unters.length >= 3 && aces.length >= 1) || (unters.length >= 2 && aces.length >= 2);
-  if (wenzWorthy) declarations.push({ type: GameType.WENZ, isTout: unters.length === 4 && aces.length >= 2 });
+  if (isWenzWorthy(hp)) declarations.push({ type: GameType.WENZ, isTout: unters.length === 4 && aces.length >= 2 });
 
-  // Solo: the AI should basically never go solo — only when the hand is almost
-  // nothing but trump (three-plus Ober and seven-plus trumps).
-  const soloWorthy = obers.length >= 3 && trumpsInNormal.length >= 7;
-  if (soloWorthy) declarations.push({ type: bestSoloType(hand), isTout: obers.length >= 4 && trumpsInNormal.length >= 8 });
+  if (isSoloWorthy(hp)) declarations.push({ type: bestSoloType(hand), isTout: obers.length >= 4 && trumpsInNormal.length >= 8 });
 
   // Prefer the lowest-ranking viable game (Sauspiel before Wenz before Solo);
   // a higher game is only reached for when it is needed to overbid.
@@ -93,10 +133,22 @@ function bestSoloType(hand: Card[]): GameType {
   return GameType.SOLO_HEARTS;
 }
 
-export function getAICardPlay(player: Player, currentTrick: Trick | null, contract: Contract | null, difficulty = Difficulty.MEDIUM): Card {
-  const legalCards = getLegalCards(player.cards, currentTrick, contract);
+export function getAICardPlay(
+  player: Player,
+  currentTrick: Trick | null,
+  contract: Contract | null,
+  difficulty = Difficulty.MEDIUM,
+  tricks: Trick[] = []
+): Card {
+  const legalCards = getLegalCards(player.cards, currentTrick, contract, tricks);
   if (legalCards.length === 1 || difficulty === Difficulty.EASY) return legalCards[0];
   const gameType = contract?.type ?? GameType.SAUSPIEL;
+
+  // Ramsch (#11): everyone plays for themselves and wants to AVOID points —
+  // the team logic below does not apply.
+  if (contract?.type === GameType.RAMSCH) {
+    return getRamschCardPlay(player.id, currentTrick, legalCards);
+  }
 
   // Leading the trick: the declaring side pulls trumps, defenders open safely.
   if (!contract || !currentTrick || currentTrick.playedCards.length === 0) {
@@ -126,6 +178,31 @@ export function getAICardPlay(player: Player, currentTrick: Trick | null, contra
     return [...winners].sort((a, b) => getCardRank(a, gameType) - getCardRank(b, gameType))[0];
   }
   return lowestValueCard(legalCards, gameType);
+}
+
+/**
+ * Ramsch card play (#11): dodge points instead of collecting them.
+ * - Leading: open with the lowest-ranked card — least likely to hold the trick.
+ * - Following, when a non-winning card exists: dump the most valuable one.
+ *   A card that does not beat the current winner can never take the trick no
+ *   matter what falls later, so this safely schmiers points onto whichever
+ *   opponent has to take it.
+ * - Forced to win (every legal card beats the trick): take it as cheaply as
+ *   possible — fewest points, then lowest rank.
+ */
+function getRamschCardPlay(playerId: string, currentTrick: Trick | null, legal: Card[]): Card {
+  const gameType = GameType.RAMSCH;
+  const played = currentTrick?.playedCards ?? [];
+  if (played.length === 0) {
+    return [...legal].sort((a, b) => getCardRank(a, gameType) - getCardRank(b, gameType) || a.points - b.points)[0];
+  }
+  const losers = legal.filter(
+    (card) => determineTrickWinner([...played, { playerId, card }], gameType) !== playerId,
+  );
+  if (losers.length > 0) {
+    return [...losers].sort((a, b) => b.points - a.points || getCardRank(b, gameType) - getCardRank(a, gameType))[0];
+  }
+  return lowestValueCard(legal, gameType);
 }
 
 /** True when both players sit on the same side of the current contract. */

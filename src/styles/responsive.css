@@ -36,6 +36,10 @@ html.narrow .table {
   grid-template-columns: minmax(100px, 1fr) minmax(140px, 2fr) minmax(100px, 1fr);
 }
 
+html.narrow .player-hand-container {
+  grid-template-columns: minmax(100px, 1fr) minmax(140px, 2fr) minmax(100px, 1fr);
+}
+
 html.narrow .seat {
   min-width: 100px;
   padding: 8px;
@@ -182,8 +186,13 @@ html.compact .seat-meta {
 }
 
 html.compact .player-hand-container {
-  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 0 12px 8px 12px;
   margin-top: 4px;
+  margin-bottom: 6px;
+  gap: 5px;
 }
 
 html.compact .player-hand-cards {
@@ -242,6 +251,11 @@ html.compact .slot-left {
 
 html.compact .slot-right {
   right: 7%;
+}
+
+html.compact .qr-code {
+  width: 116px;
+  height: 116px;
 }
 
 html.compact .slot-top {

@@ -3,17 +3,20 @@ import { Card, Contract, GameType, Language, Trick } from "../types";
 import { getLegalCards, sortCardsForHand } from "../game/rules";
 import { translations } from "../lib/i18n";
 import CardFace from "./CardFace";
+import { UserIcon } from "./icons";
 
 interface PlayerHandProps {
   hand: Card[];
   currentTrick: Trick | null;
   contract: Contract | null;
   disabled: boolean;
+  active: boolean;
   playerName: string;
   showLastTrick: boolean;
   language: Language;
   onPlay: (cardId: string) => void;
   onLastTrick: () => void;
+  tricks?: Trick[];
 }
 
 interface DragState {
@@ -30,15 +33,17 @@ export default function PlayerHand({
   currentTrick,
   contract,
   disabled,
+  active,
   playerName,
   showLastTrick,
   language,
   onPlay,
   onLastTrick,
+  tricks,
 }: PlayerHandProps) {
   const t = translations[language];
   const gameType = contract?.type ?? GameType.SAUSPIEL;
-  const legalCards = disabled ? [] : getLegalCards(hand, currentTrick, contract);
+  const legalCards = disabled ? [] : getLegalCards(hand, currentTrick, contract, tricks);
   const dragRef = useRef<DragState | null>(null);
   const [showIllegal, setShowIllegal] = useState(false);
 
@@ -113,7 +118,12 @@ export default function PlayerHand({
 
   return (
     <div className={`player-hand-container ${disabled ? "" : "my-turn"}`}>
-      <span className="player-hand-name">{playerName}</span>
+      <div className="player-hand-col-left">
+        <div className={`seat-name player-hand-name ${active ? "active" : ""}`}>
+          <UserIcon />
+          <strong>{playerName}</strong>
+        </div>
+      </div>
 
       <div className="player-hand-cards">
         {sorted.map((card) => {
@@ -139,11 +149,13 @@ export default function PlayerHand({
         })}
       </div>
 
-      {showLastTrick && (
-        <button className="secondary-button last-trick-btn" onClick={onLastTrick} type="button">
-          {t.lastTrick}
-        </button>
-      )}
+      <div className="player-hand-col-right">
+        {showLastTrick && (
+          <button className="secondary-button last-trick-btn" onClick={onLastTrick} type="button">
+            {t.lastTrick}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

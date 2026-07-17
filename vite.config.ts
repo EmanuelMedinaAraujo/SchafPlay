@@ -2,6 +2,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
 import fs from 'fs';
+import basicSsl from '@vitejs/plugin-basic-ssl';
 
 export default defineConfig(({ command }) => {
   // GitHub Pages serves the project site under /<repo>/. The base can be
@@ -13,6 +14,7 @@ export default defineConfig(({ command }) => {
     base,
     plugins: [
       react(),
+      (process.argv.includes('--host') || process.argv.includes('-h')) ? basicSsl() : false,
       {
         name: 'sw-version-injector',
         closeBundle() {
@@ -74,8 +76,10 @@ export default defineConfig(({ command }) => {
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
-      // Force bind to IPv4 loopback
-      host: '127.0.0.1',
+      // Force bind to IPv4 loopback unless --host is specified
+      host: (process.argv.includes('--host') || process.argv.includes('-h')) ? undefined : '127.0.0.1',
+      // Enable HTTPS when --host is specified (required for camera/signaling on other network devices)
+      https: (process.argv.includes('--host') || process.argv.includes('-h')) ? (true as any) : undefined,
       // Allow Tailscale subdomains to access the development server
       allowedHosts: ['.ts.net'],
     },
