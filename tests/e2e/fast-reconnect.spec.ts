@@ -14,8 +14,8 @@ import { expect, test } from "./helpers/test";
  *
  * The two contexts are reloaded (not recreated) between pairings so their
  * IndexedDB certificate and localStorage pin survive — exactly what a returning
- * pair has. STUN is unreachable in CI, so gathering degrades to host candidates
- * and the pair still connects over loopback.
+ * pair has. Candidate gathering is LAN-only (no ICE servers), and the pair
+ * connects over loopback.
  */
 
 async function hostInvite(host: Page): Promise<string> {

@@ -32,26 +32,16 @@ export function createWebRTCPeer(): WebRTCPeer {
 }
 
 /**
- * STUN servers for server-reflexive candidate gathering.
- *
- * This reverses the original "no STUN, LAN-only" stance per issue #71: to pair
- * two devices that are NOT on the same network, the invite must carry public
- * (srflx) candidates, which only STUN can discover. Gathering is bounded (see
- * {@link GATHER_TIMEOUT_MS}) so an offline LAN — where these servers are
- * unreachable — still pairs instantly on host candidates alone. True symmetric
- * NAT without TURN still can't traverse; that's an accepted limit (no backend).
+ * Deliberately no ICE servers: no STUN, no TURN, no third parties (#71 owner
+ * decision). Codes only ever carry host (LAN) candidates, so both devices must
+ * share a network at connection time — any network, not just the one they first
+ * paired on: the persisted pairing data is pure identity (certificate
+ * fingerprint + shared secret) and every invite gathers fresh candidates for
+ * the current network. Internet-crossing pairing is out of scope.
  */
-const STUN_ICE_SERVERS: RTCIceServer[] = [
-  { urls: "stun:stun.l.google.com:19302" },
-  { urls: "stun:stun.cloudflare.com:3478" },
-];
 
-/**
- * Upper bound on ICE gathering. Host candidates appear immediately; this only
- * caps how long we wait for STUN srflx candidates before shipping the code.
- * Kept short so offline pairing (STUN unreachable) never stalls.
- */
-const GATHER_TIMEOUT_MS = 1800;
+/** Upper bound on ICE gathering (LAN-only, so candidates arrive quickly). */
+const GATHER_TIMEOUT_MS = 1500;
 
 /** How long a returning guest waits for the 1-message fast path before falling back to a full reply. */
 const FAST_TIMEOUT_MS = 5000;
@@ -86,8 +76,8 @@ function mungeIceCreds(sdp: string, ufrag: string, pwd: string): string {
 
 /**
  * One game link over serverless WebRTC. Signaling is copy-paste of compressed
- * SDP codes (no broker). All game traffic afterwards is a direct P2P data
- * channel (DTLS-encrypted by the browser).
+ * SDP codes (no broker, no STUN, LAN-only). All game traffic afterwards is a
+ * direct P2P data channel (DTLS-encrypted by the browser).
  *
  * Two pairing modes (issue #71):
  *   - First time: classic 2 messages (invite → reply).
@@ -318,7 +308,7 @@ export class WebRTCPeer implements Transport, HostSignaling, GuestSignaling {
     // the disconnect can no longer see (and, e.g., the pairing UI would show a
     // reply code for a peer that was already torn down).
     if (this.closed) throw new Error("DISCONNECTED");
-    return new RTCPeerConnection({ iceServers: STUN_ICE_SERVERS, certificates: [cert] });
+    return new RTCPeerConnection({ iceServers: [], certificates: [cert] });
   }
 
   /** Create the data channel + offer for a host attempt and gather candidates. */
@@ -423,8 +413,8 @@ export class WebRTCPeer implements Transport, HostSignaling, GuestSignaling {
   }
 
   /**
-   * Gather ICE candidates until gathering completes or the bounded timeout
-   * elapses. Resolves on host candidates alone when STUN is unreachable.
+   * Gather ICE candidates until gathering is complete.
+   * With no ICE servers on a LAN this resolves almost instantly.
    */
   private gatherCandidates(pc: RTCPeerConnection): Promise<RTCIceCandidateInit[]> {
     return new Promise((resolve) => {
@@ -437,7 +427,7 @@ export class WebRTCPeer implements Transport, HostSignaling, GuestSignaling {
         resolve(candidates);
       };
 
-      // Bounded so pairing on an offline LAN (STUN unreachable) never hangs.
+      // Safety timeout (candidate gathering is LAN-only and fast).
       const timeoutId = setTimeout(done, GATHER_TIMEOUT_MS);
 
       pc.onicecandidate = (event) => {
