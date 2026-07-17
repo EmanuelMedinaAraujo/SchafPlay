@@ -90,4 +90,50 @@ test.describe("settings", () => {
     await page.reload();
     await expect(page.locator("#player-name")).toHaveValue("Vroni");
   });
+
+  test("export games downloads file or shows error if empty", async ({ page }) => {
+    // 1. Verify empty state first
+    await bootHome(page);
+    await page.getByTitle(de.settings).click();
+    await expect(page.getByRole("heading", { name: de.settingsExport })).toBeVisible();
+
+    const exportBtn = page.locator(".settings-export-btn");
+    await expect(exportBtn).toBeVisible();
+    await exportBtn.click();
+    
+    // Should show error when no games are recorded
+    await expect(page.locator(".error-message")).toContainText(de.exportNoGames);
+
+    // 2. Play a game to record history, then try again to download the file
+    // Start solo game with 4 rounds
+    await startSolo(page, { seed: 5, rounds: 4, name: "Wastl" });
+    
+    // Fast forward to list-over
+    for (let round = 1; round <= 4; round++) {
+      await page.locator(".dev-round-btn").click();
+      await expect(page.locator(".round-over-overlay h2")).toContainText(de.roundOver);
+      const isLast = round === 4;
+      await page.getByRole("button", { name: isLast ? de.toFinalStandings : de.ready }).click();
+    }
+    await expect(page.locator(".round-over-overlay h2")).toContainText(de.listOver);
+
+    // Quit back to home screen
+    await page.locator(".round-over-overlay").getByRole("button", { name: de.quit }).click();
+    await expect(page.locator(".home-screen")).toBeVisible();
+    
+    // Wait for DB write
+    await page.waitForTimeout(1500);
+
+    // Go to Settings
+    await page.getByTitle(de.settings).click();
+
+    // Trigger download listener
+    const downloadPromise = page.waitForEvent("download");
+    await exportBtn.click();
+    const download = await downloadPromise;
+
+    // Verify downloaded filename pattern
+    expect(download.suggestedFilename()).toMatch(/^schafplay-history-\d{4}-\d{2}-\d{2}\.txt$/);
+  });
 });
+

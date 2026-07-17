@@ -1,4 +1,4 @@
-import { Contract, RoundResult } from "../game/types";
+import { BidDeclaration, Contract, RoundResult, WillBid } from "../game/types";
 
 /**
  * Local game statistics, persisted per device.
@@ -33,6 +33,8 @@ export interface RoundRecord {
   result: RoundResult;
   /** Cumulative list scores after this round. */
   scoresAfter: Record<string, number>;
+  bids?: WillBid[];
+  declarations?: BidDeclaration[];
 }
 
 export interface GameRecord {
