@@ -125,6 +125,19 @@ export interface BiddingState {
 
 export type ReadyState = Record<string, boolean>;
 
+/**
+ * A "Stoß" (also "Kontra") doubles the round's value; a "Retour" (counter by
+ * the declaring side) doubles it again. Announcements are PUBLIC — they carry
+ * unredacted to the guest. The chain is capped at Stoß + Retour (2 entries,
+ * up to 4x). See src/game/scoring.ts for how the multiplier is applied.
+ */
+export type StossKind = "stoss" | "retour";
+
+export interface StossEntry {
+  playerId: string;
+  kind: StossKind;
+}
+
 /** Ramsch-only round detail (#11); present on a RoundResult iff the contract type is RAMSCH. */
 export interface RamschResult {
   /**
@@ -154,6 +167,12 @@ export interface RoundResult {
    * older versions simply lack it (no DB version bump needed).
    */
   ramsch?: RamschResult;
+  /**
+   * Stoß/Retour multiplier applied to this round (1, 2 or 4). Optional and
+   * additive — `scoreChanges` already reflect it; this field is for display
+   * (RoundOverScreen) and stats. Absent means 1 (no doubling).
+   */
+  stossMultiplier?: number;
 }
 
 export interface GameState {
@@ -175,6 +194,18 @@ export interface GameState {
   totalRounds: number;
   logs: LogEntry[];
   lastResult?: RoundResult;
+  /**
+   * Stoß/Retour announcements for the current round, in order (max 2: a Stoß
+   * then a Retour). Public — carried unredacted to the guest so its UI can
+   * render badges. Empty at the start of every round.
+   */
+  stoss: StossEntry[];
+  /**
+   * Host-authoritative Stoß house rule (the host's/solo player's device
+   * setting). Reflected in state so the guest UI only offers the button when
+   * the host has the feature enabled.
+   */
+  stossEnabled: boolean;
 }
 
 /**
@@ -191,6 +222,8 @@ export enum PlayerActionType {
   PLAY_CARD = "PLAY_CARD",
   READY_NEXT = "READY_NEXT",
   REMATCH = "REMATCH",
+  /** Announce a Stoß (defender) or Retour (declarer). No `data` payload. */
+  STOSS = "STOSS",
 }
 
 export interface PlayerAction {

@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { GameState, Language, PlayerAction, PlayerActionType } from "../types";
+import { CardValue, GameState, GameType, Language, PlayerAction, PlayerActionType, StossKind } from "../types";
 import { gameLabel, translations } from "../lib/i18n";
 import BiddingPanel from "./BiddingPanel";
 import PlayerHand from "./PlayerHand";
@@ -88,6 +88,35 @@ export default function GameBoard({
     onAction({ type: PlayerActionType.PLAY_CARD, playerId: myPlayerId, data: { cardId } });
   }
 
+  function announceStoss() {
+    onAction({ type: PlayerActionType.STOSS, playerId: myPlayerId });
+  }
+
+  // The local player's own already-made announcement (badge on the name plate).
+  const myStossKind: StossKind | null = state.stoss?.find((entry) => entry.playerId === myPlayerId)?.kind ?? null;
+
+  // Whether the local seat may announce a Stoß/Retour right now — decided from
+  // OWN knowledge only (never the redacted partner id): I know the declarer,
+  // and I can see whether I hold the called Ace (which would make me the
+  // partner). The engine re-validates, so this only governs button visibility.
+  const stossOption: StossKind | null = ((): StossKind | null => {
+    const contract = state.currentContract;
+    if (!state.stossEnabled || state.status !== "PLAYING") return null;
+    if (!contract || contract.type === GameType.RAMSCH) return null;
+    if (state.tricks.length !== 0) return null;
+    if ((state.currentTrick?.playedCards.length ?? 0) >= 2) return null;
+    const count = state.stoss?.length ?? 0;
+    if (count >= 2) return null;
+    const iAmDeclarer = contract.declarerId === myPlayerId;
+    const holdsCalledAce =
+      contract.type === GameType.SAUSPIEL &&
+      !!contract.calledSuit &&
+      me.cards.some((card) => card.suit === contract.calledSuit && card.value === CardValue.ACE);
+    if (count === 0) return iAmDeclarer || holdsCalledAce ? null : "stoss";
+    if (state.stoss[state.stoss.length - 1].kind !== "stoss") return null;
+    return iAmDeclarer ? "retour" : null;
+  })();
+
   const contractLabel = state.currentContract
     ? gameLabel(language, state.currentContract.type, state.currentContract.calledSuit, state.currentContract.isTout)
     : t.bidding;
@@ -106,7 +135,7 @@ export default function GameBoard({
             ⚡ {t.devSkip}
           </button>
         )}
-        <PlayerSeat player={seatAt(2)} position="top" active={activePlayer?.id === seatAt(2).id} contract={state.currentContract} language={language} />
+        <PlayerSeat player={seatAt(2)} position="top" active={activePlayer?.id === seatAt(2).id} contract={state.currentContract} stoss={state.stoss} language={language} />
         {import.meta.env.DEV && (state.status === "PLAYING" || state.status === "BIDDING") && onDevSkipRound && (
           <button className="text-button dev-header-btn dev-round-btn" onClick={onDevSkipRound} type="button">
             ⚡ {t.devSkipRound}
@@ -119,9 +148,9 @@ export default function GameBoard({
       </div>
 
       <section className="table">
-        <PlayerSeat player={seatAt(1)} position="left" active={activePlayer?.id === seatAt(1).id} contract={state.currentContract} language={language} />
+        <PlayerSeat player={seatAt(1)} position="left" active={activePlayer?.id === seatAt(1).id} contract={state.currentContract} stoss={state.stoss} language={language} />
         <TrickArea trick={state.currentTrick} players={state.players} contract={state.currentContract} myIdx={myIdx} language={language} collecting={state.collecting} />
-        <PlayerSeat player={seatAt(3)} position="right" active={activePlayer?.id === seatAt(3).id} contract={state.currentContract} language={language} />
+        <PlayerSeat player={seatAt(3)} position="right" active={activePlayer?.id === seatAt(3).id} contract={state.currentContract} stoss={state.stoss} language={language} />
       </section>
 
       {state.status === "BIDDING" && <BiddingPanel state={state} language={language} myPlayerId={myPlayerId} onAction={onAction} />}
@@ -146,6 +175,9 @@ export default function GameBoard({
         onPlay={playCard}
         onLastTrick={() => setLastTrickOpen(true)}
         tricks={state.tricks}
+        stossOption={stossOption}
+        myStossKind={myStossKind}
+        onStoss={announceStoss}
       />
 
       {lastTrickOpen && lastCompletedTrick && (

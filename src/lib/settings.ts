@@ -20,6 +20,8 @@ export interface Settings {
   disableLaufende: boolean;
   /** House rule (#11): an all-pass starts a Ramsch instead of a redeal. The HOST's setting governs a game. */
   enableRamsch: boolean;
+  /** House rule (#57): defenders may Stoß (double) and the declarer may Retour. The HOST's setting governs a game. */
+  enableStoss: boolean;
   /** The mode tab last used on the home screen, preselected next open. */
   lastMode: GameMode;
 }
@@ -30,6 +32,7 @@ export const DEFAULT_SETTINGS: Settings = {
   totalRounds: 8,
   disableLaufende: false,
   enableRamsch: false,
+  enableStoss: true,
   lastMode: "host",
 };
 
@@ -91,6 +94,12 @@ const CODECS: { [K in keyof Settings]: FieldCodec<Settings[K]> } = {
   enableRamsch: {
     key: "schafplay.enableRamsch",
     parse: (raw) => raw === "true",
+    serialize: String,
+  },
+  enableStoss: {
+    key: "schafplay.enableStoss",
+    // Defaults to enabled; only an explicit "false" turns it off.
+    parse: (raw) => raw !== "false",
     serialize: String,
   },
   lastMode: {

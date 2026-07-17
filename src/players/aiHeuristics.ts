@@ -3,7 +3,7 @@
  * decision. Stateless per call; the engine owns pacing and validation.
  */
 
-import { Card, CardValue, Contract, Difficulty, GameDeclaration, GameType, Player, Suit, Trick, WillBid } from "../game/types";
+import { Card, CardValue, Contract, Difficulty, GameDeclaration, GameType, Player, StossKind, Suit, Trick, WillBid } from "../game/types";
 import {
   canOverrideBid,
   countPoints,
@@ -131,6 +131,29 @@ function bestSoloType(hand: Card[]): GameType {
   if (best === Suit.LEAVES) return GameType.SOLO_LEAVES;
   if (best === Suit.BELLS) return GameType.SOLO_BELLS;
   return GameType.SOLO_HEARTS;
+}
+
+/**
+ * Whether the AI should announce a Stoß (as a defender) or a Retour (as the
+ * declarer). Deliberately conservative and deterministic — the double only
+ * fires with a clearly outstanding hand for the announcing seat, so it stays
+ * rare (a doubled game is a big swing). Pure: no engine/turn state involved,
+ * eligibility and the timing window are already enforced by the engine.
+ *
+ * A defender doubles only when its own hand is unusually trump-heavy for the
+ * side that did NOT declare — three or more Obers, or two Obers backed by a
+ * long trump holding. The declarer's Retour needs an even stronger hand
+ * (three-plus Obers AND a long trump holding), since answering a Stoß from a
+ * position of weakness is a losing move.
+ */
+export function getAIStoss(hand: Card[], contract: Contract, kind: StossKind): boolean {
+  if (contract.type === GameType.RAMSCH) return false;
+  const obers = hand.filter((card) => card.value === CardValue.OBER).length;
+  const trumps = hand.filter((card) => isTrump(card, contract.type)).length;
+  if (kind === "retour") {
+    return obers >= 3 && trumps >= 6;
+  }
+  return obers >= 3 || (obers >= 2 && trumps >= 6);
 }
 
 export function getAICardPlay(

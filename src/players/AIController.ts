@@ -1,6 +1,6 @@
 import { Card, Contract, Difficulty, GameDeclaration, Player, Trick, WillBid } from "../game/types";
-import { getAIBid, getAICardPlay, getAIWillBid } from "./aiHeuristics";
-import { BidContext, PlayerController } from "./PlayerController";
+import { getAIBid, getAICardPlay, getAIStoss, getAIWillBid } from "./aiHeuristics";
+import { BidContext, PlayerController, StossContext } from "./PlayerController";
 
 /** The built-in heuristic AI. Difficulty only affects card play, not bidding. */
 export class AIController implements PlayerController {
@@ -16,5 +16,9 @@ export class AIController implements PlayerController {
 
   decideCard(player: Player, currentTrick: Trick | null, contract: Contract | null, tricks?: Trick[]): Card {
     return getAICardPlay(player, currentTrick, contract, this.difficulty, tricks);
+  }
+
+  decideStoss(player: Player, contract: Contract, context: StossContext): boolean {
+    return getAIStoss(player.cards, contract, context.kind);
   }
 }

@@ -18,8 +18,41 @@
 
 .player-hand-col-left {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 6px;
+}
+
+/* The Stoß/Retour control sits directly beneath the name, wearing the same
+   dark-blue name-plate design (.seat-name), so it reads as part of the seat. */
+.player-hand-stoss {
+  cursor: pointer;
+  margin-top: 0 !important;
+  padding: 4px 12px;
+  border-color: var(--red-2);
+  transition: background 0.16s ease, transform 0.16s ease;
+}
+
+.player-hand-stoss:hover {
+  background: var(--red);
+  transform: scale(1.04);
+}
+
+.player-hand-stoss:active {
+  transform: scale(0.98);
+}
+
+/* Once announced it is no longer a button — a static amber badge-plate. */
+.player-hand-stoss.announced {
+  cursor: default;
+  background: var(--amber);
+  color: #0f1e3d;
+  border-color: #fbbf24;
+}
+
+.player-hand-stoss.announced strong {
+  color: #0f1e3d;
 }
 
 .player-hand-col-right {
