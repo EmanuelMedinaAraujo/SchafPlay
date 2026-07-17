@@ -11,24 +11,12 @@ createRoot(document.getElementById('root')!).render(
 
 if ('serviceWorker' in navigator) {
   if (import.meta.env.PROD) {
-    // Manual-only updates (#61): the app never checks for a new version on
-    // its own. We only ever call register() when there is no existing
-    // registration — that first registration is what installs the offline
-    // cache in the first place and unavoidably needs the network. From then
-    // on the only thing that reaches out online is the user pressing
-    // "check for update now" in Settings (checkForUpdate() in
-    // src/lib/pwa.ts), so opening/reopening the app never touches the
-    // network once installed. A newly discovered worker also stays WAITING
-    // (public/sw.js no longer calls skipWaiting() on install) until that
-    // manual flow tells it to take over.
+    // #61: only register() on first install (needs network). After that the
+    // app stays fully offline; updates are manual via Settings.
     const swUrl = `${import.meta.env.BASE_URL}sw.js`;
 
-    // Reload once the manually-triggered update actually takes over, so the
-    // Settings "check for update now" flow lands on the new version. Guard
-    // with hadController: on the very first install there's no prior
-    // controller, and clients.claim() taking control of this page for the
-    // first time also fires 'controllerchange' — that's not an update, so
-    // don't reload for it.
+    // Reload on update activation. Skip the first-install controllerchange
+    // (no prior controller) since that's not an update.
     const hadController = !!navigator.serviceWorker.controller;
     let reloaded = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -40,9 +28,7 @@ if ('serviceWorker' in navigator) {
     const registerSW = () => {
       navigator.serviceWorker.getRegistration().then((existing) => {
         if (existing) {
-          // Already installed — stay fully offline. checkForUpdate() (the
-          // Settings "check for update now" button) is the only code path
-          // that ever calls registration.update() from here on.
+          // Already installed — stay offline; updates go through checkForUpdate().
           return;
         }
         navigator.serviceWorker.register(swUrl)

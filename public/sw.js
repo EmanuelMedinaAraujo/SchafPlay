@@ -37,14 +37,8 @@ self.addEventListener('install', (event) => {
       return cache.addAll(requests);
     })
   );
-  // Manual-only updates (#61): do NOT skipWaiting() here. A newly installed
-  // worker parks itself in the "waiting" state, alongside the still-active
-  // old worker, until the page explicitly asks it to take over (see the
-  // 'message' listener below). That message is only ever sent by
-  // checkForUpdate() (src/lib/pwa.ts), which itself only runs from the
-  // user's "check for update now" button in Settings — so an update never
-  // applies itself just because the browser happened to fetch a new sw.js
-  // on navigation.
+  // #61: don't skipWaiting() here — wait for the page to post SKIP_WAITING
+  // (via checkForUpdate) so updates only apply on explicit user action.
 });
 
 self.addEventListener('activate', (event) => {
@@ -56,9 +50,7 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// The only way a waiting worker is told to activate: the page, from
-// checkForUpdate() (src/lib/pwa.ts) after the user manually triggers a
-// check, posts this message once the new worker has finished installing.
+// Activated only when the page posts SKIP_WAITING (see checkForUpdate).
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
@@ -67,11 +59,8 @@ self.addEventListener('message', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  // Navigation: cache-first (offline-first). The app shell is served straight
-  // from the precache so opening the app never depends on the network; the
-  // user's manual "check for update now" action (#61) is the only thing
-  // that ever pulls online. The network is only touched when nothing is
-  // cached yet.
+  // Navigation: cache-first (offline-first). Falls back to network only
+  // when nothing is cached yet.
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {

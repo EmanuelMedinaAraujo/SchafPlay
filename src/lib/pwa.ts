@@ -1,16 +1,11 @@
 /** Service-worker / PWA update helpers shared by main.tsx and the settings UI. */
 
 export type UpdateResult =
-  | "updating" // a new version was found and told to activate; the caller should wait for the controllerchange-driven reload (see main.tsx)
+  | "updating" // new version activated; page will reload via controllerchange
   | "uptodate" // already on the newest version
-  | "unsupported"; // no service worker active (dev, or not yet installed)
+  | "unsupported"; // no service worker active (dev / not installed)
 
-/**
- * Resolves once `worker` has left the "installing" state — i.e. it either
- * finished installing (now sitting in registration.waiting, since
- * public/sw.js no longer calls skipWaiting() on its own, #61) or failed
- * ("redundant"). Returns false on failure.
- */
+/** Resolves once `worker` leaves the "installing" state. Returns false on failure. */
 function waitUntilInstalled(worker: ServiceWorker): Promise<boolean> {
   if (worker.state !== "installing") return Promise.resolve(worker.state !== "redundant");
   return new Promise((resolve) => {
@@ -24,13 +19,9 @@ function waitUntilInstalled(worker: ServiceWorker): Promise<boolean> {
 }
 
 /**
- * Manually check for a new app version. This is the *only* code path in the
- * app that ever calls `registration.update()` (#61) — there is no automatic
- * background check. If a new version is found, it's told to activate
- * (postMessage SKIP_WAITING to the waiting worker); public/sw.js's
- * 'message' handler then calls self.skipWaiting(), which triggers
- * clients.claim() and a 'controllerchange' event that main.tsx listens for
- * to reload the page and pick up the new version.
+ * Manually check for a new app version (#61). This is the only code path
+ * that calls `registration.update()`. If a new worker is found, posts
+ * SKIP_WAITING to activate it (triggers controllerchange → page reload).
  */
 export async function checkForUpdate(): Promise<UpdateResult> {
   if (!("serviceWorker" in navigator)) return "unsupported";
@@ -55,9 +46,7 @@ export async function checkForUpdate(): Promise<UpdateResult> {
   const installed = await waitUntilInstalled(candidate);
   if (!installed) return "uptodate";
 
-  // public/sw.js parks a newly-installed worker in registration.waiting
-  // instead of activating itself; tell it to go ahead now that the user has
-  // explicitly asked for the update.
+  // Tell the waiting worker to activate now.
   const waiting = registration.waiting;
   if (!waiting) return "uptodate";
 
