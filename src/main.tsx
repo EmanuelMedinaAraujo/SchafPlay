@@ -1,7 +1,6 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
-import {UPDATE_CHECK_KEY} from './lib/pwa';
 import './styles/index.css';
 
 createRoot(document.getElementById('root')!).render(
@@ -12,39 +11,43 @@ createRoot(document.getElementById('root')!).render(
 
 if ('serviceWorker' in navigator) {
   if (import.meta.env.PROD) {
-    // Offline-first with a once-a-day online check (#28). The service worker
-    // serves the whole app from cache, so the only thing that ever pulls from
-    // the network is the update check the browser runs when we (re-)register.
-    // We throttle that to at most once every 24h via localStorage, so opening,
-    // closing and reopening the app within a day never hits the network. The
-    // settings page offers a manual "check now" that bypasses this throttle.
-    const DAY_MS = 24 * 60 * 60 * 1000;
+    // Manual-only updates (#61): the app never checks for a new version on
+    // its own. We only ever call register() when there is no existing
+    // registration — that first registration is what installs the offline
+    // cache in the first place and unavoidably needs the network. From then
+    // on the only thing that reaches out online is the user pressing
+    // "check for update now" in Settings (checkForUpdate() in
+    // src/lib/pwa.ts), so opening/reopening the app never touches the
+    // network once installed. A newly discovered worker also stays WAITING
+    // (public/sw.js no longer calls skipWaiting() on install) until that
+    // manual flow tells it to take over.
     const swUrl = `${import.meta.env.BASE_URL}sw.js`;
 
-    const registerSW = () => {
-      let last = 0;
-      try {
-        last = Number(localStorage.getItem(UPDATE_CHECK_KEY)) || 0;
-      } catch {
-        // Private mode / storage disabled — treat as "never checked".
-      }
-      const due = Date.now() - last > DAY_MS;
+    // Reload once the manually-triggered update actually takes over, so the
+    // Settings "check for update now" flow lands on the new version. Guard
+    // with hadController: on the very first install there's no prior
+    // controller, and clients.claim() taking control of this page for the
+    // first time also fires 'controllerchange' — that's not an update, so
+    // don't reload for it.
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloaded || !hadController) return;
+      reloaded = true;
+      window.location.reload();
+    });
 
+    const registerSW = () => {
       navigator.serviceWorker.getRegistration().then((existing) => {
-        if (existing && !due) {
-          // Already installed and checked within the last day — stay fully
-          // offline and don't reach out to the network for an update.
-          console.log('[SW] Update check skipped (checked within 24h).');
+        if (existing) {
+          // Already installed — stay fully offline. checkForUpdate() (the
+          // Settings "check for update now" button) is the only code path
+          // that ever calls registration.update() from here on.
           return;
         }
         navigator.serviceWorker.register(swUrl)
           .then((reg) => {
-            try {
-              localStorage.setItem(UPDATE_CHECK_KEY, String(Date.now()));
-            } catch {
-              // Ignore storage failures; worst case is a check on the next load.
-            }
-            console.log('[SW] Registered / update-checked with scope:', reg.scope);
+            console.log('[SW] Registered with scope:', reg.scope);
           })
           .catch((err) => {
             console.error('[SW] Registration failed:', err);

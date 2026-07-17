@@ -37,9 +37,9 @@ export default function SettingsScreen({
       const result = await checkForUpdate();
       if (result === "updating") {
         setStatus("installing");
-        // Give the freshly installed worker a moment to take over, then reload
-        // to pick up the new version.
-        setTimeout(() => window.location.reload(), 900);
+        // main.tsx's 'controllerchange' listener reloads the page once the
+        // newly-activated worker actually takes over — no need to guess a
+        // timeout here.
       } else {
         setStatus(result === "unsupported" ? "unsupported" : "uptodate");
       }
