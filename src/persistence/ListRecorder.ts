@@ -71,6 +71,8 @@ export class ListRecorder {
         tricks: state.tricks.map(slimTrick),
         result: state.lastResult,
         scoresAfter: { ...state.scores },
+        bids: state.biddingState ? [...state.biddingState.willBids] : undefined,
+        declarations: state.biddingState ? [...state.biddingState.declarations] : undefined,
       });
       this.draftHand = null;
     }

@@ -138,6 +138,45 @@ export function formatGamesForExport(games: GameRecord[], lang: Language): strin
         out += `    Score changes: ${scoresList}\n`;
       }
 
+      // Format bidding
+      if (r.bids && r.bids.length > 0) {
+        if (lang === "de") {
+          out += `    Ansagephase:\n`;
+        } else {
+          out += `    Bidding Phase:\n`;
+        }
+
+        // 1. Will Phase
+        for (const bid of r.bids) {
+          const pName = game.players.find(p => p.id === bid.playerId)?.name || bid.playerId;
+          const statusStr = bid.wantsToPlay
+            ? (lang === "de" ? "Ich würde spielen!" : "Wants to play!")
+            : (lang === "de" ? "Weiter" : "Pass");
+          out += `      ${pName}: ${statusStr}\n`;
+        }
+
+        // 2. Declare Phase
+        if (r.declarations && r.declarations.length > 0) {
+          for (const dec of r.declarations) {
+            const pName = game.players.find(p => p.id === dec.playerId)?.name || dec.playerId;
+            if (dec.declaration) {
+              const label = gameLabel(lang, dec.declaration.type, dec.declaration.calledSuit, dec.declaration.isTout);
+              if (lang === "de") {
+                out += `      ${pName} bietet: ${label}\n`;
+              } else {
+                out += `      ${pName} bids: ${label}\n`;
+              }
+            } else {
+              if (lang === "de") {
+                out += `      ${pName} zieht zurück\n`;
+              } else {
+                out += `      ${pName} retreats\n`;
+              }
+            }
+          }
+        }
+      }
+
       // 1. Format Dealt Cards (Initial hands)
       if (r.tricks.length > 0) {
         if (lang === "de") {
