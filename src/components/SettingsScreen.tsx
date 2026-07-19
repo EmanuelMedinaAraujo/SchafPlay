@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
 import { checkForUpdate } from "../lib/pwa";
-import { CheckIcon, DownloadIcon, LoaderIcon, RefreshIcon, SettingsIcon } from "./icons";
+import { CheckIcon, DownloadIcon, HelpCircleIcon, LoaderIcon, RefreshIcon, SettingsIcon } from "./icons";
 import { gameHistoryStore } from "../persistence";
 import { formatGamesForExport } from "../lib/export";
 
@@ -23,6 +23,53 @@ const LANGUAGES: Array<{ code: Language; label: string }> = [
   { code: "de", label: "Deutsch" },
   { code: "en", label: "English" },
 ];
+
+/**
+ * One settings line: label (plus optional help tooltip) on the left, the
+ * control on the right. The hint is tap-to-toggle so it works on touch,
+ * and doubles as the help button's accessible label.
+ */
+function SettingRow({
+  label,
+  hint,
+  status,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  status?: ReactNode;
+  children: ReactNode;
+}) {
+  const [showHint, setShowHint] = useState(false);
+  return (
+    <section className="panel settings-panel settings-row">
+      <div className="settings-row-label">
+        <h2>{label}</h2>
+        {hint && (
+          <>
+            <button
+              type="button"
+              className="settings-help"
+              aria-label={hint}
+              aria-expanded={showHint}
+              onClick={() => setShowHint((v) => !v)}
+              onBlur={() => setShowHint(false)}
+            >
+              <HelpCircleIcon size={15} />
+            </button>
+            {showHint && (
+              <span role="tooltip" className="settings-tooltip">
+                {hint}
+              </span>
+            )}
+          </>
+        )}
+      </div>
+      <div className="settings-row-control">{children}</div>
+      {status}
+    </section>
+  );
+}
 
 export default function SettingsScreen({
   language,
@@ -96,8 +143,7 @@ export default function SettingsScreen({
         </h2>
       </div>
 
-      <section className="panel settings-panel">
-        <h2>{t.settingsLanguage}</h2>
+      <SettingRow label={t.settingsLanguage}>
         <div className="mode-switch" role="tablist">
           {LANGUAGES.map(({ code, label }) => (
             <button
@@ -112,11 +158,9 @@ export default function SettingsScreen({
             </button>
           ))}
         </div>
-      </section>
+      </SettingRow>
 
-      <section className="panel settings-panel">
-        <h2>{t.settingsLaufende}</h2>
-        <p className="muted">{t.settingsLaufendeHint}</p>
+      <SettingRow label={t.settingsLaufende} hint={t.settingsLaufendeHint}>
         <div className="mode-switch" role="group" aria-label={t.settingsLaufende}>
           <button
             className={!disableLaufende ? "active" : ""}
@@ -135,11 +179,9 @@ export default function SettingsScreen({
             {t.settingsLaufendeOff}
           </button>
         </div>
-      </section>
+      </SettingRow>
 
-      <section className="panel settings-panel">
-        <h2>{t.settingsRamsch}</h2>
-        <p className="muted">{t.settingsRamschHint}</p>
+      <SettingRow label={t.settingsRamsch} hint={t.settingsRamschHint}>
         <div className="mode-switch" role="group" aria-label={t.settingsRamsch}>
           <button
             className={!enableRamsch ? "active" : ""}
@@ -158,11 +200,9 @@ export default function SettingsScreen({
             {t.settingsRamschPlay}
           </button>
         </div>
-      </section>
+      </SettingRow>
 
-      <section className="panel settings-panel">
-        <h2>{t.settingsStoss}</h2>
-        <p className="muted">{t.settingsStossHint}</p>
+      <SettingRow label={t.settingsStoss} hint={t.settingsStossHint}>
         <div className="mode-switch" role="group" aria-label={t.settingsStoss}>
           <button
             className={enableStoss ? "active" : ""}
@@ -181,11 +221,13 @@ export default function SettingsScreen({
             {t.settingsStossOff}
           </button>
         </div>
-      </section>
+      </SettingRow>
 
-      <section className="panel settings-panel">
-        <h2>{t.settingsUpdates}</h2>
-        <p className="muted">{t.settingsUpdatesHint}</p>
+      <SettingRow
+        label={t.settingsUpdates}
+        hint={t.settingsUpdatesHint}
+        status={statusText && <p className="settings-update-status muted">{statusText}</p>}
+      >
         <button
           className="secondary-button settings-update-btn"
           onClick={onCheckForUpdate}
@@ -201,12 +243,15 @@ export default function SettingsScreen({
           )}
           {t.checkForUpdate}
         </button>
-        {statusText && <p className="settings-update-status muted">{statusText}</p>}
-      </section>
+      </SettingRow>
 
-      <section className="panel settings-panel">
-        <h2>{t.settingsExport}</h2>
-        <p className="muted">{t.settingsExportHint}</p>
+      <SettingRow
+        label={t.settingsExport}
+        hint={t.settingsExportHint}
+        status={
+          exportError && <p className="settings-update-status error-message muted">{exportError}</p>
+        }
+      >
         <button
           className="secondary-button settings-export-btn"
           onClick={onExportGames}
@@ -215,8 +260,7 @@ export default function SettingsScreen({
           <DownloadIcon />
           {t.exportGames}
         </button>
-        {exportError && <p className="settings-update-status error-message muted">{exportError}</p>}
-      </section>
+      </SettingRow>
     </main>
   );
 }
