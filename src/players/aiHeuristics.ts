@@ -187,6 +187,33 @@ export function getAICardPlay(
     (card) => determineTrickWinner([...played, { playerId: player.id, card }], gameType) === player.id,
   );
 
+  // Void in the led plain suit ("frei"): take the trick by trumping rather than
+  // throwing a card away, whenever it is not already safely ours. This matters
+  // most when the called suit is led in a Sauspiel — the called Ace is forced
+  // into the trick, so the big points are coming even while the table still
+  // shows few, and the seat that led it may be a partner sitting on a weak card
+  // the opponents behind will beat. The trick is "secure" only when our side
+  // already holds it with a trump, or we are the last to play (no opponent left
+  // to overtake a plain winning card). Prefer the trump Ace, then the trump Ten
+  // (fat point cards that are otherwise weak trumps), otherwise the lowest trump
+  // that wins.
+  const ledCard = played[0].card;
+  const voidInLedSuit =
+    !isTrump(ledCard, gameType) &&
+    !player.cards.some((card) => card.suit === ledCard.suit && !isTrump(card, gameType));
+  const winnerCard = played.find((entry) => entry.playerId === currentWinnerId)!.card;
+  const trickSecure = partnerIsWinning && (isLastToPlay || isTrump(winnerCard, gameType));
+  if (voidInLedSuit && !trickSecure) {
+    const trumpWinners = winners.filter((card) => isTrump(card, gameType));
+    if (trumpWinners.length > 0) {
+      return (
+        trumpWinners.find((card) => card.value === CardValue.ACE) ??
+        trumpWinners.find((card) => card.value === CardValue.TEN) ??
+        [...trumpWinners].sort((a, b) => getCardRank(a, gameType) - getCardRank(b, gameType))[0]
+      );
+    }
+  }
+
   if (partnerIsWinning) {
     // Our side already holds the trick. As the last player it is safe to
     // schmier onto it; otherwise stay low so an opponent still to play can't
