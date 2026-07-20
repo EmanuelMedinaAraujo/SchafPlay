@@ -8,7 +8,9 @@ const SOLO_SEAT: Record<string, string> = { p2: ".seat-left", p3: ".seat-top", p
 
 test.describe("Called Ace & Davonlaufen rules", () => {
   test("partner can davonlaufen and is revealed immediately", async ({ page }) => {
-    const seed = 47;
+    // Seed producing a genuine davonlaufen in round 1: the AI partner leads a
+    // trick with a plain, non-Ace card of the called suit, revealing itself.
+    const seed = 19;
     const trace = simulateSolo(seed, { totalRounds: 8 });
 
     const round = trace[0];
