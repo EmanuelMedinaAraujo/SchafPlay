@@ -104,7 +104,7 @@ export class GameEngine {
       collecting: false,
       paused: false,
       biddingState: null,
-      readyState: { p1: false, p3: !players[2].isHuman },
+      readyState: freshReadyState(players),
       scores: { p1: 0, p2: 0, p3: 0, p4: 0 },
       roundNumber: 0,
       totalRounds,
@@ -145,17 +145,20 @@ export class GameEngine {
 
   dealCards(): void {
     this.clearTimer();
-    this.mutate((state) => {
-      this.dealInto(state);
-      state.dealerIdx = (state.dealerIdx + 1) % 4;
-      state.activePlayerIdx = (state.dealerIdx + 1) % 4;
-      state.roundNumber += 1;
-      state.readyState = { p1: false, p3: !state.players[2].isHuman };
-      state.lastResult = undefined;
-      state.logs = [{ key: "log.deal", params: { round: state.roundNumber, dealer: state.players[state.dealerIdx].name } }];
-      this.resetBidding(state);
-    });
+    this.mutate((state) => this.beginRound(state));
     this.scheduleProgress();
+  }
+
+  /** Deal the next round: advance the dealer, reset per-round state, open bidding. */
+  private beginRound(state: GameState): void {
+    this.dealInto(state);
+    state.dealerIdx = (state.dealerIdx + 1) % 4;
+    state.activePlayerIdx = (state.dealerIdx + 1) % 4;
+    state.roundNumber += 1;
+    state.readyState = freshReadyState(state.players);
+    state.lastResult = undefined;
+    state.logs = [{ key: "log.deal", params: { round: state.roundNumber, dealer: state.players[state.dealerIdx].name } }];
+    this.resetBidding(state);
   }
 
   processAction(action: PlayerAction): void {
@@ -376,7 +379,7 @@ export class GameEngine {
     this.clearTimer();
     this.mutate((state) => {
       state.status = "LIST_OVER";
-      state.readyState = { p1: false, p3: !state.players[2].isHuman };
+      state.readyState = freshReadyState(state.players);
     });
   }
 
@@ -531,13 +534,7 @@ export class GameEngine {
    * treats any seat as the declaring side.
    */
   private startRamsch(state: GameState): void {
-    const contract: Contract = { type: GameType.RAMSCH, declarerId: "" };
-    state.currentContract = contract;
-    state.status = "PLAYING";
-    state.biddingState!.phase = "RESOLVED";
-    state.biddingState!.resolvedContract = contract;
-    state.activePlayerIdx = (state.dealerIdx + 1) % 4;
-    state.currentTrick = { id: 1, leaderId: state.players[state.activePlayerIdx].id, playedCards: [] };
+    this.enterPlaying(state, { type: GameType.RAMSCH, declarerId: "" });
     this.log(state, "log.ramsch");
   }
 
@@ -545,6 +542,20 @@ export class GameEngine {
     this.dealInto(state);
     state.activePlayerIdx = (state.dealerIdx + 1) % 4;
     this.resetBidding(state);
+  }
+
+  /**
+   * Fix the contract and open play with forehand leading the first trick.
+   * Deliberately stores the SAME contract object in currentContract and
+   * biddingState.resolvedContract — redaction.ts relies on blanking both.
+   */
+  private enterPlaying(state: GameState, contract: Contract): void {
+    state.currentContract = contract;
+    state.status = "PLAYING";
+    state.biddingState!.phase = "RESOLVED";
+    state.biddingState!.resolvedContract = contract;
+    state.activePlayerIdx = (state.dealerIdx + 1) % 4;
+    state.currentTrick = { id: 1, leaderId: state.players[state.activePlayerIdx].id, playedCards: [] };
   }
 
   private finalizeBidding(state: GameState, highBid: BidDeclaration): void {
@@ -555,12 +566,7 @@ export class GameEngine {
         player.cards.some((card) => card.suit === contract.calledSuit && card.value === CardValue.ACE),
       )?.id;
     }
-    state.currentContract = contract;
-    state.status = "PLAYING";
-    state.biddingState!.phase = "RESOLVED";
-    state.biddingState!.resolvedContract = contract;
-    state.activePlayerIdx = (state.dealerIdx + 1) % 4;
-    state.currentTrick = { id: 1, leaderId: state.players[state.activePlayerIdx].id, playedCards: [] };
+    this.enterPlaying(state, contract);
     this.log(state, "log.contract", { name: this.playerName(contract.declarerId), ...declarationParams(declaration) });
     // With the contract fixed and every hand still full, AI defenders get their
     // one chance to Stoß; a human defender still has the first-trick window.
@@ -583,7 +589,7 @@ export class GameEngine {
     // players are ready (see setReady).
     state.status = "ROUND_OVER";
     state.currentTrick = null;
-    state.readyState = { p1: false, p3: !state.players[2].isHuman };
+    state.readyState = freshReadyState(state.players);
     this.log(state, "log.roundOver", { names: result.winnerIds.map((id) => this.playerName(id)).join(", ") });
   }
 
@@ -602,17 +608,10 @@ export class GameEngine {
   processRematch(): void {
     this.clearTimer();
     this.mutate((state) => {
-      state.readyState = { p1: false, p3: !state.players[2].isHuman };
       state.scores = { p1: 0, p2: 0, p3: 0, p4: 0 };
       state.roundNumber = 0;
       state.dealerIdx = 3;
-      this.dealInto(state);
-      state.dealerIdx = (state.dealerIdx + 1) % 4;
-      state.activePlayerIdx = (state.dealerIdx + 1) % 4;
-      state.roundNumber += 1;
-      state.lastResult = undefined;
-      state.logs = [{ key: "log.deal", params: { round: state.roundNumber, dealer: state.players[state.dealerIdx].name } }];
-      this.resetBidding(state);
+      this.beginRound(state);
     });
     this.scheduleProgress();
   }
@@ -724,6 +723,11 @@ export class GameEngine {
     const snapshot = this.getState();
     this.listeners.forEach((listener) => listener(snapshot));
   }
+}
+
+/** Fresh ready flags: humans must click ready; an AI at seat 3 (solo) auto-readies. */
+function freshReadyState(players: Player[]): GameState["readyState"] {
+  return { p1: false, p3: !players[2].isHuman };
 }
 
 function makePlayer(id: SeatId, name: string, isHuman: boolean, seatIndex: number): Player {

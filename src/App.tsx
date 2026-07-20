@@ -9,8 +9,7 @@ import { useGameSession } from "./session/useGameSession";
 import { PlayerActionType } from "./types";
 import { translations } from "./lib/i18n";
 import { useSettings } from "./lib/settings";
-import { BookOpenIcon, BotIcon, ChartColumnIcon, HomeIcon, SettingsIcon } from "./components/icons";
-
+import { BookOpenIcon, BotIcon, ChartColumnIcon, HomeIcon, PlugZapIcon, SettingsIcon, WifiIcon } from "./components/icons";
 
 /**
  * Deep-link join (#7, Option A): read an invite code from the URL fragment
@@ -25,18 +24,6 @@ function readInviteFromHash(): string {
     return "";
   }
 }
-
-/** Inline SVG icons — replaces lucide-react */
-const WifiIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M5 12.55a11 11 0 0 1 14.08 0" /><path d="M1.42 9a16 16 0 0 1 21.16 0" /><path d="M8.53 16.11a6 6 0 0 1 6.95 0" /><line x1="12" y1="20" x2="12.01" y2="20" />
-  </svg>
-);
-const PlugZapIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z" /><path d="m2 22 3-3" /><path d="M7.5 13.5 10 11" /><path d="M10.5 16.5 13 14" /><path d="m18 3-4 4h6l-4 4" />
-  </svg>
-);
 
 export default function App() {
   // All persisted device preferences flow through one store (see lib/settings).

@@ -71,6 +71,35 @@ function SettingRow({
   );
 }
 
+/** A house-rule setting: a one-line row whose control is a two-option toggle. */
+function ToggleRow({
+  title,
+  hint,
+  options,
+}: {
+  title: string;
+  hint: string;
+  options: Array<{ label: string; selected: boolean; onSelect: () => void }>;
+}) {
+  return (
+    <SettingRow label={title} hint={hint}>
+      <div className="mode-switch" role="group" aria-label={title}>
+        {options.map((option) => (
+          <button
+            key={option.label}
+            className={option.selected ? "active" : ""}
+            onClick={option.onSelect}
+            aria-pressed={option.selected}
+            type="button"
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </SettingRow>
+  );
+}
+
 export default function SettingsScreen({
   language,
   onLanguageChange,
@@ -160,68 +189,32 @@ export default function SettingsScreen({
         </div>
       </SettingRow>
 
-      <SettingRow label={t.settingsLaufende} hint={t.settingsLaufendeHint}>
-        <div className="mode-switch" role="group" aria-label={t.settingsLaufende}>
-          <button
-            className={!disableLaufende ? "active" : ""}
-            onClick={() => onDisableLaufendeChange(false)}
-            aria-pressed={!disableLaufende}
-            type="button"
-          >
-            {t.settingsLaufendeCount}
-          </button>
-          <button
-            className={disableLaufende ? "active" : ""}
-            onClick={() => onDisableLaufendeChange(true)}
-            aria-pressed={disableLaufende}
-            type="button"
-          >
-            {t.settingsLaufendeOff}
-          </button>
-        </div>
-      </SettingRow>
+      <ToggleRow
+        title={t.settingsLaufende}
+        hint={t.settingsLaufendeHint}
+        options={[
+          { label: t.settingsLaufendeCount, selected: !disableLaufende, onSelect: () => onDisableLaufendeChange(false) },
+          { label: t.settingsLaufendeOff, selected: disableLaufende, onSelect: () => onDisableLaufendeChange(true) },
+        ]}
+      />
 
-      <SettingRow label={t.settingsRamsch} hint={t.settingsRamschHint}>
-        <div className="mode-switch" role="group" aria-label={t.settingsRamsch}>
-          <button
-            className={!enableRamsch ? "active" : ""}
-            onClick={() => onEnableRamschChange(false)}
-            aria-pressed={!enableRamsch}
-            type="button"
-          >
-            {t.settingsRamschOff}
-          </button>
-          <button
-            className={enableRamsch ? "active" : ""}
-            onClick={() => onEnableRamschChange(true)}
-            aria-pressed={enableRamsch}
-            type="button"
-          >
-            {t.settingsRamschPlay}
-          </button>
-        </div>
-      </SettingRow>
+      <ToggleRow
+        title={t.settingsRamsch}
+        hint={t.settingsRamschHint}
+        options={[
+          { label: t.settingsRamschOff, selected: !enableRamsch, onSelect: () => onEnableRamschChange(false) },
+          { label: t.settingsRamschPlay, selected: enableRamsch, onSelect: () => onEnableRamschChange(true) },
+        ]}
+      />
 
-      <SettingRow label={t.settingsStoss} hint={t.settingsStossHint}>
-        <div className="mode-switch" role="group" aria-label={t.settingsStoss}>
-          <button
-            className={enableStoss ? "active" : ""}
-            onClick={() => onEnableStossChange(true)}
-            aria-pressed={enableStoss}
-            type="button"
-          >
-            {t.settingsStossPlay}
-          </button>
-          <button
-            className={!enableStoss ? "active" : ""}
-            onClick={() => onEnableStossChange(false)}
-            aria-pressed={!enableStoss}
-            type="button"
-          >
-            {t.settingsStossOff}
-          </button>
-        </div>
-      </SettingRow>
+      <ToggleRow
+        title={t.settingsStoss}
+        hint={t.settingsStossHint}
+        options={[
+          { label: t.settingsStossPlay, selected: enableStoss, onSelect: () => onEnableStossChange(true) },
+          { label: t.settingsStossOff, selected: !enableStoss, onSelect: () => onEnableStossChange(false) },
+        ]}
+      />
 
       <SettingRow
         label={t.settingsUpdates}

@@ -8,6 +8,8 @@ import { CopyIcon, CheckIcon, LoaderIcon, LinkIcon, ShareIcon, QrCodeIcon, ScanI
 import QRCodeView from "./QRCodeView";
 import QRScanner, { detectQrScanSupport } from "./QRScanner";
 
+type Strings = (typeof translations)[Language];
+
 interface PairingPanelProps {
   language: Language;
   mode: "host" | "join";
@@ -20,6 +22,117 @@ interface PairingPanelProps {
    * mount, exactly as if the user had pasted it and clicked "Generate reply".
    */
   initialInvite?: string;
+}
+
+/** Read-only code display with copy / share / show-QR actions. */
+function CodeDisplayRow({ value, t, onShowQr }: { value: string; t: Strings; onShowQr: () => void }) {
+  const [copied, setCopied] = useState(false);
+
+  function copyText() {
+    navigator.clipboard
+      ?.writeText(value)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1800);
+      })
+      .catch(() => undefined);
+  }
+
+  function shareText() {
+    if (navigator.share) {
+      navigator.share({ text: value }).catch(() => undefined);
+    } else {
+      copyText();
+    }
+  }
+
+  return (
+    <div className="code-row">
+      <textarea
+        className="input code-textarea"
+        readOnly
+        value={value}
+        rows={2}
+        onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+      />
+      <button
+        className="secondary-button"
+        onClick={copyText}
+        type="button"
+        title={copied ? t.copied : t.copy}
+        aria-label={copied ? t.copied : t.copy}
+      >
+        {copied ? <CheckIcon /> : <CopyIcon />}
+      </button>
+      <button className="secondary-button" onClick={shareText} type="button" title={t.share} aria-label={t.share}>
+        <ShareIcon />
+      </button>
+      <button className="secondary-button" onClick={onShowQr} type="button" title={t.showQr} aria-label={t.showQr}>
+        <QrCodeIcon />
+      </button>
+    </div>
+  );
+}
+
+/** Editable paste field with clipboard-paste and (where supported) QR-scan actions. */
+function PasteCodeRow({
+  value,
+  placeholder,
+  onChange,
+  t,
+  scanTitle,
+  onScan,
+}: {
+  value: string;
+  placeholder: string;
+  onChange: (value: string) => void;
+  t: Strings;
+  /** Undefined hides the scan button (camera unsupported). */
+  scanTitle?: string;
+  onScan: () => void;
+}) {
+  function pasteFromClipboard() {
+    navigator.clipboard
+      ?.readText()
+      .then((text) => {
+        if (text) onChange(text.trim());
+      })
+      .catch(() => undefined);
+  }
+
+  return (
+    <div className="code-row">
+      <textarea
+        className="input code-textarea"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={2}
+      />
+      <button className="secondary-button" onClick={pasteFromClipboard} type="button" title={t.paste} aria-label={t.paste}>
+        <PasteIcon />
+      </button>
+      {scanTitle && (
+        <button className="secondary-button" onClick={onScan} type="button" title={scanTitle} aria-label={scanTitle}>
+          <ScanIcon />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Fullscreen QR modal; clicking the backdrop or the X closes it. */
+function QrPopup({ data, label, t, onClose }: { data: string; label: string; t: Strings; onClose: () => void }) {
+  return (
+    <div className="qr-popup-overlay" role="dialog" aria-label={t.showQr} onClick={onClose}>
+      <div className="qr-popup-box" onClick={(e) => e.stopPropagation()}>
+        <button className="qr-popup-close" onClick={onClose} type="button" aria-label={t.cancel}>
+          <XIcon size={20} />
+        </button>
+        <QRCodeView data={data} label={label} />
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -43,8 +156,6 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
   const [busy, setBusy] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState("");
-  const [copied, setCopied] = useState(false);
-  const [linkCopied, setLinkCopied] = useState(false);
   // QR pairing (issue #7, Option C): scanning is only offered where camera is
   // supported; QR *display* is always available.
   const [scanSupported, setScanSupported] = useState(false);
@@ -172,37 +283,6 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
-  function copyText(text: string) {
-    navigator.clipboard
-      ?.writeText(text)
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1800);
-      })
-      .catch(() => undefined);
-  }
-
-  function shareText(text: string) {
-    if (navigator.share) {
-      navigator.share({
-        text: text,
-      }).catch(() => undefined);
-    } else {
-      copyText(text);
-    }
-  }
-
-  function pasteFromClipboard() {
-    navigator.clipboard
-      ?.readText()
-      .then((text) => {
-        if (text) {
-          setPastedCode(text.trim());
-        }
-      })
-      .catch(() => undefined);
-  }
-
   if (mode === "host") {
     return (
       <div className="pairing-flow">
@@ -215,75 +295,19 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
         {inviteCode && (
           <>
             <label className="field-label">{t.inviteCode}</label>
-            <div className="code-row">
-              <textarea
-                className="input code-textarea"
-                readOnly
-                value={inviteCode}
-                rows={2}
-                onClick={(e) => (e.target as HTMLTextAreaElement).select()}
-              />
-              <button
-                className="secondary-button"
-                onClick={() => copyText(inviteCode)}
-                type="button"
-                title={copied ? t.copied : t.copy}
-                aria-label={copied ? t.copied : t.copy}
-              >
-                {copied ? <CheckIcon /> : <CopyIcon />}
-              </button>
-              <button
-                className="secondary-button"
-                onClick={() => shareText(inviteCode)}
-                type="button"
-                title={t.share}
-                aria-label={t.share}
-              >
-                <ShareIcon />
-              </button>
-              <button
-                className="secondary-button"
-                onClick={() => setShowingQrModal(true)}
-                type="button"
-                title={t.showQr}
-                aria-label={t.showQr}
-              >
-                <QrCodeIcon />
-              </button>
-            </div>
+            <CodeDisplayRow value={inviteCode} t={t} onShowQr={() => setShowingQrModal(true)} />
 
             {connectionState !== "connected" && (
               <>
                 <label className="field-label">{t.pasteReply}</label>
-                <div className="code-row">
-                  <textarea
-                    className="input code-textarea"
-                    value={pastedCode}
-                    onChange={(e) => setPastedCode(e.target.value)}
-                    placeholder={t.pasteReplyHint}
-                    rows={2}
-                  />
-                  <button
-                    className="secondary-button"
-                    onClick={pasteFromClipboard}
-                    type="button"
-                    title={t.paste}
-                    aria-label={t.paste}
-                  >
-                    <PasteIcon />
-                  </button>
-                  {scanSupported && (
-                    <button
-                      className="secondary-button"
-                      onClick={() => setScanning(true)}
-                      type="button"
-                      title={t.scanReplyQr}
-                      aria-label={t.scanReplyQr}
-                    >
-                      <ScanIcon />
-                    </button>
-                  )}
-                </div>
+                <PasteCodeRow
+                  value={pastedCode}
+                  onChange={setPastedCode}
+                  placeholder={t.pasteReplyHint}
+                  t={t}
+                  scanTitle={scanSupported ? t.scanReplyQr : undefined}
+                  onScan={() => setScanning(true)}
+                />
                 <button
                   className="primary-button"
                   onClick={() => hostAcceptReply()}
@@ -321,26 +345,7 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
           />
         )}
 
-        {showingQrModal && (
-          <div
-            className="qr-popup-overlay"
-            role="dialog"
-            aria-label={t.showQr}
-            onClick={() => setShowingQrModal(false)}
-          >
-            <div className="qr-popup-box" onClick={(e) => e.stopPropagation()}>
-              <button
-                className="qr-popup-close"
-                onClick={() => setShowingQrModal(false)}
-                type="button"
-                aria-label={t.cancel}
-              >
-                <XIcon size={20} />
-              </button>
-              <QRCodeView data={inviteCode} label={t.inviteCode} />
-            </div>
-          </div>
-        )}
+        {showingQrModal && <QrPopup data={inviteCode} label={t.inviteCode} t={t} onClose={() => setShowingQrModal(false)} />}
       </div>
     );
   }
@@ -351,35 +356,14 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
       {!replyCode && (
         <>
           <label className="field-label">{t.pasteInvite}</label>
-          <div className="code-row">
-            <textarea
-              className="input code-textarea"
-              value={pastedCode}
-              onChange={(e) => setPastedCode(e.target.value)}
-              placeholder={t.pasteInviteHint}
-              rows={2}
-            />
-            <button
-              className="secondary-button"
-              onClick={pasteFromClipboard}
-              type="button"
-              title={t.paste}
-              aria-label={t.paste}
-            >
-              <PasteIcon />
-            </button>
-            {scanSupported && (
-              <button
-                className="secondary-button"
-                onClick={() => setScanning(true)}
-                type="button"
-                title={t.scanInviteQr}
-                aria-label={t.scanInviteQr}
-              >
-                <ScanIcon />
-              </button>
-            )}
-          </div>
+          <PasteCodeRow
+            value={pastedCode}
+            onChange={setPastedCode}
+            placeholder={t.pasteInviteHint}
+            t={t}
+            scanTitle={scanSupported ? t.scanInviteQr : undefined}
+            onScan={() => setScanning(true)}
+          />
           <button
             className="primary-button"
             onClick={() => guestGenerateReply()}
@@ -395,42 +379,7 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
       {replyCode && (
         <>
           <label className="field-label">{t.replyCode}</label>
-          <div className="code-row">
-            <textarea
-              className="input code-textarea"
-              readOnly
-              value={replyCode}
-              rows={2}
-              onClick={(e) => (e.target as HTMLTextAreaElement).select()}
-            />
-            <button
-              className="secondary-button"
-              onClick={() => copyText(replyCode)}
-              type="button"
-              title={copied ? t.copied : t.copy}
-              aria-label={copied ? t.copied : t.copy}
-            >
-              {copied ? <CheckIcon /> : <CopyIcon />}
-            </button>
-            <button
-              className="secondary-button"
-              onClick={() => shareText(replyCode)}
-              type="button"
-              title={t.share}
-              aria-label={t.share}
-            >
-              <ShareIcon />
-            </button>
-            <button
-              className="secondary-button"
-              onClick={() => setShowingQrModal(true)}
-              type="button"
-              title={t.showQr}
-              aria-label={t.showQr}
-            >
-              <QrCodeIcon />
-            </button>
-          </div>
+          <CodeDisplayRow value={replyCode} t={t} onShowQr={() => setShowingQrModal(true)} />
         </>
       )}
 
@@ -453,26 +402,7 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
         />
       )}
 
-      {showingQrModal && (
-        <div
-          className="qr-popup-overlay"
-          role="dialog"
-          aria-label={t.showQr}
-          onClick={() => setShowingQrModal(false)}
-        >
-          <div className="qr-popup-box" onClick={(e) => e.stopPropagation()}>
-            <button
-              className="qr-popup-close"
-              onClick={() => setShowingQrModal(false)}
-              type="button"
-              aria-label={t.cancel}
-            >
-              <XIcon size={20} />
-            </button>
-            <QRCodeView data={replyCode} label={t.replyCode} />
-          </div>
-        </div>
-      )}
+      {showingQrModal && <QrPopup data={replyCode} label={t.replyCode} t={t} onClose={() => setShowingQrModal(false)} />}
     </div>
   );
 }
