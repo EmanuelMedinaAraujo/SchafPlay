@@ -189,9 +189,9 @@ export function getAICardPlay(
 
   if (partnerIsWinning) {
     // Our side already holds the trick. As the last player it is safe to
-    // schmier the highest-value card onto it; otherwise stay low so an
-    // opponent still to play can't scoop up the points.
-    return isLastToPlay ? highestValueCard(legalCards) : lowestValueCard(legalCards, gameType);
+    // schmier onto it; otherwise stay low so an opponent still to play can't
+    // scoop up the points.
+    return isLastToPlay ? schmierCard(legalCards, gameType) : lowestValueCard(legalCards, gameType);
   }
 
   // An opponent is winning. Take the trick when it is worth it, using the
@@ -238,6 +238,21 @@ function onSameTeam(a: string, b: string, contract: Contract | null): boolean {
 /** Highest-point card — used to schmier an Ace or Ten to a winning partner. */
 function highestValueCard(cards: Card[]): Card {
   return [...cards].sort((a, b) => b.points - a.points)[0];
+}
+
+/**
+ * Schmier onto a trick the partner has already secured: hand over as many
+ * points as possible without sacrificing a trump honour. Aces, Tens and Kings
+ * are worth pitching for their points, but Obers and Unters are held back — the
+ * 2–3 points they carry here are worth less than the trump trick they can still
+ * win later on. Only when every legal card is an Ober/Unter (following trump
+ * with nothing else) is one given up, and then the least valuable of them.
+ */
+function schmierCard(cards: Card[], gameType: GameType): Card {
+  const keepBack = (card: Card) => card.value === CardValue.OBER || card.value === CardValue.UNTER;
+  const schmierable = cards.filter((card) => !keepBack(card));
+  if (schmierable.length > 0) return highestValueCard(schmierable);
+  return lowestValueCard(cards, gameType);
 }
 
 /** Least valuable throwaway: fewest points, then lowest rank. */
