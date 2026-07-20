@@ -3,31 +3,110 @@
 .settings-screen {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
-.settings-panel {
+/* One-line rows: label + help icon left, control right. Sized so the whole
+   list fits an iPhone 13 in landscape (844x390) without feeling cramped. */
+.settings-panel.settings-row {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 6px 14px;
+}
+
+.settings-row-label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
 }
 
 .settings-panel h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
 }
 
-.settings-panel .mode-switch {
+.settings-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.settings-help[aria-expanded="true"] {
+  color: var(--text);
+}
+
+.settings-tooltip {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 30;
+  width: max-content;
+  max-width: min(340px, 60vw);
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.settings-row-control {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.settings-row .mode-switch {
   margin-top: 0;
+  grid-template-columns: 1fr 1fr;
+  width: min(320px, 60vw);
+  padding: 3px;
+}
+
+/* The language switch is a role="tablist", which pairing.css forces to three
+   columns; here it only ever has two options, so pin it back to two. Needs to
+   out-specify that rule (0,3,0), hence the extra .settings-screen qualifier. */
+.settings-screen .settings-row [role="tablist"].mode-switch {
   grid-template-columns: 1fr 1fr;
 }
 
-.settings-update-btn {
-  align-self: flex-start;
+.settings-row .mode-switch button {
+  min-height: 34px;
+  font-size: 14px;
 }
 
+/* Touch: keep usable targets without blowing up the row height
+   (overrides the generic 44px rule, which this selector out-specifies). */
+@media (pointer: coarse) {
+  .settings-row .mode-switch button {
+    min-height: 40px;
+  }
+
+  .settings-help {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* Full-width status line under the row (flex-wrap pushes it down). */
 .settings-update-status {
+  width: 100%;
   margin: 0;
   font-size: 13px;
 }
-

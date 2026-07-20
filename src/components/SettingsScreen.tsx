@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
 import { checkForUpdate } from "../lib/pwa";
-import { CheckIcon, DownloadIcon, LoaderIcon, RefreshIcon, SettingsIcon } from "./icons";
+import { CheckIcon, DownloadIcon, HelpCircleIcon, LoaderIcon, RefreshIcon, SettingsIcon } from "./icons";
 import { gameHistoryStore } from "../persistence";
 import { formatGamesForExport } from "../lib/export";
 
@@ -24,8 +24,55 @@ const LANGUAGES: Array<{ code: Language; label: string }> = [
   { code: "en", label: "English" },
 ];
 
-/** A titled two-option toggle panel — the shared shape of every house-rule setting. */
-function ToggleSection({
+/**
+ * One settings line: label (plus optional help tooltip) on the left, the
+ * control on the right. The hint is tap-to-toggle so it works on touch,
+ * and doubles as the help button's accessible label.
+ */
+function SettingRow({
+  label,
+  hint,
+  status,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  status?: ReactNode;
+  children: ReactNode;
+}) {
+  const [showHint, setShowHint] = useState(false);
+  return (
+    <section className="panel settings-panel settings-row">
+      <div className="settings-row-label">
+        <h2>{label}</h2>
+        {hint && (
+          <>
+            <button
+              type="button"
+              className="settings-help"
+              aria-label={hint}
+              aria-expanded={showHint}
+              onClick={() => setShowHint((v) => !v)}
+              onBlur={() => setShowHint(false)}
+            >
+              <HelpCircleIcon size={15} />
+            </button>
+            {showHint && (
+              <span role="tooltip" className="settings-tooltip">
+                {hint}
+              </span>
+            )}
+          </>
+        )}
+      </div>
+      <div className="settings-row-control">{children}</div>
+      {status}
+    </section>
+  );
+}
+
+/** A house-rule setting: a one-line row whose control is a two-option toggle. */
+function ToggleRow({
   title,
   hint,
   options,
@@ -35,9 +82,7 @@ function ToggleSection({
   options: Array<{ label: string; selected: boolean; onSelect: () => void }>;
 }) {
   return (
-    <section className="panel settings-panel">
-      <h2>{title}</h2>
-      <p className="muted">{hint}</p>
+    <SettingRow label={title} hint={hint}>
       <div className="mode-switch" role="group" aria-label={title}>
         {options.map((option) => (
           <button
@@ -51,7 +96,7 @@ function ToggleSection({
           </button>
         ))}
       </div>
-    </section>
+    </SettingRow>
   );
 }
 
@@ -127,8 +172,7 @@ export default function SettingsScreen({
         </h2>
       </div>
 
-      <section className="panel settings-panel">
-        <h2>{t.settingsLanguage}</h2>
+      <SettingRow label={t.settingsLanguage}>
         <div className="mode-switch" role="tablist">
           {LANGUAGES.map(({ code, label }) => (
             <button
@@ -143,9 +187,9 @@ export default function SettingsScreen({
             </button>
           ))}
         </div>
-      </section>
+      </SettingRow>
 
-      <ToggleSection
+      <ToggleRow
         title={t.settingsLaufende}
         hint={t.settingsLaufendeHint}
         options={[
@@ -154,7 +198,7 @@ export default function SettingsScreen({
         ]}
       />
 
-      <ToggleSection
+      <ToggleRow
         title={t.settingsRamsch}
         hint={t.settingsRamschHint}
         options={[
@@ -163,7 +207,7 @@ export default function SettingsScreen({
         ]}
       />
 
-      <ToggleSection
+      <ToggleRow
         title={t.settingsStoss}
         hint={t.settingsStossHint}
         options={[
@@ -172,9 +216,11 @@ export default function SettingsScreen({
         ]}
       />
 
-      <section className="panel settings-panel">
-        <h2>{t.settingsUpdates}</h2>
-        <p className="muted">{t.settingsUpdatesHint}</p>
+      <SettingRow
+        label={t.settingsUpdates}
+        hint={t.settingsUpdatesHint}
+        status={statusText && <p className="settings-update-status muted">{statusText}</p>}
+      >
         <button
           className="secondary-button settings-update-btn"
           onClick={onCheckForUpdate}
@@ -190,12 +236,15 @@ export default function SettingsScreen({
           )}
           {t.checkForUpdate}
         </button>
-        {statusText && <p className="settings-update-status muted">{statusText}</p>}
-      </section>
+      </SettingRow>
 
-      <section className="panel settings-panel">
-        <h2>{t.settingsExport}</h2>
-        <p className="muted">{t.settingsExportHint}</p>
+      <SettingRow
+        label={t.settingsExport}
+        hint={t.settingsExportHint}
+        status={
+          exportError && <p className="settings-update-status error-message muted">{exportError}</p>
+        }
+      >
         <button
           className="secondary-button settings-export-btn"
           onClick={onExportGames}
@@ -204,8 +253,7 @@ export default function SettingsScreen({
           <DownloadIcon />
           {t.exportGames}
         </button>
-        {exportError && <p className="settings-update-status error-message muted">{exportError}</p>}
-      </section>
+      </SettingRow>
     </main>
   );
 }
