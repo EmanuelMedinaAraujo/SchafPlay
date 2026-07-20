@@ -24,6 +24,37 @@ const LANGUAGES: Array<{ code: Language; label: string }> = [
   { code: "en", label: "English" },
 ];
 
+/** A titled two-option toggle panel — the shared shape of every house-rule setting. */
+function ToggleSection({
+  title,
+  hint,
+  options,
+}: {
+  title: string;
+  hint: string;
+  options: Array<{ label: string; selected: boolean; onSelect: () => void }>;
+}) {
+  return (
+    <section className="panel settings-panel">
+      <h2>{title}</h2>
+      <p className="muted">{hint}</p>
+      <div className="mode-switch" role="group" aria-label={title}>
+        {options.map((option) => (
+          <button
+            key={option.label}
+            className={option.selected ? "active" : ""}
+            onClick={option.onSelect}
+            aria-pressed={option.selected}
+            type="button"
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function SettingsScreen({
   language,
   onLanguageChange,
@@ -114,74 +145,32 @@ export default function SettingsScreen({
         </div>
       </section>
 
-      <section className="panel settings-panel">
-        <h2>{t.settingsLaufende}</h2>
-        <p className="muted">{t.settingsLaufendeHint}</p>
-        <div className="mode-switch" role="group" aria-label={t.settingsLaufende}>
-          <button
-            className={!disableLaufende ? "active" : ""}
-            onClick={() => onDisableLaufendeChange(false)}
-            aria-pressed={!disableLaufende}
-            type="button"
-          >
-            {t.settingsLaufendeCount}
-          </button>
-          <button
-            className={disableLaufende ? "active" : ""}
-            onClick={() => onDisableLaufendeChange(true)}
-            aria-pressed={disableLaufende}
-            type="button"
-          >
-            {t.settingsLaufendeOff}
-          </button>
-        </div>
-      </section>
+      <ToggleSection
+        title={t.settingsLaufende}
+        hint={t.settingsLaufendeHint}
+        options={[
+          { label: t.settingsLaufendeCount, selected: !disableLaufende, onSelect: () => onDisableLaufendeChange(false) },
+          { label: t.settingsLaufendeOff, selected: disableLaufende, onSelect: () => onDisableLaufendeChange(true) },
+        ]}
+      />
 
-      <section className="panel settings-panel">
-        <h2>{t.settingsRamsch}</h2>
-        <p className="muted">{t.settingsRamschHint}</p>
-        <div className="mode-switch" role="group" aria-label={t.settingsRamsch}>
-          <button
-            className={!enableRamsch ? "active" : ""}
-            onClick={() => onEnableRamschChange(false)}
-            aria-pressed={!enableRamsch}
-            type="button"
-          >
-            {t.settingsRamschOff}
-          </button>
-          <button
-            className={enableRamsch ? "active" : ""}
-            onClick={() => onEnableRamschChange(true)}
-            aria-pressed={enableRamsch}
-            type="button"
-          >
-            {t.settingsRamschPlay}
-          </button>
-        </div>
-      </section>
+      <ToggleSection
+        title={t.settingsRamsch}
+        hint={t.settingsRamschHint}
+        options={[
+          { label: t.settingsRamschOff, selected: !enableRamsch, onSelect: () => onEnableRamschChange(false) },
+          { label: t.settingsRamschPlay, selected: enableRamsch, onSelect: () => onEnableRamschChange(true) },
+        ]}
+      />
 
-      <section className="panel settings-panel">
-        <h2>{t.settingsStoss}</h2>
-        <p className="muted">{t.settingsStossHint}</p>
-        <div className="mode-switch" role="group" aria-label={t.settingsStoss}>
-          <button
-            className={enableStoss ? "active" : ""}
-            onClick={() => onEnableStossChange(true)}
-            aria-pressed={enableStoss}
-            type="button"
-          >
-            {t.settingsStossPlay}
-          </button>
-          <button
-            className={!enableStoss ? "active" : ""}
-            onClick={() => onEnableStossChange(false)}
-            aria-pressed={!enableStoss}
-            type="button"
-          >
-            {t.settingsStossOff}
-          </button>
-        </div>
-      </section>
+      <ToggleSection
+        title={t.settingsStoss}
+        hint={t.settingsStossHint}
+        options={[
+          { label: t.settingsStossPlay, selected: enableStoss, onSelect: () => onEnableStossChange(true) },
+          { label: t.settingsStossOff, selected: !enableStoss, onSelect: () => onEnableStossChange(false) },
+        ]}
+      />
 
       <section className="panel settings-panel">
         <h2>{t.settingsUpdates}</h2>
