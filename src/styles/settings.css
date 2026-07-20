@@ -79,6 +79,13 @@
   padding: 3px;
 }
 
+/* The language switch is a role="tablist", which pairing.css forces to three
+   columns; here it only ever has two options, so pin it back to two. Needs to
+   out-specify that rule (0,3,0), hence the extra .settings-screen qualifier. */
+.settings-screen .settings-row [role="tablist"].mode-switch {
+  grid-template-columns: 1fr 1fr;
+}
+
 .settings-row .mode-switch button {
   min-height: 34px;
   font-size: 14px;
