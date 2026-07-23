@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
 import { Contract, GameType, Language, Player, StossEntry } from "../types";
 import { translations } from "../lib/i18n";
+import { resolveAvatarSrc } from "../lib/avatars";
 import { UserIcon, BotIcon } from "./icons";
 
 interface PlayerSeatProps {
@@ -88,15 +89,9 @@ export default function PlayerSeat({ player, position, active, contract, stoss, 
   const role: Role = isDeclarer ? "declarer" : isPartner ? "partner" : null;
   const badgeRef = useRoleBadgeReveal(role);
 
-  // Select avatar image based on player's name/ID
-  let avatarUrl = "";
-  if (player.id === "p2" || player.name === "Resi") {
-    avatarUrl = `${import.meta.env.BASE_URL}avatar_resi.jpg`;
-  } else if (player.id === "p4" || player.name === "Sepp") {
-    avatarUrl = `${import.meta.env.BASE_URL}avatar_sepp.jpg`;
-  } else {
-    avatarUrl = `${import.meta.env.BASE_URL}avatar_woman2.jpg`;
-  }
+  // Profile picture (#14): a preset or uploaded picture resolved from the
+  // player's synced avatar string, falling back by seat kind.
+  const avatarUrl = resolveAvatarSrc(player.avatar, player.isHuman);
 
   return (
     <div className={`seat seat-${position} ${active ? "active" : ""} ${player.connected === false ? "offline" : ""}`}>

@@ -6,7 +6,7 @@ import { GameState, PlayerAction } from "../game/types";
  *
  * - Host → Guest: GAME_STATE_UPDATE `{ state: RedactedGameState }`
  * - Guest → Host: PLAYER_ACTION `{ action: PlayerAction }`
- * - Guest → Host on connect: CONNECTION_ACK `{ name }` (guest display name)
+ * - Guest → Host on connect: CONNECTION_ACK `{ name, avatar }` (guest display name + profile picture, #14)
  * - PING/PONG are transport-level keepalive, handled inside the transport.
  */
 export enum P2PMessageType {

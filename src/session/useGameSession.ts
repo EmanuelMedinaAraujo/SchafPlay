@@ -8,6 +8,8 @@ import { SoloSession } from "./SoloSession";
 
 export interface UseGameSessionOptions {
   getPlayerName(): string;
+  /** Profile picture (#14) of the local player, synced to the other human. */
+  getPlayerAvatar(): string;
   getTotalRounds(): number;
   /** House rule (#31): whether Laufende are disabled. Read when a session starts a new engine. */
   getDisableLaufende(): boolean;
@@ -42,6 +44,7 @@ export function useGameSession(options: UseGameSessionOptions) {
   if (!depsRef.current) {
     depsRef.current = {
       getPlayerName: () => optionsRef.current.getPlayerName(),
+      getPlayerAvatar: () => optionsRef.current.getPlayerAvatar(),
       getTotalRounds: () => optionsRef.current.getTotalRounds(),
       getDisableLaufende: () => optionsRef.current.getDisableLaufende(),
       getEnableRamsch: () => optionsRef.current.getEnableRamsch(),

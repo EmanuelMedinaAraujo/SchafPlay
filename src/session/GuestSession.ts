@@ -29,7 +29,12 @@ export class GuestSession implements GameSession {
       if (state === "connected") {
         this.deps.events.onEnterGame();
         try {
-          transport.send(createMessage(P2PMessageType.CONNECTION_ACK, { name: this.deps.getPlayerName() }));
+          transport.send(
+            createMessage(P2PMessageType.CONNECTION_ACK, {
+              name: this.deps.getPlayerName(),
+              avatar: this.deps.getPlayerAvatar(),
+            }),
+          );
         } catch {
           // Ignore; host falls back to a default name.
         }

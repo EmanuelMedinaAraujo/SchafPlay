@@ -27,6 +27,7 @@ export class SoloSession implements GameSession {
     this.engine = new GameEngine(deps.getPlayerName(), "Zenzi (KI)", deps.getTotalRounds(), {
       soloMode: true,
       devToolsEnabled: import.meta.env.DEV,
+      hostAvatar: deps.getPlayerAvatar(),
       disableLaufende: deps.getDisableLaufende(),
       enableRamsch: deps.getEnableRamsch(),
       enableStoss: deps.getEnableStoss(),

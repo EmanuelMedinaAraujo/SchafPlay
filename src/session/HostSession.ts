@@ -58,8 +58,9 @@ export class HostSession implements GameSession {
         engine.processAction({ ...action, playerId: "p3" });
       }
       if (message.type === P2PMessageType.CONNECTION_ACK) {
-        const name = (message.payload as { name?: string })?.name;
-        if (name) engine.setGuestName(name);
+        const payload = message.payload as { name?: string; avatar?: string } | undefined;
+        if (payload?.name) engine.setGuestName(payload.name);
+        if (payload?.avatar !== undefined) engine.setGuestAvatar(payload.avatar);
       }
     });
   }
@@ -72,6 +73,7 @@ export class HostSession implements GameSession {
   private createEngine(): void {
     const engine = new GameEngine(this.deps.getPlayerName(), "Gast", this.deps.getTotalRounds(), {
       devToolsEnabled: import.meta.env.DEV,
+      hostAvatar: this.deps.getPlayerAvatar(),
       disableLaufende: this.deps.getDisableLaufende(),
       enableRamsch: this.deps.getEnableRamsch(),
       enableStoss: this.deps.getEnableStoss(),
