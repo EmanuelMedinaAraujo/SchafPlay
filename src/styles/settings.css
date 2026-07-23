@@ -110,3 +110,112 @@
   margin: 0;
   font-size: 13px;
 }
+
+/* ---------- Profile picture (#14) ---------- */
+
+/* The avatar row stacks (label above, picker below) rather than the one-line
+   label/control layout the other settings use. */
+.settings-panel.settings-avatar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 14px 12px;
+}
+
+.avatar-picker {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.avatar-picker-preview {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid var(--red-2);
+  background: #0f1e3d;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+}
+
+.avatar-picker-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-picker-choices {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.avatar-option {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--line);
+  background: #0f1e3d;
+  cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.1s ease;
+}
+
+.avatar-option img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatar-option:hover {
+  transform: translateY(-1px);
+}
+
+.avatar-option.selected {
+  border-color: var(--red-2);
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.35);
+}
+
+.avatar-option-check {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--red-2);
+  color: #fff;
+}
+
+.avatar-upload {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  border-style: dashed;
+}
+
+.avatar-upload:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.avatar-file-input {
+  display: none;
+}
+
+.avatar-picker-error {
+  width: 100%;
+  margin: 0;
+  font-size: 13px;
+}

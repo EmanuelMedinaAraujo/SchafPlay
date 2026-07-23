@@ -99,6 +99,14 @@ export interface Player {
   difficulty?: Difficulty;
   seatIndex: number;
   connected?: boolean;
+  /**
+   * Profile picture (#14), stored as a compact string resolved by
+   * `lib/avatars.ts`: a `preset:<id>` key or a `data:` URL. For human seats it
+   * comes from the device's own settings (host in-state, guest via
+   * CONNECTION_ACK); AI seats are assigned distinct presets by the engine. Not
+   * touched by redaction — an avatar is public, like the name.
+   */
+  avatar?: string;
 }
 
 export interface PlayedCard {

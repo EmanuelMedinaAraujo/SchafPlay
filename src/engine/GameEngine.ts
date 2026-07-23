@@ -50,10 +50,26 @@ export interface EngineOptions {
   enableRamsch?: boolean;
   /** House rule (#57): when true, defenders may Stoß (double) and the declarer may Retour. Default false. */
   enableStoss?: boolean;
+  /** Profile picture (#14) for the host seat (p1), from the host's device settings. */
+  hostAvatar?: string;
+  /** Profile picture (#14) for the guest seat (p3); the guest sends its own via CONNECTION_ACK. */
+  guestAvatar?: string;
 }
 
 /** Dev-skip fallback for seats without a controller of their own. */
 const devFallbackAI = new AIController();
+
+/**
+ * Default profile picture (#14) for each AI seat, as a distinct preset key.
+ * The engine only stores these opaque strings — the UI resolves them against
+ * `lib/avatars.ts` (kept out of the engine graph, which must stay DOM-free for
+ * the Node-side E2E sim). The ids here must match `AVATAR_PRESETS` there.
+ */
+const AI_SEAT_AVATAR: Record<"p2" | "p3" | "p4", string> = {
+  p2: "preset:meadow",
+  p3: "preset:sunset",
+  p4: "preset:sky",
+};
 
 const MAX_LOGS = 30;
 
@@ -81,10 +97,12 @@ export class GameEngine {
     this.enableStoss = options.enableStoss ?? false;
 
     const players: Player[] = [
-      makePlayer("p1", hostName || "Host", true, 0),
-      makePlayer("p2", "Resi (KI)", false, 1),
-      options.soloMode ? makePlayer("p3", "Zenzi (KI)", false, 2) : makePlayer("p3", guestName || "Gast", true, 2),
-      makePlayer("p4", "Sepp (KI)", false, 3),
+      makePlayer("p1", hostName || "Host", true, 0, options.hostAvatar || ""),
+      makePlayer("p2", "Resi (KI)", false, 1, AI_SEAT_AVATAR.p2),
+      options.soloMode
+        ? makePlayer("p3", "Zenzi (KI)", false, 2, AI_SEAT_AVATAR.p3)
+        : makePlayer("p3", guestName || "Gast", true, 2, options.guestAvatar || ""),
+      makePlayer("p4", "Sepp (KI)", false, 3, AI_SEAT_AVATAR.p4),
     ];
 
     // A seat is engine-driven iff it has a controller; defaults keep the
@@ -135,6 +153,13 @@ export class GameEngine {
   setGuestName(name: string): void {
     this.mutate((state) => {
       state.players[2].name = name.trim() || "Gast";
+    });
+  }
+
+  /** Apply the guest's own profile picture (#14), sent on connect. */
+  setGuestAvatar(avatar: string): void {
+    this.mutate((state) => {
+      state.players[2].avatar = avatar || "";
     });
   }
 
@@ -730,7 +755,7 @@ function freshReadyState(players: Player[]): GameState["readyState"] {
   return { p1: false, p3: !players[2].isHuman };
 }
 
-function makePlayer(id: SeatId, name: string, isHuman: boolean, seatIndex: number): Player {
+function makePlayer(id: SeatId, name: string, isHuman: boolean, seatIndex: number, avatar: string): Player {
   return {
     id,
     name,
@@ -739,6 +764,7 @@ function makePlayer(id: SeatId, name: string, isHuman: boolean, seatIndex: numbe
     pointsCollected: 0,
     seatIndex,
     connected: true,
+    avatar,
   };
 }
 
