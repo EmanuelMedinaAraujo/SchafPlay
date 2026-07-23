@@ -35,6 +35,12 @@ export default defineConfig(({ command }) => {
             const cards = fs.existsSync(cardsDir)
               ? fs.readdirSync(cardsDir).map((file) => `${base}bavarian-cards/${file}`)
               : [];
+            // Preset profile-picture files (#14) live in a public/avatars/
+            // subdir, so the root-image sweep below doesn't reach them.
+            const avatarsDir = path.resolve(__dirname, 'dist/avatars');
+            const avatars = fs.existsSync(avatarsDir)
+              ? fs.readdirSync(avatarsDir).map((file) => `${base}avatars/${file}`)
+              : [];
             // Precache the static images copied from public/ (avatars, game
             // background, …). They are referenced by absolute URL at runtime,
             // so without this they'd only be cached after a first online fetch
@@ -54,6 +60,7 @@ export default defineConfig(({ command }) => {
               `${base}manifest.json`,
               ...assets,
               ...cards,
+              ...avatars,
               ...rootImages,
             ];
             // Drop duplicates (e.g. the icons already listed explicitly).

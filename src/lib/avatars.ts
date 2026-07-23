@@ -3,8 +3,11 @@
  * never as a raw asset URL, so it survives the WebRTC wire and localStorage:
  *
  * - `"preset:<id>"` — one of the five built-in sheep avatars below. Only the
- *   id travels; both devices resolve it against this shared module, so a preset
- *   choice costs a dozen bytes on the wire.
+ *   id travels; both devices resolve it against this shared module to the same
+ *   `public/avatars/<id>.svg` file, so a preset choice costs a dozen bytes on
+ *   the wire. The files are precached by the service worker (see the
+ *   `sw-version-injector` block in `vite.config.ts`), so presets render
+ *   offline-first like the rest of the app's static images.
  * - `"data:image/..."` — a custom picture the player uploaded, already
  *   downscaled to a small square JPEG data URL by `lib/image.ts`.
  * - `""` / undefined — no choice made; falls back to the legacy default photo
@@ -17,52 +20,26 @@
 
 export interface AvatarPreset {
   id: string;
-  /** A self-contained SVG data URI — no network fetch, syncs as a bare id. */
+  /** URL of the preset image file in `public/avatars/`; syncs as a bare id. */
   src: string;
 }
 
-/**
- * Build one flat, circular sheep face. Variants differ only by background
- * gradient and an accent colour (cheeks + the little tuft), which is plenty to
- * tell five of them apart at avatar size.
- */
-function sheep(bg1: string, bg2: string, accent: string, key: string): string {
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>` +
-    `<defs><radialGradient id='b${key}' cx='50%' cy='36%' r='78%'>` +
-    `<stop offset='0%' stop-color='${bg1}'/><stop offset='100%' stop-color='${bg2}'/>` +
-    `</radialGradient></defs>` +
-    `<circle cx='50' cy='50' r='50' fill='url(#b${key})'/>` +
-    `<ellipse cx='36' cy='40' rx='7' ry='10' fill='#6b6478' transform='rotate(-18 36 40)'/>` +
-    `<ellipse cx='64' cy='40' rx='7' ry='10' fill='#6b6478' transform='rotate(18 64 40)'/>` +
-    `<g fill='#f8f4ec'>` +
-    `<circle cx='34' cy='40' r='12'/><circle cx='66' cy='40' r='12'/>` +
-    `<circle cx='40' cy='30' r='12'/><circle cx='60' cy='30' r='12'/>` +
-    `<circle cx='50' cy='26' r='13'/>` +
-    `<circle cx='30' cy='55' r='11'/><circle cx='70' cy='55' r='11'/>` +
-    `<circle cx='40' cy='66' r='12'/><circle cx='60' cy='66' r='12'/>` +
-    `<circle cx='50' cy='69' r='12'/><circle cx='50' cy='48' r='20'/>` +
-    `</g>` +
-    `<ellipse cx='50' cy='52' rx='18' ry='19' fill='#4a4553'/>` +
-    `<ellipse cx='50' cy='60' rx='13' ry='12' fill='#efe9df'/>` +
-    `<ellipse cx='43' cy='50' rx='4.6' ry='5.4' fill='#fff'/>` +
-    `<ellipse cx='57' cy='50' rx='4.6' ry='5.4' fill='#fff'/>` +
-    `<circle cx='43.7' cy='51' r='2.4' fill='#2c2a33'/>` +
-    `<circle cx='57.7' cy='51' r='2.4' fill='#2c2a33'/>` +
-    `<circle cx='40' cy='60' r='3.1' fill='${accent}' opacity='0.7'/>` +
-    `<circle cx='60' cy='60' r='3.1' fill='${accent}' opacity='0.7'/>` +
-    `<path d='M46 58 Q50 62 54 58' stroke='#2c2a33' stroke-width='1.6' fill='none' stroke-linecap='round'/>` +
-    `<path d='M50 20 q4 -8 9 -4 q-2 6 -9 6 q-7 0 -9 -6 q5 -4 9 4z' fill='${accent}'/>` +
-    `</svg>`;
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+/** The `public/avatars/<id>.svg` file for a preset id, under the deploy base. */
+function presetSrc(id: string): string {
+  return `${import.meta.env.BASE_URL}avatars/${id}.svg`;
 }
 
-/** The five preselection avatars offered for the AI (and the human, if they like). */
+/**
+ * The five preselection avatars offered for the AI (and the human, if they
+ * like). Each id maps to a `public/avatars/<id>.svg` file — flat circular sheep
+ * faces differing by background gradient and accent colour.
+ */
 export const AVATAR_PRESETS: AvatarPreset[] = [
-  { id: "meadow", src: sheep("#b7e8ae", "#4fae6e", "#ef7a85", "meadow") },
-  { id: "sky", src: sheep("#add9ff", "#4d94d6", "#ffc94d", "sky") },
-  { id: "sunset", src: sheep("#ffd3a5", "#f6915d", "#7b6ef6", "sunset") },
-  { id: "lavender", src: sheep("#dcccff", "#9d7fe0", "#ff9ec2", "lavender") },
-  { id: "rose", src: sheep("#ffc9d6", "#f27a9b", "#5fc0c7", "rose") },
+  { id: "meadow", src: presetSrc("meadow") },
+  { id: "sky", src: presetSrc("sky") },
+  { id: "sunset", src: presetSrc("sunset") },
+  { id: "lavender", src: presetSrc("lavender") },
+  { id: "rose", src: presetSrc("rose") },
 ];
 
 const PRESET_PREFIX = "preset:";
