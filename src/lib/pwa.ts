@@ -19,9 +19,38 @@ function waitUntilInstalled(worker: ServiceWorker): Promise<boolean> {
 }
 
 /**
+ * Reloads the page once the freshly activated worker takes over, so the user
+ * lands on the new version without a manual app restart (#76). `main.tsx`
+ * already reloads on `controllerchange`, but that event is unreliable in some
+ * standalone PWAs (notably iOS), which left users stuck on the old version.
+ * Reloading on the worker's own `activated` state — with a timeout fallback —
+ * closes that gap. Every path guards against a double reload, and the page
+ * unloading on the first reload makes the rest moot.
+ */
+function reloadOnActivation(worker: ServiceWorker): void {
+  if (typeof window === "undefined") return;
+  let reloaded = false;
+  const reload = () => {
+    if (reloaded) return;
+    reloaded = true;
+    window.location.reload();
+  };
+  if (worker.state === "activated") {
+    reload();
+    return;
+  }
+  worker.addEventListener("statechange", () => {
+    if (worker.state === "activated") reload();
+  });
+  // Last-resort fallback if neither `statechange` nor `controllerchange` fires.
+  window.setTimeout(reload, 3000);
+}
+
+/**
  * Manually check for a new app version (#61). This is the only code path
  * that calls `registration.update()`. If a new worker is found, posts
- * SKIP_WAITING to activate it (triggers controllerchange → page reload).
+ * SKIP_WAITING to activate it and reloads the page onto the new version
+ * (#76) so the user never has to restart the app by hand.
  */
 export async function checkForUpdate(): Promise<UpdateResult> {
   if (!("serviceWorker" in navigator)) return "unsupported";
@@ -51,5 +80,6 @@ export async function checkForUpdate(): Promise<UpdateResult> {
   if (!waiting) return "uptodate";
 
   waiting.postMessage({ type: "SKIP_WAITING" });
+  reloadOnActivation(waiting);
   return "updating";
 }
