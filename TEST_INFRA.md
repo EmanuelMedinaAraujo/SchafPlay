@@ -2,7 +2,7 @@
 
 > **Status: implemented (issue #5).** A Playwright suite now runs against Chromium (`playwright.config.ts`), driving the real Vite dev build with two dev-only test seams: `?e2e-seed=<int>` (`src/lib/e2e.ts`) for a seeded shuffle + fast AI pacing, and `data-card-id` attributes on hand/trick cards. `tests/e2e/helpers/simulate.ts` mirrors the same seeded `GameEngine` on the Node side so specs can assert exact hands, contracts and scores before the first click. It runs in CI on every PR and on push to `main` (`.github/workflows/e2e.yml`) and must stay green — see the "Testing" section of `CLAUDE.md`.
 >
-> Coverage is a **subset** of the catalogue below, not the full 71 cases — this document remains the design reference/backlog. The implemented suite is 7 spec files under `tests/e2e/`:
+> Coverage is a **subset** of the catalogue below, not the full 71 cases — this document remains the design reference/backlog. The implemented suite is the spec files under `tests/e2e/`; the feature-level ones map as follows:
 >
 > | Spec file | What it covers | Catalogue cases (partial unless noted) |
 > |---|---|---|
@@ -14,6 +14,7 @@
 > | `partner-badge.spec.ts` | Sauspiel partner ("Mitspieler") badge stays hidden until the called Ace is played, in solo **and** across the real WebRTC channel on the guest's redacted view | Partner reveal aspect of TC-2.5's redaction model and TIER 3 "Partner Reveal" combination (partial, no disconnect leg) |
 > | `settings.spec.ts` | Language switch + persistence, Laufende toggle persistence, list length setting, player name setting | not in the original catalogue (settings/prefs weren't enumerated as a feature) |
 > | `stats.spec.ts` | Empty stats state; a finished solo list is recorded to IndexedDB and displayed with correct won/lost/score | TC-6.1 (partial, stats-recording angle) |
+> | `replay.spec.ts` | Analysis view (#85): the recorded game list opens a round in the replay screen, which steps card by card through the stored trick log — hands shrink, the felt shows the current trick, the completed trick names its winner, and the end state matches the simulation's play order exactly | TC-6.1 (partial, post-mortem/analysis angle) |
 > | `stoss.spec.ts` | Stoß (double, #57): an eligible defender's Stoß button appears beneath their name and doubles the round to exactly x2 (verified against the simulated base result); the setting toggle persists and hides the feature | TC-2.5.3 / TC-3.3 (Stoß leg of the Contra/Re cases) |
 >
 > **Partially in scope now:** the Contra/Re cases (TC-2.5.3, TC-3.3) are covered for the **Stoß** direction (#57) by `stoss.spec.ts` — the timing window (up to the second card of the first trick), defender eligibility, and the score multiplier. Ramsch (TC-2.5.2, TC-3.4) is covered by `ramsch.spec.ts`. A full Retour-leading-to-Schwarz combination remains backlog. WebRTC-layer corner cases around raw SDP mechanics (TC-2.1.1–2.1.4), most Tier-2 boundary/race cases (double-submission races, malformed payloads, max list size, idle/heartbeat takeover), and Tier-3/4 cross-feature combinations beyond reconnect and partner-reveal are also not implemented and remain design reference below.
