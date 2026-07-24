@@ -31,21 +31,30 @@ function presetSrc(id: string): string {
 
 /**
  * The five preselection avatars offered for the AI (and the human, if they
- * like). Each id maps to a `public/avatars/<id>.svg` file — flat circular sheep
- * faces differing by background gradient and accent colour.
+ * like). Each id maps to a `public/avatars/<id>.svg` file — a Bavarian
+ * character bust in Tracht, drawn to match the existing avatar artwork
+ * (see `scripts/gen-avatars.py`, which generates these files).
+ *
+ * The first three ids are also the AI seats' namesakes: Resi, Sepp and Zenzi
+ * (=`kathi`) get their own portraits, so an AI seat looks like who it is.
  */
 export const AVATAR_PRESETS: AvatarPreset[] = [
-  { id: "meadow", src: presetSrc("meadow") },
-  { id: "sky", src: presetSrc("sky") },
-  { id: "sunset", src: presetSrc("sunset") },
-  { id: "lavender", src: presetSrc("lavender") },
-  { id: "rose", src: presetSrc("rose") },
+  { id: "resi", src: presetSrc("resi") },
+  { id: "sepp", src: presetSrc("sepp") },
+  { id: "kathi", src: presetSrc("kathi") },
+  { id: "wastl", src: presetSrc("wastl") },
+  { id: "liesl", src: presetSrc("liesl") },
 ];
 
 const PRESET_PREFIX = "preset:";
 
-/** The legacy default photo for a human seat with no chosen avatar (pre-#14 look). */
-const DEFAULT_HUMAN_AVATAR = `${import.meta.env.BASE_URL}avatar_woman2.jpg`;
+/**
+ * Neutral placeholder for a human seat that has not picked a picture. A small
+ * SVG rather than the 550 kB stock photo the first cut used — every static
+ * image is precached for offline play, and this one also renders on the local
+ * player's own name plate.
+ */
+const DEFAULT_HUMAN_AVATAR = `${import.meta.env.BASE_URL}avatars/default.svg`;
 
 export function presetValue(id: string): string {
   return `${PRESET_PREFIX}${id}`;

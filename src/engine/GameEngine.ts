@@ -60,15 +60,17 @@ export interface EngineOptions {
 const devFallbackAI = new AIController();
 
 /**
- * Default profile picture (#14) for each AI seat, as a distinct preset key.
- * The engine only stores these opaque strings — the UI resolves them against
- * `lib/avatars.ts` (kept out of the engine graph, which must stay DOM-free for
- * the Node-side E2E sim). The ids here must match `AVATAR_PRESETS` there.
+ * Default profile picture (#14) for each AI seat, as a distinct preset key —
+ * each seat gets the portrait of the character it is named after (Resi, Sepp,
+ * and Zenzi on the solo p3 seat). The engine only stores these opaque strings;
+ * the UI resolves them against `lib/avatars.ts` (kept out of the engine graph,
+ * which must stay DOM-free for the Node-side E2E sim). The ids here must match
+ * `AVATAR_PRESETS` there.
  */
 const AI_SEAT_AVATAR: Record<"p2" | "p3" | "p4", string> = {
-  p2: "preset:meadow",
-  p3: "preset:sunset",
-  p4: "preset:sky",
+  p2: "preset:resi",
+  p3: "preset:kathi",
+  p4: "preset:sepp",
 };
 
 const MAX_LOGS = 30;
