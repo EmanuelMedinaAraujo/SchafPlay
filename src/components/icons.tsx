@@ -178,4 +178,41 @@ export const PlugZapIcon = ({ size = 14, className }: IconProps) => (
   </svg>
 );
 
+/** Analysis / replay (#85). */
+export const HistoryIcon = ({ size = 18, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l3 2" />
+  </svg>
+);
+
+export const ArrowLeftIcon = ({ size = 18, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M19 12H5" /><path d="m12 19-7-7 7-7" />
+  </svg>
+);
+
+export const ChevronLeftIcon = ({ size = 18, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="m15 18-6-6 6-6" />
+  </svg>
+);
+
+export const ChevronRightIcon = ({ size = 18, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="m9 18 6-6-6-6" />
+  </svg>
+);
+
+export const SkipBackIcon = ({ size = 18, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polygon points="19 20 9 12 19 4 19 20" /><line x1="5" y1="19" x2="5" y2="5" />
+  </svg>
+);
+
+export const SkipForwardIcon = ({ size = 18, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polygon points="5 4 15 12 5 20 5 4" /><line x1="19" y1="5" x2="19" y2="19" />
+  </svg>
+);
+
 

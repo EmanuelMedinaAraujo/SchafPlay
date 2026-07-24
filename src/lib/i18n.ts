@@ -126,6 +126,23 @@ export const translations = {
     statsShowRounds: "Runden anzeigen",
     statsHideRounds: "Runden ausblenden",
 
+    // Analysis / replay (#85)
+    analysis: "Analyse",
+    analysisHint: "Wähle ein Spiel, klapp es auf und spiel eine Runde Stich für Stich nach.",
+    analysisGames: "Gespielte Spiele",
+    replay: "Nachspielen",
+    replayBack: "Zurück zur Übersicht",
+    replayDeal: "Ausgeteilt",
+    replayStep: "Karte",
+    replayFirst: "Zum Anfang",
+    replayPrev: "Eine Karte zurück",
+    replayNext: "Nächste Karte",
+    replayLast: "Zum Ende",
+    replayTricks: "Stiche",
+    replayToPlay: "Am Zug",
+    replayTrickTo: "Stich für",
+    replayNoTricks: "Für diese Runde sind keine Stiche gespeichert.",
+
     // Settings
     settings: "Einstellungen",
     settingsLanguage: "Sprache",
@@ -291,6 +308,23 @@ export const translations = {
     statsTrendEmpty: "Not enough finished lists yet for a trend.",
     statsShowRounds: "Show rounds",
     statsHideRounds: "Hide rounds",
+
+    // Analysis / replay (#85)
+    analysis: "Analysis",
+    analysisHint: "Pick a game, expand it and replay a round trick by trick.",
+    analysisGames: "Played games",
+    replay: "Replay",
+    replayBack: "Back to the list",
+    replayDeal: "Dealt",
+    replayStep: "Card",
+    replayFirst: "To the start",
+    replayPrev: "One card back",
+    replayNext: "Next card",
+    replayLast: "To the end",
+    replayTricks: "Tricks",
+    replayToPlay: "To play",
+    replayTrickTo: "Trick to",
+    replayNoTricks: "No tricks were recorded for this round.",
 
     // Settings
     settings: "Settings",

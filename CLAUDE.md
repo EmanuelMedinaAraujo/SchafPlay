@@ -29,6 +29,7 @@ players/     PlayerController interface + AIController + AI heuristics
 engine/      GameEngine (state machine) + redaction (pure redactStateFor)
 net/         Transport & Signaling interfaces, WebRTCPeer, sdpCodec, protocol
 persistence/ GameHistoryStore interface, IndexedDB store, ListRecorder
+analysis/    pure derivations over stored history (round replay)
 session/     Host/Guest/SoloSession + useGameSession (orchestration)
 components/  presentational React; App.tsx is the UI shell
 lib/         i18n, pwa, cardDisplay, settings
@@ -88,6 +89,13 @@ Terminology (see issue #22): a **list** is a whole session; it consists of **rou
   4. All games keep their full per-round `rounds` detail — no stripping. A `RoundRecord` contains the dealt hand, the contract, every trick in play order (compact card ids), and the scoring result. Indexes `finishedAt`/`mode`/`players` support the planned analysis view (#16).
   5. All reads and writes go through the `persistence/` module (the `gameHistoryStore` singleton).
 
+### Analysis & replay (`src/analysis/`)
+
+- **`replay.ts`** (#85) reconstructs a played round from a stored `RoundRecord`: `buildReplay(round)` rebuilds all four dealt hands from the trick log (a completed round contains all 32 cards *with* the seat that played each, so this works from a guest's redacted recording too — it never reads `initialHand`, which only holds the local seat's cards), and `replayViewAt(replay, step)` returns the board after N cards. Pure, synchronous, `import type`-only on `persistence/` so Node-side consumers don't pull in IndexedDB.
+- Deliberately **not** a `GameEngine` re-run: the engine is timer-driven and needs the shuffle seed (never stored). Playback only needs what happened, and the trick log already has it.
+- No schema change was needed and none should be: anything the replay wants must be derivable from `RoundRecord`, otherwise `DB_VERSION` rules in `persistence/` apply. Old records degrade gracefully (missing `winnerId` is re-derived via `determineTrickWinner`, `contract: null` falls back to Sauspiel trump order for display).
+- `AnalysisScreen` lists the recorded games (the stats row list, plus a replay button per round) and `ReplayScreen` renders one round step by step. Neither touches the engine; `App.tsx` routes between them.
+
 ### UI
 
 - Landscape-only design: `src/App.tsx` rotates the whole app 90° via a `rotated` class on `<html>` when the viewport is portrait, and adds a `compact` class for short *effective* height (post-rotation) that plain CSS media queries can't detect on their own — both are driven by a `resize`/orientation-change listener, not CSS alone.
@@ -96,7 +104,7 @@ Terminology (see issue #22): a **list** is a whole session; it consists of **rou
 
 ## Testing
 
-A Playwright E2E suite exists (`tests/e2e/*.spec.ts`, 19 tests, resolves issue #5) and **must be kept green** — it runs in CI (`.github/workflows/e2e.yml`) on every pull request and on push to `main`. It covers WebRTC pairing/reconnect, bidding legality, card-play rule enforcement, scored full rounds, a full 4-round list, partner-badge redaction over the wire, settings persistence, and stats recording. `TEST_INFRA.md` maps which documented test cases each spec file covers.
+A Playwright E2E suite exists (`tests/e2e/*.spec.ts`, 33 tests, resolves issue #5) and **must be kept green** — it runs in CI (`.github/workflows/e2e.yml`) on every pull request and on push to `main`. It covers WebRTC pairing/reconnect, bidding legality, card-play rule enforcement, scored full rounds, a full 4-round list, partner-badge redaction over the wire, settings persistence, stats recording, and the analysis-view round replay. `TEST_INFRA.md` maps which documented test cases each spec file covers.
 
 - **Running it**: `npm run test:e2e` runs the whole suite headless against the Vite dev server (`playwright.config.ts` starts/reuses it on `127.0.0.1:5173`). `npx playwright install --with-deps chromium` is needed once to fetch the browser. Run a single file with `npx playwright test tests/e2e/gameplay.spec.ts`. `npm run lint` type-checks the app **and** the E2E tests (`tests/e2e/tsconfig.json`) as separate `tsc` projects — a broken spec fails lint.
 - **Determinism model**: tests append `?e2e-seed=<int>` to the URL, which `src/lib/e2e.ts` (DEV-only, dead code in production builds) reads to inject a seeded shuffle (`src/lib/seededShuffle.ts`) and fast AI pacing into the `HostSession`/`SoloSession` engines. `tests/e2e/helpers/simulate.ts` runs a Node-side mirror of the *same* `GameEngine` code with the same seed to precompute the full hand/contract/trick trace before the first click, so gameplay specs can assert exact scores. Because the sim imports the real engine rather than reimplementing it, most engine/AI/shuffle behavior changes are mirrored automatically — but a change that shifts which seeds produce a given bidding/contract scenario can break `findSeed`-located scenarios, so re-run the suite after touching `game/`, `players/aiHeuristics.ts`, or `engine/GameEngine.ts`.
