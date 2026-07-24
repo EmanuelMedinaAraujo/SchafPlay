@@ -103,6 +103,7 @@ src/
 ├── net/                   # Transport & Signaling interfaces, WebRTCPeer, sdpCodec, protocol
 ├── session/               # HostSession/GuestSession/SoloSession + useGameSession
 ├── persistence/           # GameHistoryStore interface, IndexedDB store, ListRecorder
+├── analysis/replay.ts     # Pure reconstruction of a recorded round for the replay view
 ├── components/            # GameBoard, PlayerHand, BiddingPanel, TrickArea, PairingPanel, …
 └── lib/i18n.ts            # German/English incl. structured game log entries
 ```
@@ -118,6 +119,14 @@ The statistics page (chart icon in the header) shows how many matches you have p
 - **A game counts once a match is finished.** Matches you quit or abandon are not recorded at all.
 - Alongside the summary, the full raw data of every round is stored — the hand you were dealt, the contract, every trick in play order and the scoring result — so richer analysis can be added later without losing history.
 - Stored under the localStorage key `schafplay.stats`. Clearing the site data (or the browser's storage for the PWA) clears the statistics.
+
+## Analysis (replay)
+
+The analysis page (clock icon in the header) lists every finished match — date, mode, opponent and result. Expanding a match shows its rounds; **Nachspielen** opens that round as a replay.
+
+- All four hands lie face-up and shrink card by card, the current trick sits on the felt, and points and trick counts run along as each trick completes.
+- Step with the on-screen controls (or the arrow keys) — one card at a time, or jump to the start/end.
+- Works on everything already recorded: the replay is reconstructed from the stored trick log, so no new data had to be collected.
 
 ## Tech stack
 

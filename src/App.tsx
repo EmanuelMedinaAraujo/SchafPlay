@@ -1,15 +1,27 @@
 import { useEffect, useState } from "react";
+import AnalysisScreen from "./components/AnalysisScreen";
 import GameBoard from "./components/GameBoard";
 import HomeScreen from "./components/HomeScreen";
 import PairingPanel from "./components/PairingPanel";
+import ReplayScreen from "./components/ReplayScreen";
 import RulesModal from "./components/RulesModal";
 import SettingsScreen from "./components/SettingsScreen";
 import StatsScreen from "./components/StatsScreen";
 import { useGameSession } from "./session/useGameSession";
 import { PlayerActionType } from "./types";
+import { GameRecord, RoundRecord } from "./persistence";
 import { translations } from "./lib/i18n";
 import { useSettings } from "./lib/settings";
-import { BookOpenIcon, BotIcon, ChartColumnIcon, HomeIcon, PlugZapIcon, SettingsIcon, WifiIcon } from "./components/icons";
+import {
+  BookOpenIcon,
+  BotIcon,
+  ChartColumnIcon,
+  HistoryIcon,
+  HomeIcon,
+  PlugZapIcon,
+  SettingsIcon,
+  WifiIcon,
+} from "./components/icons";
 
 /**
  * Deep-link join (#7, Option A): read an invite code from the URL fragment
@@ -29,8 +41,10 @@ export default function App() {
   // All persisted device preferences flow through one store (see lib/settings).
   const [settings, updateSetting] = useSettings();
   const { language, playerName, totalRounds, disableLaufende, enableRamsch, enableStoss, lastMode } = settings;
-  const [screen, setScreen] = useState<"home" | "game" | "stats" | "settings">("home");
+  const [screen, setScreen] = useState<"home" | "game" | "stats" | "analysis" | "settings">("home");
   const [rulesOpen, setRulesOpen] = useState(false);
+  // The round currently open in the replay (#85); null shows the analysis list.
+  const [replayTarget, setReplayTarget] = useState<{ game: GameRecord; round: RoundRecord } | null>(null);
   // Captured once at startup, before we scrub the fragment below. Reading the
   // hash is synchronous and independent of the service-worker update check in
   // main.tsx, so nothing can race away the invite before we see it.
@@ -102,6 +116,12 @@ export default function App() {
     setScreen("home");
   }
 
+  /** Navigate between the non-game screens; leaving analysis drops the replay. */
+  function openScreen(next: "home" | "stats" | "analysis" | "settings") {
+    setReplayTarget(null);
+    setScreen(next);
+  }
+
   const inGame = screen === "game" && gameState;
   // Keep the overlay up during the whole re-pairing flow ("connecting"
   // included) — it only closes once the peer is actually back.
@@ -113,20 +133,23 @@ export default function App() {
           in-game toolbar carries the contract, round and quit controls. */}
       {!inGame && (
       <header className="topbar">
-        <button className="brand" onClick={() => !inGame && setScreen("home")} type="button">
+        <button className="brand" onClick={() => !inGame && openScreen("home")} type="button">
           <span className="brand-mark">S</span>
           <span>SchafPlay</span>
         </button>
         <div className="topbar-actions">
           {!inGame && (
             <>
-              <button className="icon-button" onClick={() => setScreen("home")} title={t.home} type="button">
+              <button className="icon-button" onClick={() => openScreen("home")} title={t.home} type="button">
                 <HomeIcon />
               </button>
-              <button className="icon-button" onClick={() => setScreen("stats")} title={t.stats} type="button">
+              <button className="icon-button" onClick={() => openScreen("stats")} title={t.stats} type="button">
                 <ChartColumnIcon />
               </button>
-              <button className="icon-button" onClick={() => setScreen("settings")} title={t.settings} type="button">
+              <button className="icon-button" onClick={() => openScreen("analysis")} title={t.analysis} type="button">
+                <HistoryIcon />
+              </button>
+              <button className="icon-button" onClick={() => openScreen("settings")} title={t.settings} type="button">
                 <SettingsIcon />
               </button>
             </>
@@ -152,6 +175,20 @@ export default function App() {
 
       {!inGame && screen === "stats" ? (
         <StatsScreen language={language} />
+      ) : !inGame && screen === "analysis" ? (
+        replayTarget ? (
+          <ReplayScreen
+            game={replayTarget.game}
+            round={replayTarget.round}
+            language={language}
+            onBack={() => setReplayTarget(null)}
+          />
+        ) : (
+          <AnalysisScreen
+            language={language}
+            onReplay={(game, round) => setReplayTarget({ game, round })}
+          />
+        )
       ) : !inGame && screen === "settings" ? (
         <SettingsScreen
           language={language}
