@@ -83,7 +83,8 @@ export default function ReplayScreen({ game, round, language, onBack }: ReplaySc
     ? `${nameOf(result.ramsch?.playerId)} ${result.ramsch?.isDurchmarsch ? t.ramschDurchmarsch : t.ramschLoses}`
     : `${result.declarerWon ? t.declarersWin : t.defendersWin} · ${result.declarerPoints}:${result.defenderPoints}`;
 
-  const trickNumber = replay.tricks.length === 0 ? 0 : view.trickIndex + 1;
+  // At the deal nothing is on the felt yet, so count 0 rather than "1/8".
+  const trickNumber = replay.tricks.length === 0 || step === 0 ? 0 : view.trickIndex + 1;
 
   return (
     <main className="home-screen replay-screen">

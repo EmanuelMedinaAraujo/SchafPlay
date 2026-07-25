@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { GameType, Language } from "../types";
 import { gameLabel, translations } from "../lib/i18n";
 import { GameRecord, RoundRecord, StatsMode, StatsTotals, gameHistoryStore } from "../persistence";
+import GameHistoryList, { VISIBLE_GAMES, signed } from "./GameHistoryList";
 import { BotIcon, ChartColumnIcon, UsersIcon } from "./icons";
 
 const EMPTY_TOTALS: StatsTotals = { played: 0, won: 0, soloPlayed: 0, soloWon: 0, mpPlayed: 0, mpWon: 0 };
@@ -12,8 +13,6 @@ interface StatsScreenProps {
 
 type Filter = "all" | StatsMode;
 
-/** Newest games shown in the list; the store keeps more for later analysis. */
-const VISIBLE_GAMES = 30;
 /** Newest lists plotted in the trend chart (oldest → newest, left → right). */
 const TREND_GAMES = 20;
 
@@ -35,11 +34,6 @@ function contractFamily(round: RoundRecord): ContractFamily | null {
   if (contract.type === GameType.SAUSPIEL) return "SAUSPIEL";
   if (contract.type === GameType.WENZ) return "WENZ";
   return "SOLO";
-}
-
-/** "+N" / "N" — the same signed-score formatting used across the app. */
-function signed(score: number): string {
-  return score > 0 ? `+${score}` : String(score);
 }
 
 export default function StatsScreen({ language }: StatsScreenProps) {
@@ -69,7 +63,6 @@ export default function StatsScreen({ language }: StatsScreenProps) {
   // every derived figure below; the visible list is capped separately.
   const filtered = useMemo(() => games.filter((game) => filter === "all" || game.mode === filter), [games, filter]);
   const visible = filtered.slice(0, VISIBLE_GAMES);
-  const locale = language === "de" ? "de-DE" : "en-GB";
 
   const roundsPlayed = useMemo(() => filtered.reduce((sum, game) => sum + game.rounds.length, 0), [filtered]);
   const pointsBalance = useMemo(
@@ -224,11 +217,7 @@ export default function StatsScreen({ language }: StatsScreenProps) {
         {visible.length === 0 ? (
           <p className="muted">{t.statsEmpty}</p>
         ) : (
-          <div className="stats-game-list">
-            {visible.map((game) => (
-              <GameItem key={game.id} game={game} language={language} locale={locale} />
-            ))}
-          </div>
+          <GameHistoryList games={visible} language={language} />
         )}
       </section>
     </main>
@@ -306,63 +295,5 @@ function TrendChart({ values, ariaLabel }: { values: number[]; ariaLabel: string
         );
       })}
     </svg>
-  );
-}
-
-function GameItem({ game, language, locale }: { game: GameRecord; language: Language; locale: string }) {
-  const t = translations[language];
-  const [expanded, setExpanded] = useState(false);
-  const score = game.finalScores[game.localPlayerId] ?? 0;
-  const date = new Date(game.finishedAt).toLocaleDateString(locale, { day: "2-digit", month: "2-digit", year: "2-digit" });
-  const hasRounds = game.rounds.length > 0;
-
-  return (
-    <div className="stats-game-item">
-      <button
-        className="stats-game-row"
-        type="button"
-        onClick={() => hasRounds && setExpanded((value) => !value)}
-        aria-expanded={expanded}
-        title={hasRounds ? (expanded ? t.statsHideRounds : t.statsShowRounds) : undefined}
-      >
-        <span className="stats-date">{date}</span>
-        <span className="stats-mode-icon">{game.mode === "solo" ? <BotIcon size={14} /> : <UsersIcon size={14} />}</span>
-        <span className="stats-opponent">{game.mode === "solo" ? t.statsSoloOpponent : (game.opponentName ?? "—")}</span>
-        <span className={`stats-score ${score >= 0 ? "positive" : "negative"}`}>{signed(score)}</span>
-        <span className={`stats-result ${game.won ? "won" : "lost"}`}>{game.won ? "W" : "L"}</span>
-      </button>
-      {expanded && hasRounds && (
-        <div className="stats-round-detail">
-          {game.rounds.map((round) => (
-            <RoundRow key={round.roundNumber} round={round} game={game} language={language} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function RoundRow({ round, game, language }: { round: RoundRecord; game: GameRecord; language: Language }) {
-  const t = translations[language];
-  const contract = round.contract;
-  const declarer = contract ? game.players.find((player) => player.id === contract.declarerId) : undefined;
-  const change = round.result.scoreChanges[game.localPlayerId] ?? 0;
-  const label = contract ? gameLabel(language, contract.type, contract.calledSuit, contract.isTout) : "—";
-  const extras = [round.result.isSchwarz ? t.schwarz : round.result.isSchneider ? t.schneider : null]
-    .filter(Boolean)
-    .join(" · ");
-
-  return (
-    <div className="stats-round-row">
-      <span className="stats-round-num">
-        {t.round} {round.roundNumber}
-      </span>
-      <span className="stats-round-contract">
-        {label}
-        {declarer ? ` · ${declarer.name}` : ""}
-        {extras ? ` · ${extras}` : ""}
-      </span>
-      <span className={`stats-score ${change >= 0 ? "positive" : "negative"}`}>{signed(change)}</span>
-    </div>
   );
 }

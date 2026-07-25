@@ -193,12 +193,3 @@ export function replayViewAt(replay: Replay, step: number): ReplayView {
     finished,
   };
 }
-
-/** Step index at which trick `trickIndex` starts (its first card is down). */
-export function stepAtTrickStart(replay: Replay, trickIndex: number): number {
-  let step = 0;
-  for (let index = 0; index < trickIndex && index < replay.tricks.length; index += 1) {
-    step += replay.tricks[index].plays.length;
-  }
-  return Math.min(step + 1, replay.totalSteps);
-}
