@@ -39,7 +39,10 @@ export default defineConfig(({ command }) => {
             // subdir, so the root-image sweep below doesn't reach them.
             const avatarsDir = path.resolve(__dirname, 'dist/avatars');
             const avatars = fs.existsSync(avatarsDir)
-              ? fs.readdirSync(avatarsDir).map((file) => `${base}avatars/${file}`)
+              ? fs
+                  .readdirSync(avatarsDir)
+                  .filter((file) => /\.(png|jpe?g|webp|svg|gif)$/i.test(file))
+                  .map((file) => `${base}avatars/${file}`)
               : [];
             // Precache the static images copied from public/ (avatars, game
             // background, …). They are referenced by absolute URL at runtime,

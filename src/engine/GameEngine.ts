@@ -69,7 +69,7 @@ const devFallbackAI = new AIController();
  */
 const AI_SEAT_AVATAR: Record<"p2" | "p3" | "p4", string> = {
   p2: "preset:resi",
-  p3: "preset:kathi",
+  p3: "preset:zenzi",
   p4: "preset:sepp",
 };
 

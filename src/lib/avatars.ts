@@ -2,9 +2,9 @@
  * Profile pictures (#14). An avatar is stored and synced as a compact string,
  * never as a raw asset URL, so it survives the WebRTC wire and localStorage:
  *
- * - `"preset:<id>"` — one of the five built-in sheep avatars below. Only the
- *   id travels; both devices resolve it against this shared module to the same
- *   `public/avatars/<id>.svg` file, so a preset choice costs a dozen bytes on
+ * - `"preset:<id>"` — one of the five built-in portraits below. Only the id
+ *   travels; both devices resolve it against this shared module to the same
+ *   `public/avatars/<id>.jpg` file, so a preset choice costs a dozen bytes on
  *   the wire. The files are precached by the service worker (see the
  *   `sw-version-injector` block in `vite.config.ts`), so presets render
  *   offline-first like the rest of the app's static images.
@@ -24,24 +24,25 @@ export interface AvatarPreset {
   src: string;
 }
 
-/** The `public/avatars/<id>.svg` file for a preset id, under the deploy base. */
+/** The `public/avatars/<id>.jpg` file for a preset id, under the deploy base. */
 function presetSrc(id: string): string {
-  return `${import.meta.env.BASE_URL}avatars/${id}.svg`;
+  return `${import.meta.env.BASE_URL}avatars/${id}.jpg`;
 }
 
 /**
- * The five preselection avatars offered for the AI (and the human, if they
- * like). Each id maps to a `public/avatars/<id>.svg` file — a Bavarian
- * character bust in Tracht, drawn to match the existing avatar artwork
- * (see `scripts/gen-avatars.py`, which generates these files).
+ * The five preselection portraits, offered to the human and used for the AI
+ * seats. Each id maps to `public/avatars/<id>.jpg` — see the artwork brief in
+ * `public/avatars/README.md`. Adding or replacing a picture is a pure asset
+ * change: drop the file in under the id's name, no code change needed.
  *
- * The first three ids are also the AI seats' namesakes: Resi, Sepp and Zenzi
- * (=`kathi`) get their own portraits, so an AI seat looks like who it is.
+ * `resi`, `sepp` and `zenzi` are the AI seats' namesakes, so an AI seat shows
+ * the character it actually is. `wastl` and `liesl` are the two extra choices
+ * offered to human players.
  */
 export const AVATAR_PRESETS: AvatarPreset[] = [
   { id: "resi", src: presetSrc("resi") },
   { id: "sepp", src: presetSrc("sepp") },
-  { id: "kathi", src: presetSrc("kathi") },
+  { id: "zenzi", src: presetSrc("zenzi") },
   { id: "wastl", src: presetSrc("wastl") },
   { id: "liesl", src: presetSrc("liesl") },
 ];
@@ -49,12 +50,10 @@ export const AVATAR_PRESETS: AvatarPreset[] = [
 const PRESET_PREFIX = "preset:";
 
 /**
- * Neutral placeholder for a human seat that has not picked a picture. A small
- * SVG rather than the 550 kB stock photo the first cut used — every static
- * image is precached for offline play, and this one also renders on the local
- * player's own name plate.
+ * Neutral placeholder for a human seat that has not picked a picture — a plain
+ * silhouette, so "nothing chosen yet" never reads as one of the five presets.
  */
-const DEFAULT_HUMAN_AVATAR = `${import.meta.env.BASE_URL}avatars/default.svg`;
+const DEFAULT_HUMAN_AVATAR = `${import.meta.env.BASE_URL}avatars/default.jpg`;
 
 export function presetValue(id: string): string {
   return `${PRESET_PREFIX}${id}`;
