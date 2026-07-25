@@ -99,6 +99,19 @@ export default function AvatarPicker({ value, onChange, language }: AvatarPicker
         />
       </div>
 
+      {value !== "" && (
+        <button
+          type="button"
+          className="text-button avatar-reset"
+          onClick={() => {
+            setError(null);
+            onChange("");
+          }}
+        >
+          {t.avatarReset}
+        </button>
+      )}
+
       {error && <p className="error-message muted avatar-picker-error">{error}</p>}
     </div>
   );

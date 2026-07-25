@@ -2,6 +2,7 @@ import { GameState, PlayerAction, SeatId } from "../game/types";
 import { ListRecorder } from "../persistence";
 import { createMessage, P2PMessageType } from "../net/protocol";
 import { Transport } from "../net/Transport";
+import { AvatarMap, sanitizeAvatarMap, withAvatars } from "./avatarSync";
 import { GameSession, SessionDeps } from "./GameSession";
 
 /**
@@ -17,6 +18,12 @@ export class GuestSession implements GameSession {
   // keeps the in-progress recording, while a fresh join after quitting gets a
   // brand-new session (and so a new recorder).
   private recorder: ListRecorder | null = new ListRecorder("multiplayer", "guest", "p3");
+  /**
+   * Profile pictures (#14) received out of band, merged into every incoming
+   * state. Kept across re-pairing so a reconnect does not flash the default
+   * picture before the host re-sends the map.
+   */
+  private avatars: AvatarMap = {};
 
   constructor(private readonly deps: SessionDeps) {}
 
@@ -42,8 +49,13 @@ export class GuestSession implements GameSession {
     });
 
     transport.onMessage((message) => {
+      if (message.type === P2PMessageType.AVATAR_UPDATE) {
+        // Validated like any other wire input — the host is untrusted here too.
+        this.avatars = sanitizeAvatarMap((message.payload as { avatars?: unknown })?.avatars);
+        return;
+      }
       if (message.type === P2PMessageType.GAME_STATE_UPDATE) {
-        const state = (message.payload as { state: GameState }).state;
+        const state = withAvatars((message.payload as { state: GameState }).state, this.avatars);
         this.recorder?.observe(state);
         this.deps.events.onGameState(state);
       }

@@ -214,6 +214,11 @@
   display: none;
 }
 
+.avatar-reset {
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
 .avatar-picker-error {
   width: 100%;
   margin: 0;

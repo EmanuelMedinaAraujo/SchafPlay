@@ -158,7 +158,11 @@ export class GameEngine {
     });
   }
 
-  /** Apply the guest's own profile picture (#14), sent on connect. */
+  /**
+   * Apply the guest's own profile picture (#14), sent on connect. The value is
+   * validated and size-capped by `HostSession` before it gets here — the
+   * network boundary belongs to the session layer, not the engine.
+   */
   setGuestAvatar(avatar: string): void {
     this.mutate((state) => {
       state.players[2].avatar = avatar || "";
