@@ -4,6 +4,7 @@ import { getE2EOverrides } from "../lib/e2e";
 import { ListRecorder } from "../persistence";
 import { createMessage, P2PMessageType } from "../net/protocol";
 import { Transport } from "../net/Transport";
+import { heavyAvatars, sanitizeAvatar, withoutHeavyAvatars } from "./avatarSync";
 import { GameSession, SessionDeps } from "./GameSession";
 
 /**
@@ -24,12 +25,19 @@ export class HostSession implements GameSession {
   private engine: GameEngine | null = null;
   private recorder: ListRecorder | null = null;
   private transport: Transport | null = null;
+  /**
+   * Signature of the avatar map last delivered to the current peer (#14), so
+   * pictures are sent once rather than in every snapshot. Reset per transport:
+   * a re-paired peer needs the map again.
+   */
+  private sentAvatars = "";
 
   constructor(private readonly deps: SessionDeps) {}
 
   attachTransport(transport: Transport): void {
     this.transport?.disconnect();
     this.transport = transport;
+    this.sentAvatars = "";
 
     transport.onConnectionStateChange((state) => {
       this.deps.events.onConnectionState(state);
@@ -58,8 +66,12 @@ export class HostSession implements GameSession {
         engine.processAction({ ...action, playerId: "p3" });
       }
       if (message.type === P2PMessageType.CONNECTION_ACK) {
-        const name = (message.payload as { name?: string })?.name;
-        if (name) engine.setGuestName(name);
+        const payload = message.payload as { name?: string; avatar?: unknown } | undefined;
+        if (payload?.name) engine.setGuestName(payload.name);
+        // The session is the network boundary, so the wire value is validated
+        // and size-capped here (same reason the action's playerId is
+        // overwritten above); the engine just stores what it is given.
+        if (payload?.avatar !== undefined) engine.setGuestAvatar(sanitizeAvatar(payload.avatar));
       }
     });
   }
@@ -72,6 +84,7 @@ export class HostSession implements GameSession {
   private createEngine(): void {
     const engine = new GameEngine(this.deps.getPlayerName(), "Gast", this.deps.getTotalRounds(), {
       devToolsEnabled: import.meta.env.DEV,
+      hostAvatar: this.deps.getPlayerAvatar(),
       disableLaufende: this.deps.getDisableLaufende(),
       enableRamsch: this.deps.getEnableRamsch(),
       enableStoss: this.deps.getEnableStoss(),
@@ -95,8 +108,19 @@ export class HostSession implements GameSession {
     const transport = this.transport;
     if (!engine || !transport) return;
     for (const seat of REMOTE_HUMAN_SEATS) {
+      const state = engine.getRedactedState(seat);
       try {
-        transport.send(createMessage(P2PMessageType.GAME_STATE_UPDATE, { state: engine.getRedactedState(seat) }));
+        // Profile pictures (#14) are the same for every seat (avatars are not
+        // redacted) and never change mid-round, so they go once per peer
+        // instead of in every snapshot — see session/avatarSync.ts. Sent
+        // before the state it belongs to; the channel is ordered.
+        const avatars = heavyAvatars(state);
+        const signature = JSON.stringify(avatars);
+        if (signature !== this.sentAvatars) {
+          transport.send(createMessage(P2PMessageType.AVATAR_UPDATE, { avatars }));
+          this.sentAvatars = signature;
+        }
+        transport.send(createMessage(P2PMessageType.GAME_STATE_UPDATE, { state: withoutHeavyAvatars(state) }));
       } catch {
         // Channel not open (yet / anymore); the next state change will retry.
       }

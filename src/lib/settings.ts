@@ -16,6 +16,12 @@ export const ROUND_OPTIONS = [4, 8, 12] as const;
 export interface Settings {
   language: Language;
   playerName: string;
+  /**
+   * Own profile picture (#14): a `preset:<id>` key or a `data:` URL (see
+   * `lib/avatars.ts`). Empty string means "no choice" — the legacy default
+   * photo is shown. Synced to the other human when hosting/joining.
+   */
+  avatar: string;
   totalRounds: number;
   disableLaufende: boolean;
   /** House rule (#11): an all-pass starts a Ramsch instead of a redeal. The HOST's setting governs a game. */
@@ -29,6 +35,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   language: "de",
   playerName: "Bazi",
+  avatar: "",
   totalRounds: 8,
   disableLaufende: false,
   enableRamsch: false,
@@ -76,6 +83,11 @@ const CODECS: { [K in keyof Settings]: FieldCodec<Settings[K]> } = {
   playerName: {
     key: "schafplay.name",
     parse: (raw) => raw || DEFAULT_SETTINGS.playerName,
+    serialize: identity,
+  },
+  avatar: {
+    key: "schafplay.avatar",
+    parse: identity,
     serialize: identity,
   },
   totalRounds: {

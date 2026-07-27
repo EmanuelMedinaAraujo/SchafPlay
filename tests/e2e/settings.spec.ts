@@ -51,6 +51,29 @@ test.describe("settings", () => {
     await expect(page.getByRole("button", { name: de.settingsLaufendeOff })).toHaveAttribute("aria-pressed", "true");
   });
 
+  test("profile picture selection persists across reload (#14)", async ({ page }) => {
+    await bootHome(page);
+    await page.getByTitle(de.settings).click();
+    await expect(page.getByRole("heading", { name: de.settingsAvatar })).toBeVisible();
+
+    // Nothing is chosen by default.
+    const presets = page.locator(".avatar-picker-choices .avatar-option[role='radio']");
+    await expect(presets.first()).toHaveAttribute("aria-checked", "false");
+
+    // Pick the third preset — it becomes the selected one.
+    await presets.nth(2).click();
+    await expect(presets.nth(2)).toHaveAttribute("aria-checked", "true");
+    await expect(presets.first()).toHaveAttribute("aria-checked", "false");
+
+    // Persists across a full reload (schafplay.avatar in localStorage).
+    await page.reload();
+    await page.getByTitle(de.settings).click();
+    await expect(page.locator(".avatar-picker-choices .avatar-option[role='radio']").nth(2)).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+  });
+
   test("list length selection controls the round count in a solo game", async ({ page }) => {
     await startSolo(page, { rounds: 4 });
     await expect(page.locator(".game-toolbar")).toContainText("1/4");

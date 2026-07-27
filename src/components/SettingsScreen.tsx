@@ -5,10 +5,13 @@ import { checkForUpdate } from "../lib/pwa";
 import { CheckIcon, DownloadIcon, HelpCircleIcon, LoaderIcon, RefreshIcon, SettingsIcon } from "./icons";
 import { gameHistoryStore } from "../persistence";
 import { formatGamesForExport } from "../lib/export";
+import AvatarPicker from "./AvatarPicker";
 
 interface SettingsScreenProps {
   language: Language;
   onLanguageChange: (language: Language) => void;
+  avatar: string;
+  onAvatarChange: (avatar: string) => void;
   disableLaufende: boolean;
   onDisableLaufendeChange: (disable: boolean) => void;
   enableRamsch: boolean;
@@ -103,6 +106,8 @@ function ToggleRow({
 export default function SettingsScreen({
   language,
   onLanguageChange,
+  avatar,
+  onAvatarChange,
   disableLaufende,
   onDisableLaufendeChange,
   enableRamsch,
@@ -113,6 +118,7 @@ export default function SettingsScreen({
   const t = translations[language];
   const [status, setStatus] = useState<UpdateStatus>("idle");
   const [exportError, setExportError] = useState<string | null>(null);
+  const [showAvatarHint, setShowAvatarHint] = useState(false);
 
   async function onExportGames() {
     setExportError(null);
@@ -215,6 +221,28 @@ export default function SettingsScreen({
           { label: t.settingsStossOff, selected: !enableStoss, onSelect: () => onEnableStossChange(false) },
         ]}
       />
+
+      <section className="panel settings-panel settings-avatar">
+        <div className="settings-row-label">
+          <h2>{t.settingsAvatar}</h2>
+          <button
+            type="button"
+            className="settings-help"
+            aria-label={t.settingsAvatarHint}
+            aria-expanded={showAvatarHint}
+            onClick={() => setShowAvatarHint((v) => !v)}
+            onBlur={() => setShowAvatarHint(false)}
+          >
+            <HelpCircleIcon size={15} />
+          </button>
+          {showAvatarHint && (
+            <span role="tooltip" className="settings-tooltip">
+              {t.settingsAvatarHint}
+            </span>
+          )}
+        </div>
+        <AvatarPicker value={avatar} onChange={onAvatarChange} language={language} />
+      </section>
 
       <SettingRow
         label={t.settingsUpdates}

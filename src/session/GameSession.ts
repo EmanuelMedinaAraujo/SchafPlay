@@ -14,6 +14,8 @@ export interface SessionEvents {
 export interface SessionDeps {
   /** Read at engine-creation time so name/round changes made after mount are picked up. */
   getPlayerName(): string;
+  /** Profile picture (#14) of the local player, synced to the other human (host in-state, guest via CONNECTION_ACK). */
+  getPlayerAvatar(): string;
   getTotalRounds(): number;
   /** House rule (#31): whether Laufende are disabled for the round scoring. Read when the engine is created. */
   getDisableLaufende(): boolean;

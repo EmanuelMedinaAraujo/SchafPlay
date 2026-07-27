@@ -170,6 +170,7 @@ export default function GameBoard({
         disabled={state.status !== "PLAYING" || !isMyTurn}
         active={activePlayer?.id === myPlayerId}
         playerName={me.name}
+        playerAvatar={me.avatar}
         showLastTrick={state.tricks.length > 0}
         language={language}
         onPlay={playCard}
