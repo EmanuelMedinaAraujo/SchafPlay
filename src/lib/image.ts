@@ -7,10 +7,27 @@
  *
  * The picture is displayed inside a CSS circle, so cropping to a centred
  * square (not a circle) is enough — the round mask is applied at render time.
+ *
+ * The output is always a re-encoded JPEG, never the bytes the user picked, so
+ * a hostile or malformed file cannot survive the trip into the game state.
  */
 
+import { MAX_AVATAR_LENGTH } from "./avatars";
+
 const SIZE = 256;
-const QUALITY = 0.82;
+
+/**
+ * Encoder qualities to try, best first. A noisy photograph can encode to well
+ * over 64 kB even at 256 px, which — once base64 inflates it by a third —
+ * exceeds `MAX_AVATAR_LENGTH` and would be dropped by the *receiving* peer:
+ * the picture would look fine on your own device and silently show as the
+ * default on your partner's. So we step the quality down until the data URL is
+ * within budget, and halve the size as a last resort.
+ */
+const QUALITIES = [0.82, 0.7, 0.6, 0.5];
+
+/** Leave a little headroom under the peer's hard cap. */
+const BUDGET = MAX_AVATAR_LENGTH - 1024;
 
 export class ImageLoadError extends Error {}
 
@@ -39,9 +56,21 @@ export function fileToAvatarDataUrl(file: File): Promise<string> {
 }
 
 function drawSquare(img: HTMLImageElement): string {
+  let best = encodeAt(img, SIZE, QUALITIES[0]);
+  for (const quality of QUALITIES) {
+    best = encodeAt(img, SIZE, quality);
+    if (best.length <= BUDGET) return best;
+  }
+  // Still too fat at the lowest quality: give up resolution rather than the
+  // picture. 128 px is plenty for a circle a few dozen pixels across.
+  const smaller = encodeAt(img, SIZE / 2, QUALITIES[QUALITIES.length - 1]);
+  return smaller.length < best.length ? smaller : best;
+}
+
+function encodeAt(img: HTMLImageElement, size: number, quality: number): string {
   const canvas = document.createElement("canvas");
-  canvas.width = SIZE;
-  canvas.height = SIZE;
+  canvas.width = size;
+  canvas.height = size;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new ImageLoadError("canvas unsupported");
 
@@ -49,7 +78,7 @@ function drawSquare(img: HTMLImageElement): string {
   const side = Math.min(img.width, img.height);
   const sx = (img.width - side) / 2;
   const sy = (img.height - side) / 2;
-  ctx.drawImage(img, sx, sy, side, side, 0, 0, SIZE, SIZE);
+  ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
 
-  return canvas.toDataURL("image/jpeg", QUALITY);
+  return canvas.toDataURL("image/jpeg", quality);
 }

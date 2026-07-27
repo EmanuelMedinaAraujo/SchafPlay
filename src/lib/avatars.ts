@@ -18,6 +18,15 @@
  * The AI seats are assigned distinct presets by the engine.
  */
 
+/**
+ * Hard cap on an avatar string, in characters. Enforced at the network
+ * boundary (`session/avatarSync.ts`) against a peer's picture, and respected
+ * by our own uploader (`lib/image.ts`) so a legitimate custom picture is never
+ * one the partner has to reject. It lives here, in the layer both sides can
+ * import, so those two cannot drift apart.
+ */
+export const MAX_AVATAR_LENGTH = 64 * 1024;
+
 export interface AvatarPreset {
   id: string;
   /** URL of the preset image file in `public/avatars/`; syncs as a bare id. */
