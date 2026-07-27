@@ -135,4 +135,61 @@ test.describe("profile pictures over the wire (#14)", () => {
     await hostContext.close();
     await guestContext.close();
   });
+
+  test("a picture smuggled inside a state snapshot is rejected by the guest", async ({ browser }) => {
+    const hostContext = await browser.newContext();
+    const guestContext = await browser.newContext();
+    const host = await hostContext.newPage();
+    const guest = await guestContext.newPage();
+
+    // The mirror of the test above, in the direction the guest is exposed to.
+    // A hostile host can route around AVATAR_UPDATE (and therefore around
+    // sanitizeAvatarMap) by putting the payload directly into the state it
+    // broadcasts, so the guest sanitizes that path too — sanitizeStateAvatars.
+    // Here the host claims an SVG avatar, the one image type the boundary
+    // deliberately refuses.
+    await rewriteOutboundAvatar(host, "data:image/svg+xml;base64,PHN2Zy8+");
+
+    await bootHome(host, { seed: 12345, name: "Wirt" });
+    await bootHome(guest, { name: "Gast" });
+    await guest.getByRole("tab", { name: de.joinGame }).click();
+    await exchangeCodes(host, guest);
+    await expect(guest.locator(".game-screen")).toBeVisible({ timeout: 15_000 });
+
+    // The host's seat must show the fallback, never the injected value.
+    const hostSeatOnGuest = guest.locator(".seat", { hasText: "Wirt" }).locator(".seat-avatar-img");
+    await expect(hostSeatOnGuest).toHaveAttribute("src", /avatars\/default\.[a-z]+$/, { timeout: 15_000 });
+    // Give the host time to emit further snapshots, then confirm it held.
+    await guest.waitForTimeout(1_000);
+    await expect(hostSeatOnGuest).toHaveAttribute("src", /avatars\/default\.[a-z]+$/);
+
+    await hostContext.close();
+    await guestContext.close();
+  });
 });
+
+/**
+ * Make the host smuggle `avatar` into the state it broadcasts, bypassing the
+ * AVATAR_UPDATE message the sanitizer on that path would see. Patching the
+ * data channel is the only way to play a peer that does not follow our own
+ * protocol — which is exactly the peer the boundary exists for.
+ */
+async function rewriteOutboundAvatar(page: Page, avatar: string): Promise<void> {
+  await page.addInitScript((injected) => {
+    const send = RTCDataChannel.prototype.send as (this: RTCDataChannel, data: unknown) => void;
+    RTCDataChannel.prototype.send = function (this: RTCDataChannel, data: unknown) {
+      if (typeof data === "string") {
+        try {
+          const message = JSON.parse(data);
+          if (message?.type === "GAME_STATE_UPDATE" && message.payload?.state?.players) {
+            for (const player of message.payload.state.players) player.avatar = injected as string;
+            return send.call(this, JSON.stringify(message));
+          }
+        } catch {
+          // Not our framing; passed through untouched.
+        }
+      }
+      return send.call(this, data);
+    } as typeof RTCDataChannel.prototype.send;
+  }, avatar);
+}

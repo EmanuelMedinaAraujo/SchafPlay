@@ -2,7 +2,7 @@ import { GameState, PlayerAction, SeatId } from "../game/types";
 import { ListRecorder } from "../persistence";
 import { createMessage, P2PMessageType } from "../net/protocol";
 import { Transport } from "../net/Transport";
-import { AvatarMap, sanitizeAvatarMap, withAvatars } from "./avatarSync";
+import { AvatarMap, sanitizeAvatarMap, sanitizeStateAvatars, withAvatars } from "./avatarSync";
 import { GameSession, SessionDeps } from "./GameSession";
 
 /**
@@ -55,7 +55,10 @@ export class GuestSession implements GameSession {
         return;
       }
       if (message.type === P2PMessageType.GAME_STATE_UPDATE) {
-        const state = withAvatars((message.payload as { state: GameState }).state, this.avatars);
+        // The avatars inside the state are peer input too, and sanitizing only
+        // the out-of-band map above would leave this path as a way around it.
+        const incoming = sanitizeStateAvatars((message.payload as { state: GameState }).state);
+        const state = withAvatars(incoming, this.avatars);
         this.recorder?.observe(state);
         this.deps.events.onGameState(state);
       }
