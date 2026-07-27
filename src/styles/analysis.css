@@ -1,0 +1,327 @@
+/* ---------- Analysis view + round replay (#85) ----------
+   The list reuses the stats row styling (.stats-game-row / .stats-round-row);
+   only the replay affordance and the replay board itself are new here. */
+
+.analysis-rounds-hint {
+  margin: 2px 0 4px;
+  font-size: 11px;
+}
+
+/* The stats round row reserves right padding for nothing; here it holds the
+   replay button, so drop the reservation and let the button sit flush. */
+.analysis-round-row {
+  padding-right: 0;
+}
+
+.analysis-replay-button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  font-size: 11.5px;
+}
+
+.analysis-replay-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ---------- Replay screen ---------- */
+
+.replay-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.replay-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.replay-header .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.replay-chip {
+  border-radius: 999px;
+  padding: 4px 11px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.replay-chip.contract {
+  border: 1px solid var(--red-2);
+  background: var(--red);
+  color: var(--text);
+}
+
+.replay-chip.round {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--muted);
+}
+
+.replay-progress {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Four hands around a felt, in the same table positions as the live board:
+   the local player at the bottom, the others clockwise from the left. */
+.replay-table {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 1.1fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(185px, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  padding: 10px;
+}
+
+.replay-seat-top {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.replay-seat-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.replay-seat-right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.replay-seat-bottom {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.replay-seat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.replay-seat.declarer .replay-seat-head strong {
+  color: var(--red-2);
+}
+
+.replay-seat-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.replay-seat-head strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.replay-seat-points {
+  margin-left: auto;
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.replay-hand {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  /* Reserve a card's height so the table doesn't creep upward as hands empty. */
+  min-height: 52px;
+}
+
+/* Hands hug their side of the table: the top/bottom seats centre over the
+   felt, the side seats align to their outer edge. */
+.replay-seat-top .replay-hand,
+.replay-seat-bottom .replay-hand {
+  justify-content: center;
+}
+
+.replay-seat-right .replay-hand {
+  justify-content: flex-end;
+}
+
+/* Cards overlap slightly so eight of them fit a phone-width seat. */
+.replay-hand-card {
+  display: block;
+  width: 34px;
+  flex: none;
+}
+
+.replay-hand-card .card-face {
+  width: 100%;
+}
+
+.replay-hand-card .bavarian-card-img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* The felt: each played card sits at its player's edge of the centre cell.
+   It stretches to the full row height (the grid centres the seats, not this)
+   so the top and bottom cards never collide in the middle. */
+.replay-felt {
+  position: relative;
+  align-self: stretch;
+  grid-column: 2;
+  grid-row: 2;
+  min-height: 185px;
+}
+
+.replay-trick-slot {
+  position: absolute;
+}
+
+.replay-trick-slot.slot-bottom {
+  left: 50%;
+  bottom: 2%;
+  transform: translateX(-50%);
+}
+
+.replay-trick-slot.slot-top {
+  left: 50%;
+  top: 2%;
+  transform: translateX(-50%);
+}
+
+.replay-trick-slot.slot-left {
+  left: 4%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.replay-trick-slot.slot-right {
+  right: 4%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.replay-trick-card {
+  width: 46px;
+  border-radius: 6px;
+}
+
+.replay-trick-card .bavarian-card-img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* The trick winner is marked the moment the fourth card lands. */
+.replay-trick-slot.winner .replay-trick-card {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Corner-parked so it never sits under the centre-slot cards, and on the
+   left so it clears the bottom seat's own points readout on the right. */
+.replay-trick-points {
+  position: absolute;
+  left: 2px;
+  bottom: 2px;
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.replay-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.replay-controls .primary-button,
+.replay-controls .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.replay-controls button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.replay-scrub {
+  flex: 1;
+  min-width: 60px;
+  accent-color: var(--red-2);
+}
+
+.replay-result {
+  padding: 10px 14px;
+}
+
+.replay-result h2 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.replay-result-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.replay-result-spacer {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Phone landscape: shrink the cards so all four hands stay on one screen. */
+html.compact .replay-hand-card {
+  width: 26px;
+}
+
+html.compact .replay-trick-card {
+  width: 36px;
+}
+
+html.compact .replay-hand {
+  min-height: 40px;
+}
+
+html.compact .replay-table {
+  grid-template-rows: auto minmax(110px, 1fr) auto;
+  padding: 6px;
+}
+
+html.compact .replay-felt {
+  min-height: 110px;
+}
+
+/* Home-screen entry point into the analysis view. */
+.home-analysis-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: auto;
+}

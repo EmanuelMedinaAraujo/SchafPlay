@@ -29,6 +29,7 @@ players/     PlayerController interface + AIController + AI heuristics
 engine/      GameEngine (state machine) + redaction (pure redactStateFor)
 net/         Transport & Signaling interfaces, WebRTCPeer, sdpCodec, protocol
 persistence/ GameHistoryStore interface, IndexedDB store, ListRecorder
+analysis/    pure replay derivation over stored RoundRecords (no React, no I/O)
 session/     Host/Guest/SoloSession + useGameSession (orchestration) + avatarSync
 components/  presentational React; App.tsx is the UI shell
 lib/         i18n, pwa, cardDisplay, settings
@@ -88,6 +89,12 @@ Terminology (see issue #22): a **list** is a whole session; it consists of **rou
   3. `totals` are the authoritative lifetime counters, incremented at record time and never pruned. `games` are pruned to `MAX_GAMES=2000` (oldest first) past the cap.
   4. All games keep their full per-round `rounds` detail — no stripping. A `RoundRecord` contains the dealt hand, the contract, every trick in play order (compact card ids), and the scoring result. Indexes `finishedAt`/`mode`/`players` support the planned analysis view (#16).
   5. All reads and writes go through the `persistence/` module (the `gameHistoryStore` singleton).
+
+### Analysis & replay (`src/analysis/`)
+
+- **`replay.ts`** turns a stored `RoundRecord` into the board at an arbitrary step: `reconstructHands` (a player's dealt hand *is* the set of cards they played, so a completed round's trick log holds all 32 cards — replay works retroactively on every stored game, including a guest's redacted recording, with no `DB_VERSION` bump) and `replayStep(round, step)` → hands, current trick, banked points. Pure, no engine import: re-running `GameEngine` for playback would need a shuffle seed nobody stored and buys nothing.
+- A finished trick stays on the table for exactly one step with its winner marked; its points are banked from the *next* step on. That one-step hold is what makes stepping readable — keep it if you touch `replayStep`.
+- **`AnalysisScreen`** is the round picker (the stats row list, plus a replay button per round) and **`ReplayScreen`** is the board. Deliberately *not* a `GameBoard` "replay mode" — `GameBoard` is wired to a live `onAction` and a redacted `GameState`. Both are reachable from the topbar icon and a home-screen button.
 
 ### UI
 

@@ -5,11 +5,12 @@ import PairingPanel from "./components/PairingPanel";
 import RulesModal from "./components/RulesModal";
 import SettingsScreen from "./components/SettingsScreen";
 import StatsScreen from "./components/StatsScreen";
+import AnalysisScreen from "./components/AnalysisScreen";
 import { useGameSession } from "./session/useGameSession";
 import { PlayerActionType } from "./types";
 import { translations } from "./lib/i18n";
 import { useSettings } from "./lib/settings";
-import { BookOpenIcon, BotIcon, ChartColumnIcon, HomeIcon, PlugZapIcon, SettingsIcon, WifiIcon } from "./components/icons";
+import { BookOpenIcon, BotIcon, ChartColumnIcon, HistoryIcon, HomeIcon, PlugZapIcon, SettingsIcon, WifiIcon } from "./components/icons";
 
 /**
  * Deep-link join (#7, Option A): read an invite code from the URL fragment
@@ -29,7 +30,7 @@ export default function App() {
   // All persisted device preferences flow through one store (see lib/settings).
   const [settings, updateSetting] = useSettings();
   const { language, playerName, avatar, totalRounds, disableLaufende, enableRamsch, enableStoss, lastMode } = settings;
-  const [screen, setScreen] = useState<"home" | "game" | "stats" | "settings">("home");
+  const [screen, setScreen] = useState<"home" | "game" | "stats" | "analysis" | "settings">("home");
   const [rulesOpen, setRulesOpen] = useState(false);
   // Captured once at startup, before we scrub the fragment below. Reading the
   // hash is synchronous and independent of the service-worker update check in
@@ -127,6 +128,9 @@ export default function App() {
               <button className="icon-button" onClick={() => setScreen("stats")} title={t.stats} type="button">
                 <ChartColumnIcon />
               </button>
+              <button className="icon-button" onClick={() => setScreen("analysis")} title={t.analysis} type="button">
+                <HistoryIcon />
+              </button>
               <button className="icon-button" onClick={() => setScreen("settings")} title={t.settings} type="button">
                 <SettingsIcon />
               </button>
@@ -153,6 +157,8 @@ export default function App() {
 
       {!inGame && screen === "stats" ? (
         <StatsScreen language={language} />
+      ) : !inGame && screen === "analysis" ? (
+        <AnalysisScreen language={language} />
       ) : !inGame && screen === "settings" ? (
         <SettingsScreen
           language={language}
@@ -180,6 +186,7 @@ export default function App() {
           lastMode={lastMode}
           onLastModeChange={(value) => updateSetting("lastMode", value)}
           initialInvite={initialInvite}
+          onOpenAnalysis={() => setScreen("analysis")}
         />
       ) : (
         <GameBoard
