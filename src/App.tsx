@@ -40,7 +40,7 @@ function readInviteFromHash(): string {
 export default function App() {
   // All persisted device preferences flow through one store (see lib/settings).
   const [settings, updateSetting] = useSettings();
-  const { language, playerName, totalRounds, disableLaufende, enableRamsch, enableStoss, lastMode } = settings;
+  const { language, playerName, avatar, totalRounds, disableLaufende, enableRamsch, enableStoss, lastMode } = settings;
   const [screen, setScreen] = useState<"home" | "game" | "stats" | "analysis" | "settings">("home");
   const [rulesOpen, setRulesOpen] = useState(false);
   // The round currently open in the replay (#85); null shows the analysis list.
@@ -52,6 +52,7 @@ export default function App() {
 
   const session = useGameSession({
     getPlayerName: () => playerName,
+    getPlayerAvatar: () => avatar,
     getTotalRounds: () => totalRounds,
     getDisableLaufende: () => disableLaufende,
     getEnableRamsch: () => enableRamsch,
@@ -193,6 +194,8 @@ export default function App() {
         <SettingsScreen
           language={language}
           onLanguageChange={(value) => updateSetting("language", value)}
+          avatar={avatar}
+          onAvatarChange={(value) => updateSetting("avatar", value)}
           disableLaufende={disableLaufende}
           onDisableLaufendeChange={(value) => updateSetting("disableLaufende", value)}
           enableRamsch={enableRamsch}

@@ -2,6 +2,7 @@ import { PointerEvent, useEffect, useRef, useState } from "react";
 import { Card, Contract, GameType, Language, StossKind, Trick } from "../types";
 import { getLegalCards, sortCardsForHand } from "../game/rules";
 import { translations } from "../lib/i18n";
+import { resolveAvatarSrc } from "../lib/avatars";
 import CardFace from "./CardFace";
 import { UserIcon } from "./icons";
 
@@ -12,6 +13,8 @@ interface PlayerHandProps {
   disabled: boolean;
   active: boolean;
   playerName: string;
+  /** The local player's own profile picture (#14), so you see your own avatar too. */
+  playerAvatar?: string;
   showLastTrick: boolean;
   language: Language;
   onPlay: (cardId: string) => void;
@@ -40,6 +43,7 @@ export default function PlayerHand({
   disabled,
   active,
   playerName,
+  playerAvatar,
   showLastTrick,
   language,
   onPlay,
@@ -127,9 +131,15 @@ export default function PlayerHand({
   return (
     <div className={`player-hand-container ${disabled ? "" : "my-turn"}`}>
       <div className="player-hand-col-left">
-        <div className={`seat-name player-hand-name ${active ? "active" : ""}`}>
-          <UserIcon />
-          <strong>{playerName}</strong>
+        <div className="player-hand-me">
+          {/* Your own profile picture (#14) — the seats show everyone else's. */}
+          <div className={`player-hand-avatar ${active ? "active" : ""}`}>
+            <img src={resolveAvatarSrc(playerAvatar, true)} alt="" />
+          </div>
+          <div className={`seat-name player-hand-name ${active ? "active" : ""}`}>
+            <UserIcon />
+            <strong>{playerName}</strong>
+          </div>
         </div>
         {/* Directly beneath the name plate, styled like it: the Stoß/Retour
             control, or a badge once the local player has announced. */}

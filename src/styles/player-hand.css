@@ -61,6 +61,50 @@
   align-items: center;
 }
 
+/* Your own seat: profile picture (#14) above your name plate. The four table
+   seats only ever show the *other* players, so without this you would never
+   see your own picture during a game. */
+.player-hand-me {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.player-hand-avatar {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid var(--line);
+  background: #0f1e3d;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+  transition: border-color 0.3s ease;
+}
+
+.player-hand-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.player-hand-avatar.active {
+  border-color: var(--red-2);
+  animation: avatar-pulse 1.5s ease-in-out infinite;
+}
+
+/* Phone layouts are height-constrained — shrink or drop the picture there. */
+html.compact .player-hand-avatar {
+  width: 40px;
+  height: 40px;
+  border-width: 2px;
+}
+
+html.compact .player-hand-me {
+  gap: 4px;
+}
+
 .player-hand-name {
   margin-top: 0 !important;
   white-space: nowrap;
