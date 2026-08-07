@@ -127,9 +127,14 @@
   min-height: 0;
 }
 
+/* The top and bottom seats span the full width — their rows are theirs alone,
+   and confining them to the felt's column squeezes eight cards into a third of
+   the screen while the side seats get a full column each. Their contents stay
+   centred, so they still read as sitting across the felt. */
 .replay-seat-top {
-  grid-column: 2;
+  grid-column: 1 / -1;
   grid-row: 1;
+  align-items: center;
 }
 
 .replay-seat-left {
@@ -143,8 +148,9 @@
 }
 
 .replay-seat-bottom {
-  grid-column: 2;
+  grid-column: 1 / -1;
   grid-row: 3;
+  align-items: center;
 }
 
 .replay-seat {
@@ -191,7 +197,7 @@
   gap: 2px;
   min-width: 0;
   /* Reserve a card's height so the table doesn't creep upward as hands empty. */
-  min-height: 52px;
+  min-height: 66px;
 }
 
 /* Hands hug their side of the table: the top/bottom seats centre over the
@@ -212,7 +218,7 @@
    lines up with the artwork instead of floating around a larger card. */
 .replay-hand-card {
   display: block;
-  width: 34px;
+  width: 44px;
   /* Shrinkable (not `flex: none`) so a full hand overlaps slightly rather
      than overflowing when the column is tight. */
   flex: 0 1 auto;
@@ -239,8 +245,9 @@
    is plain pixel math against the centre — percentage transforms resolve
    against the slot's shrink-to-fit width, which is not the card's width. */
 .replay-felt {
-  --rc-w: 46px;
-  --rc-h: 68px;
+  --rc-w: 60px;
+  --rc-h: 89px;
+  --rc-gap: 8px;
   position: relative;
   align-self: stretch;
   grid-column: 2;
@@ -267,19 +274,19 @@
 }
 
 .replay-trick-slot.replay-slot-top {
-  transform: translateY(calc(-1 * (var(--rc-h) / 2 + 8px)));
+  transform: translateY(calc(-1 * (var(--rc-h) / 2 + var(--rc-gap))));
 }
 
 .replay-trick-slot.replay-slot-bottom {
-  transform: translateY(calc(var(--rc-h) / 2 + 8px));
+  transform: translateY(calc(var(--rc-h) / 2 + var(--rc-gap)));
 }
 
 .replay-trick-slot.replay-slot-left {
-  transform: translateX(calc(-1 * (var(--rc-w) + 6px)));
+  transform: translateX(calc(-1 * (var(--rc-w) + var(--rc-gap))));
 }
 
 .replay-trick-slot.replay-slot-right {
-  transform: translateX(calc(var(--rc-w) + 6px));
+  transform: translateX(calc(var(--rc-w) + var(--rc-gap)));
 }
 
 .replay-trick-card {
@@ -297,12 +304,14 @@
   border-radius: 8px;
 }
 
-/* Parked just under the card cross, so it stays with the trick it counts. */
+/* Parked beside the cross, clear of its right-hand card: the space above and
+   below the cross belongs to the top and bottom seats, so those are the one
+   place this must not go. */
 .replay-trick-points {
   position: absolute;
-  left: 50%;
-  top: calc(50% + var(--rc-h) + 14px);
-  transform: translateX(-50%);
+  left: calc(50% + var(--rc-w) * 1.5 + var(--rc-gap) + 10px);
+  top: 50%;
+  transform: translateY(-50%);
   color: var(--muted);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
@@ -353,21 +362,46 @@
   min-width: 0;
 }
 
-/* Phone landscape (iPhone 13 Pro is 844x390): everything shrinks so the four
-   hands, the trick and the controls share ~390px of height without a single
-   overlap. Same three-class scoping as above to outrank responsive.css. */
+/* Phone landscape (iPhone 13 Pro is 844x390). Height is the scarce axis, and
+   card *legibility* is what the height is for — a rank you cannot read makes
+   the whole replay pointless. So the top and bottom seats put their name line
+   beside the hand instead of above it (worth ~36px across the two rows), and
+   that budget goes straight into card size. */
+/* A 1fr-auto-1fr grid rather than a centred row: the hand occupies the middle
+   track so it stays centred on the felt, and the name sits in the left track
+   beside it instead of pushing it off-centre. */
+html.compact .replay-seat-top,
+html.compact .replay-seat-bottom {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+html.compact .replay-seat-top .replay-seat-head,
+html.compact .replay-seat-bottom .replay-seat-head {
+  grid-column: 1;
+  justify-self: end;
+}
+
+html.compact .replay-seat-top .replay-hand,
+html.compact .replay-seat-bottom .replay-hand {
+  grid-column: 2;
+}
+
 html.compact .replay-hand-card {
-  width: 24px;
+  width: 40px;
 }
 
 html.compact .replay-felt {
-  --rc-w: 30px;
-  --rc-h: 44px;
+  --rc-w: 44px;
+  --rc-h: 65px;
+  --rc-gap: 5px;
   min-height: 0;
 }
 
 html.compact .replay-hand {
-  min-height: 36px;
+  min-height: 60px;
 }
 
 html.compact .replay-seat-head {
