@@ -219,12 +219,14 @@
   min-width: 0;
 }
 
-/* `.card-face.small` is matched explicitly: cards.css is imported *after*
-   this file, so a plain `.replay-hand-card .card-face` ties on specificity
-   and loses on source order — the card would keep its fixed 52x76 and spill
-   out of the seat column. */
-.replay-hand-card .card-face.small,
-.replay-trick-card .card-face.small {
+/* Scoped through `.replay-screen` on purpose. `.card-face.small` carries a
+   fixed size from cards.css *and* a compact-phone override in responsive.css
+   (`html.compact .card-face.small`, specificity 0-2-1) — both imported after
+   this file. Three classes here outrank them, so the replay's cards are the
+   size of the box they sit in on every breakpoint; without it a phone-sized
+   hand renders at 50px per card and runs off the seat's column. */
+.replay-screen .replay-hand-card .card-face.small,
+.replay-screen .replay-trick-card .card-face.small {
   width: 100%;
   height: auto;
   aspect-ratio: 62 / 92;
@@ -253,10 +255,11 @@
 /* The slot classes are namespaced (`replay-slot-*`, not the board's bare
    `slot-*`): trick-area.css owns those global names for the live table and is
    imported after this file, so sharing them let its `top`/`left` win here.
-   Every slot starts exactly centred on the felt, then steps out by half a
-   card plus a gap — the horizontal step clears a full card width so the side
-   cards never slide under the top/bottom ones — so the trick reads as one tight cross however
-   much room the full-bleed table gives the felt. */
+   Every slot starts exactly centred on the felt, then steps out by a offset
+   derived from the card metrics — a full card width sideways (so the side
+   cards can never slide under the top/bottom ones) and half a card plus a gap
+   vertically. Deriving it from --rc-* keeps the cross in proportion on the
+   phone, where the cards are much smaller. */
 .replay-trick-slot {
   width: var(--rc-w);
   left: calc(50% - var(--rc-w) / 2);
@@ -264,19 +267,19 @@
 }
 
 .replay-trick-slot.replay-slot-top {
-  transform: translateY(calc(-1 * (var(--rc-h) / 2 + 12px)));
+  transform: translateY(calc(-1 * (var(--rc-h) / 2 + 8px)));
 }
 
 .replay-trick-slot.replay-slot-bottom {
-  transform: translateY(calc(var(--rc-h) / 2 + 12px));
+  transform: translateY(calc(var(--rc-h) / 2 + 8px));
 }
 
 .replay-trick-slot.replay-slot-left {
-  transform: translateX(calc(-1 * (var(--rc-w) / 2 + 30px)));
+  transform: translateX(calc(-1 * (var(--rc-w) + 6px)));
 }
 
 .replay-trick-slot.replay-slot-right {
-  transform: translateX(calc(var(--rc-w) / 2 + 30px));
+  transform: translateX(calc(var(--rc-w) + 6px));
 }
 
 .replay-trick-card {
@@ -298,7 +301,7 @@
 .replay-trick-points {
   position: absolute;
   left: 50%;
-  top: calc(50% + var(--rc-h) + 26px);
+  top: calc(50% + var(--rc-h) + 14px);
   transform: translateX(-50%);
   color: var(--muted);
   font-size: 11px;
@@ -350,18 +353,35 @@
   min-width: 0;
 }
 
-/* Phone landscape: shrink the cards so all four hands stay on one screen. */
+/* Phone landscape (iPhone 13 Pro is 844x390): everything shrinks so the four
+   hands, the trick and the controls share ~390px of height without a single
+   overlap. Same three-class scoping as above to outrank responsive.css. */
 html.compact .replay-hand-card {
-  width: 26px;
+  width: 24px;
 }
 
 html.compact .replay-felt {
-  --rc-w: 36px;
-  --rc-h: 53px;
+  --rc-w: 30px;
+  --rc-h: 44px;
+  min-height: 0;
 }
 
 html.compact .replay-hand {
-  min-height: 40px;
+  min-height: 36px;
+}
+
+html.compact .replay-seat-head {
+  font-size: 11px;
+  gap: 4px;
+}
+
+html.compact .replay-header {
+  gap: 6px;
+}
+
+html.compact .replay-chip {
+  padding: 3px 8px;
+  font-size: 11px;
 }
 
 html.compact .replay-table {
