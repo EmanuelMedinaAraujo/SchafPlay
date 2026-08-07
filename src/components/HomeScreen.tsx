@@ -4,7 +4,7 @@ import { Language } from "../types";
 import { GameMode } from "../lib/settings";
 import { translations } from "../lib/i18n";
 import PairingPanel from "./PairingPanel";
-import { UsersIcon, RadioIcon, BotIcon, PlayIcon, HistoryIcon } from "./icons";
+import { UsersIcon, RadioIcon, BotIcon, PlayIcon } from "./icons";
 
 interface HomeScreenProps {
   language: Language;
@@ -21,8 +21,6 @@ interface HomeScreenProps {
   onLastModeChange: (mode: GameMode) => void;
   /** Invite code from a deep link (#invite=…); when set, opens the join flow. */
   initialInvite?: string;
-  /** Opens the analysis view (#85) — also reachable from the topbar. */
-  onOpenAnalysis: () => void;
 }
 
 export default function HomeScreen(props: HomeScreenProps) {
@@ -111,11 +109,6 @@ export default function HomeScreen(props: HomeScreenProps) {
               </button>
             </div>
           </div>
-
-          <button className="secondary-button home-analysis-button" onClick={props.onOpenAnalysis} type="button">
-            <HistoryIcon size={15} />
-            {t.analysis}
-          </button>
         </div>
 
         <div className="panel">

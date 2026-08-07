@@ -41,8 +41,7 @@ test.describe("analysis replay", () => {
     // The IndexedDB write from ListRecorder is fire-and-forget.
     await page.waitForTimeout(1500);
 
-    // The home screen carries its own entry point next to the topbar icon.
-    await page.locator(".home-analysis-button").click();
+    await page.getByTitle(de.analysis).click();
     await expect(page.locator(".analysis-screen")).toBeVisible();
 
     const rows = page.locator(".stats-game-row");

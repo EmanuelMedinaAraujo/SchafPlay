@@ -186,7 +186,6 @@ export default function App() {
           lastMode={lastMode}
           onLastModeChange={(value) => updateSetting("lastMode", value)}
           initialInvite={initialInvite}
-          onOpenAnalysis={() => setScreen("analysis")}
         />
       ) : (
         <GameBoard

@@ -161,21 +161,22 @@
   justify-content: flex-end;
 }
 
-/* Cards overlap slightly so eight of them fit a phone-width seat. */
+/* Shrunk so eight of them fit a phone-width seat. `.card-face` carries a
+   fixed 62x92 (52x76 small) size from cards.css — override it here and keep
+   the shape via the deck's aspect ratio, so the rendered card is exactly the
+   box it sits in. Anything hung on that box (the winner frame below) then
+   lines up with the artwork instead of floating around a larger card. */
 .replay-hand-card {
   display: block;
   width: 34px;
   flex: none;
 }
 
-.replay-hand-card .card-face {
-  width: 100%;
-}
-
-.replay-hand-card .bavarian-card-img {
+.replay-hand-card .card-face,
+.replay-trick-card .card-face {
   width: 100%;
   height: auto;
-  display: block;
+  aspect-ratio: 62 / 92;
 }
 
 /* The felt: each played card sits at its player's edge of the centre cell.
@@ -218,21 +219,18 @@
 }
 
 .replay-trick-card {
-  width: 46px;
-  border-radius: 6px;
-}
-
-.replay-trick-card .bavarian-card-img {
-  width: 100%;
-  height: auto;
   display: block;
+  width: 46px;
+  line-height: 0;
 }
 
-/* The trick winner is marked the moment the fourth card lands. */
-.replay-trick-slot.winner .replay-trick-card {
+/* The trick winner is marked the moment the fourth card lands. The frame goes
+   on `.card-face`, not the wrapper, and repeats its 8px radius — that is the
+   element with the card's real bounds, so it traces the card exactly. */
+.replay-trick-slot.winner .card-face {
   outline: 2px solid var(--green);
   outline-offset: 2px;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 /* Corner-parked so it never sits under the centre-slot cards, and on the
@@ -314,14 +312,4 @@ html.compact .replay-table {
 
 html.compact .replay-felt {
   min-height: 110px;
-}
-
-/* Home-screen entry point into the analysis view. */
-.home-analysis-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  margin-top: auto;
 }
