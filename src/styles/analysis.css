@@ -27,12 +27,31 @@
   cursor: not-allowed;
 }
 
+/* Collapsed list row: the expand button takes the width, the quick-play
+   button rides on its right. It is removed from the DOM while expanded, so
+   the per-round buttons are the only replay affordance down there. */
+.analysis-game-row-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.analysis-play-game {
+  margin: 4px 0;
+}
+
 /* ---------- Replay screen ---------- */
 
+/* The replay owns the viewport: App drops the topbar while it is up (and
+   applies html.in-game, which kills page scrolling), so this is a full-height
+   column and the table takes every pixel the header and controls don't. */
 .replay-screen {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  padding: 10px 14px 12px;
 }
 
 .replay-header {
@@ -40,6 +59,25 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  flex: none;
+}
+
+/* Round stepper: chip flanked by one-round-at-a-time arrows. */
+.replay-round-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.replay-round-nav .icon-button {
+  min-height: 28px;
+  min-width: 28px;
+  padding: 0 6px;
+}
+
+.replay-round-nav .icon-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .replay-header .secondary-button {
@@ -76,17 +114,17 @@
 }
 
 /* Four hands around a felt, in the same table positions as the live board:
-   the local player at the bottom, the others clockwise from the left. */
+   the local player at the bottom, the others clockwise from the left. No
+   panel chrome — the table *is* the screen, so it spans the full width and
+   whatever height is left over. */
 .replay-table {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(190px, 1.1fr) minmax(0, 1fr);
-  grid-template-rows: auto minmax(185px, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--panel);
-  padding: 10px;
+  flex: 1;
+  min-height: 0;
 }
 
 .replay-seat-top {
@@ -136,16 +174,22 @@
   color: var(--text);
 }
 
+/* Directly behind the name, not pushed to the far edge — the count belongs
+   to the player, and at the table's full width a right-aligned number would
+   drift a screen away from whose it is. */
 .replay-seat-points {
-  margin-left: auto;
   flex: none;
   font-variant-numeric: tabular-nums;
 }
 
+/* One row, never wrapping: eight cards must stay inside the seat's column.
+   `min-width: 0` + the shrink below is what keeps a full hand from pushing
+   past the column edge on a narrow viewport. */
 .replay-hand {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 2px;
+  min-width: 0;
   /* Reserve a card's height so the table doesn't creep upward as hands empty. */
   min-height: 52px;
 }
@@ -169,11 +213,18 @@
 .replay-hand-card {
   display: block;
   width: 34px;
-  flex: none;
+  /* Shrinkable (not `flex: none`) so a full hand overlaps slightly rather
+     than overflowing when the column is tight. */
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
-.replay-hand-card .card-face,
-.replay-trick-card .card-face {
+/* `.card-face.small` is matched explicitly: cards.css is imported *after*
+   this file, so a plain `.replay-hand-card .card-face` ties on specificity
+   and loses on source order — the card would keep its fixed 52x76 and spill
+   out of the seat column. */
+.replay-hand-card .card-face.small,
+.replay-trick-card .card-face.small {
   width: 100%;
   height: auto;
   aspect-ratio: 62 / 92;
@@ -182,45 +233,55 @@
 /* The felt: each played card sits at its player's edge of the centre cell.
    It stretches to the full row height (the grid centres the seats, not this)
    so the top and bottom cards never collide in the middle. */
+/* The card metrics live here as custom properties so the slot geometry below
+   is plain pixel math against the centre — percentage transforms resolve
+   against the slot's shrink-to-fit width, which is not the card's width. */
 .replay-felt {
+  --rc-w: 46px;
+  --rc-h: 68px;
   position: relative;
   align-self: stretch;
   grid-column: 2;
   grid-row: 2;
-  min-height: 185px;
+  min-height: 150px;
 }
 
 .replay-trick-slot {
   position: absolute;
 }
 
-.replay-trick-slot.slot-bottom {
-  left: 50%;
-  bottom: 2%;
-  transform: translateX(-50%);
+/* The slot classes are namespaced (`replay-slot-*`, not the board's bare
+   `slot-*`): trick-area.css owns those global names for the live table and is
+   imported after this file, so sharing them let its `top`/`left` win here.
+   Every slot starts exactly centred on the felt, then steps out by half a
+   card plus a gap — the horizontal step clears a full card width so the side
+   cards never slide under the top/bottom ones — so the trick reads as one tight cross however
+   much room the full-bleed table gives the felt. */
+.replay-trick-slot {
+  width: var(--rc-w);
+  left: calc(50% - var(--rc-w) / 2);
+  top: calc(50% - var(--rc-h) / 2);
 }
 
-.replay-trick-slot.slot-top {
-  left: 50%;
-  top: 2%;
-  transform: translateX(-50%);
+.replay-trick-slot.replay-slot-top {
+  transform: translateY(calc(-1 * (var(--rc-h) / 2 + 12px)));
 }
 
-.replay-trick-slot.slot-left {
-  left: 4%;
-  top: 50%;
-  transform: translateY(-50%);
+.replay-trick-slot.replay-slot-bottom {
+  transform: translateY(calc(var(--rc-h) / 2 + 12px));
 }
 
-.replay-trick-slot.slot-right {
-  right: 4%;
-  top: 50%;
-  transform: translateY(-50%);
+.replay-trick-slot.replay-slot-left {
+  transform: translateX(calc(-1 * (var(--rc-w) / 2 + 30px)));
+}
+
+.replay-trick-slot.replay-slot-right {
+  transform: translateX(calc(var(--rc-w) / 2 + 30px));
 }
 
 .replay-trick-card {
   display: block;
-  width: 46px;
+  width: var(--rc-w);
   line-height: 0;
 }
 
@@ -233,12 +294,12 @@
   border-radius: 8px;
 }
 
-/* Corner-parked so it never sits under the centre-slot cards, and on the
-   left so it clears the bottom seat's own points readout on the right. */
+/* Parked just under the card cross, so it stays with the trick it counts. */
 .replay-trick-points {
   position: absolute;
-  left: 2px;
-  bottom: 2px;
+  left: 50%;
+  top: calc(50% + var(--rc-h) + 26px);
+  transform: translateX(-50%);
   color: var(--muted);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
@@ -249,6 +310,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: none;
 }
 
 .replay-controls .primary-button,
@@ -269,20 +331,16 @@
   accent-color: var(--red-2);
 }
 
+/* A single strip rather than a panel — it appears at a round's last card and
+   must not push the table around. */
 .replay-result {
-  padding: 10px 14px;
-}
-
-.replay-result h2 {
-  margin: 0 0 6px;
-  font-size: 14px;
-}
-
-.replay-result-body {
   display: flex;
+  flex: none;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 6px;
   font-size: 12.5px;
   font-variant-numeric: tabular-nums;
 }
@@ -297,8 +355,9 @@ html.compact .replay-hand-card {
   width: 26px;
 }
 
-html.compact .replay-trick-card {
-  width: 36px;
+html.compact .replay-felt {
+  --rc-w: 36px;
+  --rc-h: 53px;
 }
 
 html.compact .replay-hand {
@@ -306,8 +365,12 @@ html.compact .replay-hand {
 }
 
 html.compact .replay-table {
-  grid-template-rows: auto minmax(110px, 1fr) auto;
-  padding: 6px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+html.compact .replay-screen {
+  gap: 6px;
+  padding: 6px 10px 8px;
 }
 
 html.compact .replay-felt {

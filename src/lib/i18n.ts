@@ -142,6 +142,9 @@ export const translations = {
     replayResult: "Ergebnis",
     replayBack: "Zurück zur Analyse",
     replayTricksWon: "Stiche",
+    replayNextRound: "Nächste Runde",
+    replayPrevRound: "Vorige Runde",
+    replayWholeGame: "Ganze Partie nachspielen",
 
     // Settings
     settings: "Einstellungen",
@@ -331,6 +334,9 @@ export const translations = {
     replayResult: "Result",
     replayBack: "Back to analysis",
     replayTricksWon: "Tricks",
+    replayNextRound: "Next round",
+    replayPrevRound: "Previous round",
+    replayWholeGame: "Replay the whole game",
 
     // Settings
     settings: "Settings",

@@ -8,6 +8,8 @@ import { BotIcon, HistoryIcon, PlayIcon, UsersIcon } from "./icons";
 
 interface AnalysisScreenProps {
   language: Language;
+  /** Lets App drop its chrome while a replay is on screen (#85). */
+  onReplayActiveChange?: (active: boolean) => void;
 }
 
 /** Newest games offered for analysis; the store keeps more. */
@@ -20,7 +22,8 @@ function signed(score: number): string {
 
 interface Selection {
   game: GameRecord;
-  round: RoundRecord;
+  /** Index into `game.rounds`; the replay continues into later rounds itself. */
+  roundIndex: number;
 }
 
 /**
@@ -29,7 +32,7 @@ interface Selection {
  * button. Selecting a round hands over to ReplayScreen; nothing here is
  * derived live, it all comes from the stored history.
  */
-export default function AnalysisScreen({ language }: AnalysisScreenProps) {
+export default function AnalysisScreen({ language, onReplayActiveChange }: AnalysisScreenProps) {
   const t = translations[language];
   const [games, setGames] = useState<GameRecord[]>([]);
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -44,11 +47,18 @@ export default function AnalysisScreen({ language }: AnalysisScreenProps) {
     };
   }, []);
 
+  // The replay runs chrome-free (no topbar) — tell App when it is up, and
+  // hand the chrome back when this screen unmounts for any reason.
+  useEffect(() => {
+    onReplayActiveChange?.(selection !== null);
+  }, [onReplayActiveChange, selection]);
+  useEffect(() => () => onReplayActiveChange?.(false), [onReplayActiveChange]);
+
   if (selection) {
     return (
       <ReplayScreen
         game={selection.game}
-        round={selection.round}
+        startRoundIndex={selection.roundIndex}
         language={language}
         onBack={() => setSelection(null)}
       />
@@ -80,7 +90,7 @@ export default function AnalysisScreen({ language }: AnalysisScreenProps) {
                 game={game}
                 language={language}
                 locale={locale}
-                onReplay={(round) => setSelection({ game, round })}
+                onReplay={(roundIndex) => setSelection({ game, roundIndex })}
               />
             ))}
           </div>
@@ -99,7 +109,7 @@ function AnalysisGameItem({
   game: GameRecord;
   language: Language;
   locale: string;
-  onReplay: (round: RoundRecord) => void;
+  onReplay: (roundIndex: number) => void;
 }) {
   const t = translations[language];
   const [expanded, setExpanded] = useState(false);
@@ -110,32 +120,51 @@ function AnalysisGameItem({
     year: "2-digit",
   });
   const hasRounds = game.rounds.length > 0;
+  // The first round that actually holds a trick log — where "play the whole
+  // list" starts. -1 when nothing in this list can be replayed.
+  const firstPlayable = game.rounds.findIndex(isReplayable);
 
   return (
     <div className="stats-game-item">
-      <button
-        className="stats-game-row"
-        type="button"
-        onClick={() => hasRounds && setExpanded((value) => !value)}
-        aria-expanded={expanded}
-        title={hasRounds ? (expanded ? t.statsHideRounds : t.statsShowRounds) : undefined}
-      >
-        <span className="stats-date">{date}</span>
-        <span className="stats-mode-icon">{game.mode === "solo" ? <BotIcon size={14} /> : <UsersIcon size={14} />}</span>
-        <span className="stats-opponent">{game.mode === "solo" ? t.statsSoloOpponent : (game.opponentName ?? "—")}</span>
-        <span className={`stats-score ${score >= 0 ? "positive" : "negative"}`}>{signed(score)}</span>
-        <span className={`stats-result ${game.won ? "won" : "lost"}`}>{game.won ? "W" : "L"}</span>
-      </button>
+      <div className="analysis-game-row-wrap">
+        <button
+          className="stats-game-row"
+          type="button"
+          onClick={() => hasRounds && setExpanded((value) => !value)}
+          aria-expanded={expanded}
+          title={hasRounds ? (expanded ? t.statsHideRounds : t.statsShowRounds) : undefined}
+        >
+          <span className="stats-date">{date}</span>
+          <span className="stats-mode-icon">{game.mode === "solo" ? <BotIcon size={14} /> : <UsersIcon size={14} />}</span>
+          <span className="stats-opponent">{game.mode === "solo" ? t.statsSoloOpponent : (game.opponentName ?? "—")}</span>
+          <span className={`stats-score ${score >= 0 ? "positive" : "negative"}`}>{signed(score)}</span>
+          <span className={`stats-result ${game.won ? "won" : "lost"}`}>{game.won ? "W" : "L"}</span>
+        </button>
+        {/* Play the whole list straight from the collapsed row. While expanded
+            the per-round buttons say the same thing more precisely, so this
+            one steps aside rather than competing with them. */}
+        {!expanded && firstPlayable >= 0 && (
+          <button
+            className="secondary-button analysis-replay-button analysis-play-game"
+            type="button"
+            onClick={() => onReplay(firstPlayable)}
+            title={t.replayWholeGame}
+          >
+            <PlayIcon size={12} />
+            {t.replay}
+          </button>
+        )}
+      </div>
       {expanded && hasRounds && (
         <div className="stats-round-detail">
           <p className="muted analysis-rounds-hint">{t.analysisRoundsHint}</p>
-          {game.rounds.map((round) => (
+          {game.rounds.map((round, index) => (
             <AnalysisRoundRow
               key={round.roundNumber}
               round={round}
               game={game}
               language={language}
-              onReplay={() => onReplay(round)}
+              onReplay={() => onReplay(index)}
             />
           ))}
         </div>

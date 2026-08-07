@@ -32,6 +32,10 @@ export default function App() {
   const { language, playerName, avatar, totalRounds, disableLaufende, enableRamsch, enableStoss, lastMode } = settings;
   const [screen, setScreen] = useState<"home" | "game" | "stats" | "analysis" | "settings">("home");
   const [rulesOpen, setRulesOpen] = useState(false);
+  // A running replay takes the whole viewport, chrome-free (#85).
+  const [replayActive, setReplayActive] = useState(false);
+  // A replay is only on screen from within the analysis view.
+  const inReplay = screen === "analysis" && replayActive;
   // Captured once at startup, before we scrub the fragment below. Reading the
   // hash is synchronous and independent of the service-worker update check in
   // main.tsx, so nothing can race away the invite before we see it.
@@ -89,9 +93,9 @@ export default function App() {
   // only the game screen itself may scroll if it genuinely doesn't fit.
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.toggle("in-game", screen === "game");
+    root.classList.toggle("in-game", screen === "game" || inReplay);
     return () => root.classList.remove("in-game");
-  }, [screen]);
+  }, [inReplay, screen]);
 
   const t = translations[language];
 
@@ -113,7 +117,7 @@ export default function App() {
     <div className="app-shell">
       {/* The header is hidden in-game to free up vertical space (#26); the
           in-game toolbar carries the contract, round and quit controls. */}
-      {!inGame && (
+      {!inGame && !inReplay && (
       <header className="topbar">
         <button className="brand" onClick={() => !inGame && setScreen("home")} type="button">
           <span className="brand-mark">S</span>
@@ -158,7 +162,7 @@ export default function App() {
       {!inGame && screen === "stats" ? (
         <StatsScreen language={language} />
       ) : !inGame && screen === "analysis" ? (
-        <AnalysisScreen language={language} />
+        <AnalysisScreen language={language} onReplayActiveChange={setReplayActive} />
       ) : !inGame && screen === "settings" ? (
         <SettingsScreen
           language={language}
