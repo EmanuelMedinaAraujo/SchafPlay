@@ -1,0 +1,479 @@
+/* ---------- Analysis view + round replay (#85) ----------
+   The list reuses the stats row styling (.stats-game-row / .stats-round-row);
+   only the replay affordance and the replay board itself are new here. */
+
+.analysis-rounds-hint {
+  margin: 2px 0 4px;
+  font-size: 11px;
+}
+
+/* The stats round row reserves right padding for nothing; here it holds the
+   replay button, so drop the reservation and let the button sit flush. */
+.analysis-round-row {
+  padding-right: 0;
+}
+
+.analysis-replay-button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 7px;
+  font-size: 11.5px;
+}
+
+.analysis-replay-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Collapsed list row: the expand button takes the width, the quick-play
+   button rides on its right. It is removed from the DOM while expanded, so
+   the per-round buttons are the only replay affordance down there. */
+.analysis-game-row-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.analysis-play-game {
+  margin: 4px 0;
+}
+
+/* ---------- Replay screen ---------- */
+
+/* The replay owns the viewport: App drops the topbar while it is up (and
+   applies html.in-game, which kills page scrolling), so this is a full-height
+   column and the table takes every pixel the header and controls don't. */
+.replay-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  padding: 10px 14px 12px;
+}
+
+.replay-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+/* Round stepper: chip flanked by one-round-at-a-time arrows. */
+.replay-round-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.replay-round-nav .icon-button {
+  min-height: 28px;
+  min-width: 28px;
+  padding: 0 6px;
+}
+
+.replay-round-nav .icon-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.replay-header .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.replay-chip {
+  border-radius: 999px;
+  padding: 4px 11px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.replay-chip.contract {
+  border: 1px solid var(--red-2);
+  background: var(--red);
+  color: var(--text);
+}
+
+.replay-chip.round {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--muted);
+}
+
+.replay-progress {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Four hands around a felt, in the same table positions as the live board:
+   the local player at the bottom, the others clockwise from the left. No
+   panel chrome — the table *is* the screen, so it spans the full width and
+   whatever height is left over.
+
+   ONE card size for the whole board, declared here and inherited by both the
+   hands and the felt: a hand card and a played card are the same object, so
+   they are the same size, and neither ever resizes as a hand empties. The
+   size is a fixed length (never a flex fraction) for exactly that reason —
+   cards that grow while you step through a round make the board unreadable.
+   Layout adapts to the card, not the other way round. */
+.replay-table {
+  --rc-w: 80px;
+  --rc-h: 119px;
+  --rc-gap: 6px;
+  /* How far the top/bottom trick cards sit from the felt's centre. Below one
+     half-card the pile overlaps, like a real trick on the table — which is
+     what buys the cards their size on a short screen. */
+  --rc-dy: 68px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 1.1fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  flex: 1;
+  min-height: 0;
+}
+
+/* The top and bottom seats span the full width — their rows are theirs alone,
+   and confining them to the felt's column squeezes eight cards into a third of
+   the screen while the side seats get a full column each. Their contents stay
+   centred, so they still read as sitting across the felt. */
+.replay-seat-top {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  align-items: center;
+}
+
+.replay-seat-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.replay-seat-right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.replay-seat-bottom {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  align-items: center;
+}
+
+.replay-seat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.replay-seat.declarer .replay-seat-head strong {
+  color: var(--red-2);
+}
+
+.replay-seat-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.replay-seat-head strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+/* Directly behind the name, not pushed to the far edge — the count belongs
+   to the player, and at the table's full width a right-aligned number would
+   drift a screen away from whose it is. */
+.replay-seat-points {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The top and bottom seats have the whole screen width, so eight cards fit
+   in one row at full size with room to spare. */
+.replay-hand {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 2px;
+  /* Reserve a card's height so the table doesn't creep upward as hands empty. */
+  min-height: var(--rc-h);
+}
+
+/* The side seats get a third of the width but share the felt's row, so they
+   have height to spare and width to save: four cards per row, the lower row
+   drawn over the upper one so only the upper row's top half shows. The rank
+   and suit index live in that top-left corner, so a half-covered card still
+   reads — and every card stays the same size as everywhere else. */
+.replay-seat-left .replay-hand,
+.replay-seat-right .replay-hand {
+  display: grid;
+  grid-template-columns: repeat(4, var(--rc-w));
+  grid-auto-rows: calc(var(--rc-h) * 0.55);
+  gap: 0 2px;
+  height: calc(var(--rc-h) * 1.55);
+  min-height: 0;
+}
+
+.replay-seat-right .replay-hand {
+  justify-content: end;
+}
+
+/* The right seat reads right-to-left: its heading lines up with its hand. */
+.replay-seat-right .replay-seat-head {
+  justify-content: flex-end;
+}
+
+.replay-seat-left .replay-hand-card,
+.replay-seat-right .replay-hand-card {
+  align-self: start;
+}
+
+/* Hands hug their side of the table: the top/bottom seats centre over the
+   felt, the side seats align to their outer edge. */
+.replay-seat-top .replay-hand,
+.replay-seat-bottom .replay-hand {
+  justify-content: center;
+}
+
+.replay-seat-right .replay-hand {
+  justify-content: flex-end;
+}
+
+/* `.card-face` carries a fixed 62x92 (52x76 small) size from cards.css —
+   overridden below so the rendered card is exactly the box it sits in.
+   `flex: none`: a card must never resize because its neighbours came or went. */
+.replay-hand-card {
+  display: block;
+  width: var(--rc-w);
+  flex: none;
+}
+
+/* Scoped through `.replay-screen` on purpose. `.card-face.small` carries a
+   fixed size from cards.css *and* a compact-phone override in responsive.css
+   (`html.compact .card-face.small`, specificity 0-2-1) — both imported after
+   this file. Three classes here outrank them, so the replay's cards are the
+   size of the box they sit in on every breakpoint; without it a phone-sized
+   hand renders at 50px per card and runs off the seat's column. */
+.replay-screen .replay-hand-card .card-face.small,
+.replay-screen .replay-trick-card .card-face.small {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 62 / 92;
+}
+
+/* The felt: each played card sits at its player's edge of the centre cell.
+   It stretches to the full row height (the grid centres the seats, not this)
+   so the top and bottom cards never collide in the middle. */
+/* Inherits --rc-* from .replay-table, so the slot geometry below is plain
+   pixel math against the centre — percentage transforms would resolve against
+   the slot's shrink-to-fit width, which is not the card's width. */
+.replay-felt {
+  position: relative;
+  align-self: stretch;
+  grid-column: 2;
+  grid-row: 2;
+  min-height: 150px;
+}
+
+.replay-trick-slot {
+  position: absolute;
+}
+
+/* The slot classes are namespaced (`replay-slot-*`, not the board's bare
+   `slot-*`): trick-area.css owns those global names for the live table and is
+   imported after this file, so sharing them let its `top`/`left` win here.
+   Every slot starts exactly centred on the felt, then steps out by a offset
+   derived from the card metrics — a full card width sideways (so the side
+   cards can never slide under the top/bottom ones) and half a card plus a gap
+   vertically. Deriving it from --rc-* keeps the cross in proportion on the
+   phone, where the cards are much smaller. */
+.replay-trick-slot {
+  width: var(--rc-w);
+  left: calc(50% - var(--rc-w) / 2);
+  top: calc(50% - var(--rc-h) / 2);
+}
+
+.replay-trick-slot.replay-slot-top {
+  transform: translateY(calc(-1 * var(--rc-dy)));
+}
+
+.replay-trick-slot.replay-slot-bottom {
+  transform: translateY(var(--rc-dy));
+}
+
+.replay-trick-slot.replay-slot-left {
+  transform: translateX(calc(-1 * (var(--rc-w) + var(--rc-gap))));
+}
+
+.replay-trick-slot.replay-slot-right {
+  transform: translateX(calc(var(--rc-w) + var(--rc-gap)));
+}
+
+.replay-trick-card {
+  display: block;
+  width: var(--rc-w);
+  line-height: 0;
+}
+
+/* The trick winner is marked the moment the fourth card lands. The frame goes
+   on `.card-face`, not the wrapper, and repeats its 8px radius — that is the
+   element with the card's real bounds, so it traces the card exactly. */
+.replay-trick-slot.winner .card-face {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Parked beside the cross, clear of its right-hand card: the space above and
+   below the cross belongs to the top and bottom seats, so those are the one
+   place this must not go. */
+.replay-trick-points {
+  position: absolute;
+  left: calc(50% + var(--rc-w) * 1.5 + var(--rc-gap) + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.replay-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.replay-controls .primary-button,
+.replay-controls .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.replay-controls button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.replay-scrub {
+  flex: 1;
+  min-width: 60px;
+  accent-color: var(--red-2);
+}
+
+/* A single strip rather than a panel — it appears at a round's last card and
+   must not push the table around. */
+.replay-result {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 6px;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.replay-result-spacer {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Narrow window (html.narrow: effective width <= 820). Width is the scarce
+   axis here, and the top and bottom hands are the constraint: eight cards in
+   one nowrap row need 8 x --rc-w + 7 x 2px + the screen's 28px of padding, so
+   the 80px default stops fitting just under 700px. `html.in-game` hides the
+   overflow, which means the outer cards of those hands are not merely cut off
+   but unreachable — hence a step down rather than letting them run off.
+
+   62x92 is the app's standard card size (cards.css), and it fits the row down
+   to ~540px, below which no landscape phone goes. Declared *before* the
+   compact block on purpose: the two selectors have equal specificity, and on
+   a screen that is both narrow and short (an iPhone SE at 568x320) the
+   vertical budget is the tighter one, so compact's smaller card must win. */
+html.narrow .replay-table {
+  --rc-w: 62px;
+  --rc-h: 92px;
+  --rc-dy: 52px;
+}
+
+/* Phone landscape (iPhone 13 Pro is 844x390). Height is the scarce axis, and
+   card *legibility* is what the height is for — a rank you cannot read makes
+   the whole replay pointless. So the top and bottom seats put their name line
+   beside the hand instead of above it (worth ~36px across the two rows), and
+   that budget goes straight into card size. */
+/* A 1fr-auto-1fr grid rather than a centred row: the hand occupies the middle
+   track so it stays centred on the felt, and the name sits in the left track
+   beside it instead of pushing it off-centre. */
+html.compact .replay-seat-top,
+html.compact .replay-seat-bottom {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+html.compact .replay-seat-top .replay-seat-head,
+html.compact .replay-seat-bottom .replay-seat-head {
+  grid-column: 1;
+  justify-self: end;
+}
+
+html.compact .replay-seat-top .replay-hand,
+html.compact .replay-seat-bottom .replay-hand {
+  grid-column: 2;
+}
+
+/* Phone landscape (iPhone 13 Pro, 844x390). The size below is the largest
+   the vertical budget allows: two hand rows plus the trick pile must share
+   ~294px, and the pile's own height is 2 x --rc-dy + --rc-h. */
+html.compact .replay-table {
+  --rc-w: 49px;
+  --rc-h: 73px;
+  --rc-gap: 4px;
+  --rc-dy: 25px;
+  gap: 4px;
+}
+
+html.compact .replay-seat-head {
+  font-size: 11px;
+  gap: 4px;
+}
+
+html.compact .replay-header {
+  gap: 6px;
+}
+
+html.compact .replay-chip {
+  padding: 3px 8px;
+  font-size: 11px;
+}
+
+html.compact .replay-table {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+html.compact .replay-screen {
+  gap: 6px;
+  padding: 6px 16px 8px;
+}
+
+html.compact .replay-felt {
+  min-height: 110px;
+}

@@ -5,11 +5,12 @@ import PairingPanel from "./components/PairingPanel";
 import RulesModal from "./components/RulesModal";
 import SettingsScreen from "./components/SettingsScreen";
 import StatsScreen from "./components/StatsScreen";
+import AnalysisScreen from "./components/AnalysisScreen";
 import { useGameSession } from "./session/useGameSession";
 import { PlayerActionType } from "./types";
 import { translations } from "./lib/i18n";
 import { useSettings } from "./lib/settings";
-import { BookOpenIcon, BotIcon, ChartColumnIcon, HomeIcon, PlugZapIcon, SettingsIcon, WifiIcon } from "./components/icons";
+import { BookOpenIcon, BotIcon, ChartColumnIcon, HistoryIcon, HomeIcon, PlugZapIcon, SettingsIcon, WifiIcon } from "./components/icons";
 
 /**
  * Deep-link join (#7, Option A): read an invite code from the URL fragment
@@ -29,8 +30,12 @@ export default function App() {
   // All persisted device preferences flow through one store (see lib/settings).
   const [settings, updateSetting] = useSettings();
   const { language, playerName, avatar, totalRounds, disableLaufende, enableRamsch, enableStoss, lastMode } = settings;
-  const [screen, setScreen] = useState<"home" | "game" | "stats" | "settings">("home");
+  const [screen, setScreen] = useState<"home" | "game" | "stats" | "analysis" | "settings">("home");
   const [rulesOpen, setRulesOpen] = useState(false);
+  // A running replay takes the whole viewport, chrome-free (#85).
+  const [replayActive, setReplayActive] = useState(false);
+  // A replay is only on screen from within the analysis view.
+  const inReplay = screen === "analysis" && replayActive;
   // Captured once at startup, before we scrub the fragment below. Reading the
   // hash is synchronous and independent of the service-worker update check in
   // main.tsx, so nothing can race away the invite before we see it.
@@ -88,9 +93,9 @@ export default function App() {
   // only the game screen itself may scroll if it genuinely doesn't fit.
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.toggle("in-game", screen === "game");
+    root.classList.toggle("in-game", screen === "game" || inReplay);
     return () => root.classList.remove("in-game");
-  }, [screen]);
+  }, [inReplay, screen]);
 
   const t = translations[language];
 
@@ -112,7 +117,7 @@ export default function App() {
     <div className="app-shell">
       {/* The header is hidden in-game to free up vertical space (#26); the
           in-game toolbar carries the contract, round and quit controls. */}
-      {!inGame && (
+      {!inGame && !inReplay && (
       <header className="topbar">
         <button className="brand" onClick={() => !inGame && setScreen("home")} type="button">
           <span className="brand-mark">S</span>
@@ -126,6 +131,9 @@ export default function App() {
               </button>
               <button className="icon-button" onClick={() => setScreen("stats")} title={t.stats} type="button">
                 <ChartColumnIcon />
+              </button>
+              <button className="icon-button" onClick={() => setScreen("analysis")} title={t.analysis} type="button">
+                <HistoryIcon />
               </button>
               <button className="icon-button" onClick={() => setScreen("settings")} title={t.settings} type="button">
                 <SettingsIcon />
@@ -153,6 +161,8 @@ export default function App() {
 
       {!inGame && screen === "stats" ? (
         <StatsScreen language={language} />
+      ) : !inGame && screen === "analysis" ? (
+        <AnalysisScreen language={language} onReplayActiveChange={setReplayActive} />
       ) : !inGame && screen === "settings" ? (
         <SettingsScreen
           language={language}

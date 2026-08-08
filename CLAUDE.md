@@ -29,6 +29,7 @@ players/     PlayerController interface + AIController + AI heuristics
 engine/      GameEngine (state machine) + redaction (pure redactStateFor)
 net/         Transport & Signaling interfaces, WebRTCPeer, sdpCodec, protocol
 persistence/ GameHistoryStore interface, IndexedDB store, ListRecorder
+analysis/    pure replay derivation over stored RoundRecords (no React, no I/O)
 session/     Host/Guest/SoloSession + useGameSession (orchestration) + avatarSync
 components/  presentational React; App.tsx is the UI shell
 lib/         i18n, pwa, cardDisplay, settings
@@ -88,6 +89,14 @@ Terminology (see issue #22): a **list** is a whole session; it consists of **rou
   3. `totals` are the authoritative lifetime counters, incremented at record time and never pruned. `games` are pruned to `MAX_GAMES=2000` (oldest first) past the cap.
   4. All games keep their full per-round `rounds` detail — no stripping. A `RoundRecord` contains the dealt hand, the contract, every trick in play order (compact card ids), and the scoring result. Indexes `finishedAt`/`mode`/`players` support the planned analysis view (#16).
   5. All reads and writes go through the `persistence/` module (the `gameHistoryStore` singleton).
+
+### Analysis & replay (`src/analysis/`)
+
+- **`replay.ts`** turns a stored `RoundRecord` into the board at an arbitrary step: `reconstructHands` (a player's dealt hand *is* the set of cards they played, so a completed round's trick log holds all 32 cards — replay works retroactively on every stored game, including a guest's redacted recording, with no `DB_VERSION` bump) and `replayStep(round, step)` → hands, current trick, banked points. Pure, no engine import: re-running `GameEngine` for playback would need a shuffle seed nobody stored and buys nothing.
+- A finished trick stays on the table for exactly one step with its winner marked; its points are banked from the *next* step on. That one-step hold is what makes stepping readable — keep it if you touch `replayStep`.
+- **`AnalysisScreen`** is the picker (the stats row list; a collapsed row replays the whole list, an expanded one a chosen round) and **`ReplayScreen`** is the board, reached from the topbar icon. Deliberately *not* a `GameBoard` "replay mode" — `GameBoard` is wired to a live `onAction` and a redacted `GameState`.
+- Playback spans the **whole list**: the round is part of the cursor, so stepping past a round's last card rolls into the next round and stepping back from a deal returns to the previous round's last card. The round chip + arrows jump a round at a time.
+- The replay is chrome-free — `AnalysisScreen` reports it via `onReplayActiveChange` and `App.tsx` drops the topbar and applies `html.in-game` (no page scrolling), so the table gets the full viewport. Two consequences to respect: the replay's trick slots are namespaced `replay-slot-*` because `trick-area.css` owns the bare `slot-*` names for the live board *and is imported after* `analysis.css`; and for the same source-order reason the replay's card sizing is scoped `.replay-screen .replay-*-card .card-face.small` (three classes), which is what it takes to beat both the fixed size in `cards.css` and the `html.compact .card-face.small` override in `responsive.css` — without it a phone-landscape hand renders at 50px per card and runs off its column. The replay's card metrics live in `--rc-w`/`--rc-h`/`--rc-dy` on `.replay-table` (with a `html.compact` variant) — **one fixed size shared by the hands and the felt**, never a flex fraction, so a card never resizes as a hand empties and a played card is the same size as it was in the hand. Layout adapts to the card, not the reverse: the top/bottom seats deal eight cards in one row across the full width, while the width-starved side seats use two rows of four with the lower row drawn over the upper (only its top half, where the rank/suit index sits) — they share the felt's grid row, so that extra height is free. On an iPhone 13 Pro (844x390 landscape) the vertical budget `2 x hand + (2 x --rc-dy + card)` is what caps the card size; `--rc-dy` below half a card height overlaps the trick pile, which is what buys the size.
 
 ### UI
 

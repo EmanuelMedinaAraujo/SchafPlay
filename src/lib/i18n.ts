@@ -126,6 +126,26 @@ export const translations = {
     statsShowRounds: "Runden anzeigen",
     statsHideRounds: "Runden ausblenden",
 
+    // Analyse / Replay (#85)
+    analysis: "Analyse",
+    analysisIntro: "Wähle eine Partie und spiele jede Runde Stich für Stich nach – alle vier Blätter offen.",
+    analysisEmpty: "Noch keine beendeten Spiele – fertig gespielte Partien erscheinen hier automatisch.",
+    analysisRoundsHint: "Runde auswählen zum Nachspielen",
+    replay: "Nachspielen",
+    replayTitle: "Nachspielen",
+    replayNoData: "Für diese Runde sind keine Stichdaten gespeichert.",
+    replayStart: "Zum Anfang",
+    replayPrev: "Zurück",
+    replayNext: "Weiter",
+    replayEnd: "Zum Ende",
+    replayCard: "Karte",
+    replayResult: "Ergebnis",
+    replayBack: "Zurück zur Analyse",
+    replayTricksWon: "Stiche",
+    replayNextRound: "Nächste Runde",
+    replayPrevRound: "Vorige Runde",
+    replayWholeGame: "Ganze Partie nachspielen",
+
     // Settings
     settings: "Einstellungen",
     settingsLanguage: "Sprache",
@@ -297,6 +317,26 @@ export const translations = {
     statsTrendEmpty: "Not enough finished lists yet for a trend.",
     statsShowRounds: "Show rounds",
     statsHideRounds: "Hide rounds",
+
+    // Analysis / replay (#85)
+    analysis: "Analysis",
+    analysisIntro: "Pick a game and replay any round trick by trick – with all four hands face-up.",
+    analysisEmpty: "No finished games yet – completed games show up here automatically.",
+    analysisRoundsHint: "Select a round to replay",
+    replay: "Replay",
+    replayTitle: "Replay",
+    replayNoData: "No trick data is stored for this round.",
+    replayStart: "To the start",
+    replayPrev: "Back",
+    replayNext: "Forward",
+    replayEnd: "To the end",
+    replayCard: "Card",
+    replayResult: "Result",
+    replayBack: "Back to analysis",
+    replayTricksWon: "Tricks",
+    replayNextRound: "Next round",
+    replayPrevRound: "Previous round",
+    replayWholeGame: "Replay the whole game",
 
     // Settings
     settings: "Settings",
