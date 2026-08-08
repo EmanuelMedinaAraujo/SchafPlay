@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, GameType, Language } from "../types";
 import { gameLabel, translations } from "../lib/i18n";
-import { GameRecord } from "../persistence";
+import { GameRecord, RoundRecord } from "../persistence";
 import { isReplayable, replayStep, stepCount } from "../analysis/replay";
 import CardFace from "./CardFace";
 import { BotIcon, ChevronLeftIcon, ChevronRightIcon, SkipBackIcon, SkipForwardIcon, UserIcon } from "./icons";
@@ -23,6 +23,25 @@ function signed(score: number): string {
 }
 
 /**
+ * The nearest replayable round at or after `from`, moving in `direction`;
+ * -1 when there is none.
+ *
+ * A round with an empty trick log — an aborted record, or one stored before
+ * the round even reached its first trick — has nothing to show. Landing on one
+ * strands the viewer: the screen falls back to the bare "no data" panel, which
+ * carries no round nav and no controls, so the only way out is Back. Stepping
+ * and the round arrows therefore skip such rounds instead of stopping on them,
+ * and the fallback panel is left to mean what it says — this game has no
+ * replayable round at all.
+ */
+function nearestReplayable(rounds: RoundRecord[], from: number, direction: 1 | -1): number {
+  for (let i = from; i >= 0 && i < rounds.length; i += direction) {
+    if (isReplayable(rounds[i])) return i;
+  }
+  return -1;
+}
+
+/**
  * Post-mortem replay of a stored game (#85).
  *
  * Deliberately *not* a GameBoard "replay mode": GameBoard is wired to a live
@@ -40,9 +59,11 @@ function signed(score: number): string {
 export default function ReplayScreen({ game, startRoundIndex, language, onBack }: ReplayScreenProps) {
   const t = translations[language];
   const rounds = game.rounds;
-  const [roundIndex, setRoundIndex] = useState(() =>
-    Math.max(0, Math.min(startRoundIndex, rounds.length - 1)),
-  );
+  const [roundIndex, setRoundIndex] = useState(() => {
+    const start = Math.max(0, Math.min(startRoundIndex, rounds.length - 1));
+    const forward = nearestReplayable(rounds, start, 1);
+    return forward >= 0 ? forward : Math.max(0, nearestReplayable(rounds, start, -1));
+  });
   const [step, setStep] = useState(0);
 
   const round = rounds[roundIndex];
@@ -50,14 +71,17 @@ export default function ReplayScreen({ game, startRoundIndex, language, onBack }
   const view = useMemo(() => (round ? replayStep(round, step) : null), [round, step]);
 
   const atRoundEnd = step >= total - 1;
-  const hasNextRound = roundIndex < rounds.length - 1;
-  const hasPrevRound = roundIndex > 0;
+  const nextRound = nearestReplayable(rounds, roundIndex + 1, 1);
+  const prevRound = nearestReplayable(rounds, roundIndex - 1, -1);
+  const hasNextRound = nextRound >= 0;
+  const hasPrevRound = prevRound >= 0;
   const atGameEnd = atRoundEnd && !hasNextRound;
 
+  /** Jump to a (already resolved, replayable) round's deal or its last card. */
   const openRound = useCallback(
     (index: number, atLastStep = false) => {
       const target = rounds[index];
-      if (!target) return;
+      if (!target || !isReplayable(target)) return;
       setRoundIndex(index);
       setStep(atLastStep ? stepCount(target) - 1 : 0);
     },
@@ -68,16 +92,16 @@ export default function ReplayScreen({ game, startRoundIndex, language, onBack }
   const go = useCallback(
     (next: number) => {
       if (next > total - 1) {
-        if (hasNextRound) openRound(roundIndex + 1);
+        if (hasNextRound) openRound(nextRound);
         return;
       }
       if (next < 0) {
-        if (hasPrevRound) openRound(roundIndex - 1, true);
+        if (hasPrevRound) openRound(prevRound, true);
         return;
       }
       setStep(next);
     },
-    [hasNextRound, hasPrevRound, openRound, roundIndex, total],
+    [hasNextRound, hasPrevRound, nextRound, openRound, prevRound, total],
   );
 
   // Arrow keys drive playback; Home/End jump to this round's deal and last card.
@@ -130,7 +154,7 @@ export default function ReplayScreen({ game, startRoundIndex, language, onBack }
           <button
             className="icon-button"
             type="button"
-            onClick={() => openRound(roundIndex - 1)}
+            onClick={() => openRound(prevRound)}
             disabled={!hasPrevRound}
             title={t.replayPrevRound}
           >
@@ -142,7 +166,7 @@ export default function ReplayScreen({ game, startRoundIndex, language, onBack }
           <button
             className="icon-button"
             type="button"
-            onClick={() => openRound(roundIndex + 1)}
+            onClick={() => openRound(nextRound)}
             disabled={!hasNextRound}
             title={t.replayNextRound}
           >

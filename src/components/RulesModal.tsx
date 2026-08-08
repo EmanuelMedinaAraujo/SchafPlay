@@ -212,7 +212,7 @@ export default function RulesModal({ isOpen, onClose, language }: RulesModalProp
                     <strong>Farbzwang:</strong> Wird eine Farbe angespielt, MUSST du diese Farbe bedienen, wenn du eine passende Karte auf der Hand hast. Wird ein Trumpf angespielt, MUSST du mit Trumpf bedienen!
                   </li>
                   <li className="rules-modal-list-item">
-                    <strong>Ruf-As Regel (Sauspiel):</strong> Wenn du das gerufene As besitzt, MUSST du es spielen, sobald die gerufene Farbe das erste Mal angespielt wird. Du darfst das gerufene As nicht abwerfen, wenn du anderweitig bedienen kannst. Du darfst die gerufene Farbe auch nicht selbst anspielen, außer du spielst das Ruf-As direkt aus.
+                    <strong>Ruf-As Regel (Sauspiel):</strong> Wenn du das gerufene As besitzt, MUSST du es spielen, sobald die gerufene Farbe das erste Mal angespielt wird. Abwerfen darfst du es nie – nur wenn es deine letzte Karte ist. Anspielen darfst du in der Ruffarbe nur das Ruf-As selbst; eine niedrigere Karte dieser Farbe erst, wenn du mindestens vier davon hast – dann darfst du „davonlaufen“. Ober und Unter der Ruffarbe sind Trumpf und von alldem nicht betroffen.
                   </li>
                   <li className="rules-modal-list-item">
                     <strong>Schmieren und Abwerfen:</strong> Wenn du eine angespielte Farbe nicht bedienen kannst (und keinen Trumpf zugeben willst/kannst), darfst du jede beliebige Karte abwerfen. Das ist die perfekte Gelegenheit, deinem Partner ein As oder eine 10 (hohe Augen) „zu schmieren“.
@@ -224,7 +224,7 @@ export default function RulesModal({ isOpen, onClose, language }: RulesModalProp
                     <strong>Follow Suit (Farbzwang):</strong> If a suit is led, you MUST follow with that suit if you have it. If a trump card is led, you MUST follow with a trump card!
                   </li>
                   <li className="rules-modal-list-item">
-                    <strong>Called Ace Rule (Sauspiel):</strong> If you hold the Called Ace, you MUST play it whenever the called suit is led. You cannot play the Called Ace as a discard on other suits if you have card following options. Furthermore, you cannot lead a non-Ace of the called suit if you possess the Called Ace.
+                    <strong>Called Ace Rule (Sauspiel):</strong> If you hold the Called Ace, you MUST play it as soon as the called suit is led. You may never discard it on another suit — only as your very last card. In the called suit you may lead the Called Ace itself, but a lower card of it only once you hold four or more of that suit ("Davonlaufen"). The Ober and Unter of the called suit are trumps, so none of this touches them.
                   </li>
                   <li className="rules-modal-list-item">
                     <strong>Discarding / Smearing:</strong> If you cannot follow suit or trump, you may play any card. This is a great opportunity to "schmieren" (grease/smear) an Ace or 10 (high points) to your partner.
