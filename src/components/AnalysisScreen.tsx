@@ -149,9 +149,9 @@ function AnalysisGameItem({
             type="button"
             onClick={() => onReplay(firstPlayable)}
             title={t.replayWholeGame}
+            aria-label={t.replay}
           >
             <PlayIcon size={12} />
-            {t.replay}
           </button>
         )}
       </div>
@@ -212,9 +212,9 @@ function AnalysisRoundRow({
         onClick={onReplay}
         disabled={!replayable}
         title={replayable ? t.replay : t.replayNoData}
+        aria-label={t.replay}
       >
         <PlayIcon size={12} />
-        {t.replay}
       </button>
     </div>
   );
