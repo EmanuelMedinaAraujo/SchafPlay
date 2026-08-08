@@ -87,6 +87,12 @@ export function sortCardsForHand(cards: Card[], gameType: GameType): Card[] {
   });
 }
 
+/**
+ * Number of called-suit cards that unlock "Davonlaufen" — leading the called
+ * suit with something other than its Ace.
+ */
+const DAVONLAUFEN_MIN_CARDS = 4;
+
 export function getLegalCards(
   hand: Card[],
   currentTrick: Trick | null,
@@ -98,49 +104,44 @@ export function getLegalCards(
   const gameType = contract.type;
   const calledSuit = gameType === GameType.SAUSPIEL ? contract.calledSuit : undefined;
   const ledCard = currentTrick && currentTrick.playedCards.length > 0 ? currentTrick.playedCards[0].card : null;
+  const ledPlaySuit = ledCard ? getPlaySuit(ledCard, gameType) : null;
+  const following = ledPlaySuit ? hand.filter((card) => getPlaySuit(card, gameType) === ledPlaySuit) : [];
+  // Plain Farbzwang: serve the led suit while you hold it, otherwise play anything.
+  const followSuit = () => (ledPlaySuit && following.length > 0 ? following : hand);
 
   // Not a Sauspiel (or no called suit): plain follow-suit rules.
-  if (!calledSuit) {
-    if (!ledCard) return hand;
-    const ledPlaySuit = getPlaySuit(ledCard, gameType);
-    const following = hand.filter((card) => getPlaySuit(card, gameType) === ledPlaySuit);
-    return following.length > 0 ? following : hand;
-  }
+  if (!calledSuit) return followSuit();
 
-  // Sauspiel called-Ace rules: until a trick of the called suit has been led
-  // (or only one card remains), the Ace's holder may neither lead the called
-  // suit nor discard the Ace.
-  const hasCalledAce = hand.some((card) => card.suit === calledSuit && card.value === CardValue.ACE);
-  const isAceFreed = tricks.some(
+  // Sauspiel "Rufsau" rules. `calledSuit` is a *play* suit throughout: the Ober
+  // and Unter of that suit are trump, never part of it, so none of the
+  // restrictions below may ever touch them.
+  const calledSuitCards = hand.filter((card) => getPlaySuit(card, gameType) === calledSuit);
+  const calledAce = calledSuitCards.find((card) => card.value === CardValue.ACE);
+  // Once the called suit has been led the Ace is loose: it was either forced
+  // into that trick, or its holder ran away from it (Davonlaufen).
+  const aceFreed = tricks.some(
     (trick) => trick.playedCards.length > 0 && getPlaySuit(trick.playedCards[0].card, gameType) === calledSuit,
   );
-  const aceIsBound = hasCalledAce && !isAceFreed && hand.length > 1;
-  // Everything but the called suit — or, holding nothing else, everything but the Ace.
-  const withoutCalledSuit = () => {
-    const nonCalledSuitCards = hand.filter((card) => card.suit !== calledSuit);
-    return nonCalledSuitCards.length > 0 ? nonCalledSuitCards : hand.filter((card) => card.value !== CardValue.ACE);
-  };
+  if (!calledAce || aceFreed) return followSuit();
 
-  // Leading the trick.
-  if (!ledCard) {
-    return aceIsBound ? withoutCalledSuit() : hand;
+  // Leading: the Ace itself may be led at any time. The rest of the called suit
+  // is locked unless the hand holds four or more of it — "Davonlaufen", which
+  // exists only as a lead and frees the whole suit from here on.
+  if (!ledPlaySuit) {
+    if (calledSuitCards.length >= DAVONLAUFEN_MIN_CARDS) return hand;
+    return hand.filter((card) => getPlaySuit(card, gameType) !== calledSuit || card.id === calledAce.id);
   }
 
-  const ledPlaySuit = getPlaySuit(ledCard, gameType);
-  const following = hand.filter((card) => getPlaySuit(card, gameType) === ledPlaySuit);
+  // The called suit was led ("gesucht"): the Ace must be given. Holding four of
+  // the suit is no excuse here — Davonlaufen is a lead, and this is not one.
+  if (ledPlaySuit === calledSuit) return [calledAce];
 
-  // Cannot follow suit: the bound Ace still may not be discarded.
-  if (following.length === 0) {
-    return aceIsBound ? withoutCalledSuit() : hand;
-  }
-
-  // Called suit led while holding its Ace: must play the Ace — unless holding
-  // 4+ cards of the suit (Davonlaufen), which frees the whole suit.
-  if (calledSuit === ledPlaySuit && hasCalledAce && following.length < 4) {
-    const calledAce = following.find((card) => card.value === CardValue.ACE);
-    return calledAce ? [calledAce] : following;
-  }
-  return following;
+  // Some other suit led: serve it when possible. Otherwise discard freely —
+  // including a low card of the called suit — but never the Ace itself, unless
+  // it is the only card left.
+  if (following.length > 0) return following;
+  const withoutCalledAce = hand.filter((card) => card.id !== calledAce.id);
+  return withoutCalledAce.length > 0 ? withoutCalledAce : hand;
 }
 
 export function determineTrickWinner(playedCards: PlayedCard[], gameType: GameType): string {
