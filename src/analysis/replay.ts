@@ -15,7 +15,8 @@
  */
 
 import { CARD_POINTS } from "../game/deck";
-import { Card, CardValue, PlayedCard, Suit } from "../game/types";
+import { sortCardsForHand } from "../game/rules";
+import { Card, CardValue, GameType, PlayedCard, Suit } from "../game/types";
 import { CardId, RoundRecord } from "../persistence/GameHistoryStore";
 
 /** A trick as far as it has been revealed at the current step. */
@@ -61,33 +62,21 @@ export function cardFromId(id: CardId): Card | null {
   return { id, suit, value, points: CARD_POINTS[value] };
 }
 
-/** Deck order, so a reconstructed hand reads the same way every step. */
-const SUIT_ORDER: Suit[] = [Suit.ACORNS, Suit.LEAVES, Suit.HEARTS, Suit.BELLS];
-const VALUE_ORDER: CardValue[] = [
-  CardValue.ACE,
-  CardValue.TEN,
-  CardValue.KING,
-  CardValue.OBER,
-  CardValue.UNTER,
-  CardValue.NINE,
-  CardValue.EIGHT,
-  CardValue.SEVEN,
-];
-
-function sortCards(cards: Card[]): Card[] {
-  return [...cards].sort(
-    (a, b) =>
-      SUIT_ORDER.indexOf(a.suit) - SUIT_ORDER.indexOf(b.suit) ||
-      VALUE_ORDER.indexOf(a.value) - VALUE_ORDER.indexOf(b.value),
-  );
-}
-
 /**
  * Every card each seat held at the deal, reconstructed from the trick log:
  * a player's dealt hand is exactly the set of cards they played. Unparsable
  * ids are skipped rather than throwing — a replay must tolerate old records.
+ *
+ * Ordering goes through `rules.sortCardsForHand`, the same function the live
+ * `PlayerHand` and `RoundCardsPopup` use, so a replayed hand reads exactly
+ * like the hand the player held: trumps first, in the *contract's* order. A
+ * contract-blind deck sort would scatter a Wenz's Unter back into their
+ * natural suits while `CardFace` still draws them with a trump border.
+ * `RoundRecord.contract` is null for a Ramsch — Sauspiel ordering is the
+ * fallback there, matching `lib/export.ts`.
  */
 export function reconstructHands(round: RoundRecord): Record<string, Card[]> {
+  const gameType = round.contract?.type ?? GameType.SAUSPIEL;
   const hands: Record<string, Card[]> = {};
   for (const trick of round.tricks) {
     for (const play of trick.plays) {
@@ -96,7 +85,7 @@ export function reconstructHands(round: RoundRecord): Record<string, Card[]> {
       (hands[play.playerId] ??= []).push(card);
     }
   }
-  for (const id of Object.keys(hands)) hands[id] = sortCards(hands[id]);
+  for (const id of Object.keys(hands)) hands[id] = sortCardsForHand(hands[id], gameType);
   return hands;
 }
 
@@ -123,10 +112,15 @@ export function isReplayable(round: RoundRecord): boolean {
  * The moment a trick is complete it stays on the table for that one step —
  * with its winner marked — and its points are banked from the next step on,
  * which is what makes stepping readable rather than jumping four cards at a time.
+ *
+ * The last trick is the exception: there is no next step to bank it, so at the
+ * final step it counts immediately. Otherwise the seat totals would stop
+ * short of 120 exactly where the round's result strip is on screen next to them.
  */
 export function replayStep(round: RoundRecord, index: number): ReplayStep {
   const total = stepCount(round);
   const step = Math.max(0, Math.min(index, total - 1));
+  const isFinalStep = step === total - 1;
 
   const hands = reconstructHands(round);
   const pointsByPlayer: Record<string, number> = {};
@@ -175,8 +169,9 @@ export function replayStep(round: RoundRecord, index: number): ReplayStep {
     remaining -= revealed;
 
     // Points are banked only once the *next* card is played, so the finished
-    // trick reads as "still on the table" for exactly one step.
-    if (complete && remaining > 0 && trick.winnerId) {
+    // trick reads as "still on the table" for exactly one step — except at the
+    // end of the round, where no further step would ever bank them.
+    if (complete && (remaining > 0 || isFinalStep) && trick.winnerId) {
       pointsByPlayer[trick.winnerId] = (pointsByPlayer[trick.winnerId] ?? 0) + points;
     }
   }
@@ -190,13 +185,4 @@ export function replayStep(round: RoundRecord, index: number): ReplayStep {
     cardNumber,
     trickSize,
   };
-}
-
-/** The step index of the first card of trick `trickIndex` (0-based). */
-export function stepOfTrickStart(round: RoundRecord, trickIndex: number): number {
-  let step = 0;
-  for (let t = 0; t < trickIndex && t < round.tricks.length; t += 1) {
-    step += round.tricks[t].plays.length;
-  }
-  return step + 1;
 }

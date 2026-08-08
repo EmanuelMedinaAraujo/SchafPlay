@@ -12,6 +12,62 @@ import { expect, test } from "./helpers/test";
  * hardcoded, so a seed/AI change can't break it.
  */
 
+/**
+ * Runs in the page: how many finished lists are in the history store.
+ *
+ * Deliberately does not open a database that does not exist yet — a
+ * versionless `open` would create an empty `schafplay` at version 1, and the
+ * app could then never upgrade into its object stores.
+ */
+function countStoredGames(): Promise<number> {
+  return new Promise<number>((resolve) => {
+    indexedDB.databases().then((databases) => {
+      if (!databases.some((entry) => entry.name === "schafplay")) return resolve(0);
+      const open = indexedDB.open("schafplay");
+      open.onerror = () => resolve(0);
+      open.onsuccess = () => {
+        const db = open.result;
+        if (!db.objectStoreNames.contains("games")) {
+          db.close();
+          return resolve(0);
+        }
+        const counter = db.transaction("games", "readonly").objectStore("games").count();
+        counter.onsuccess = () => {
+          db.close();
+          resolve(counter.result);
+        };
+        counter.onerror = () => {
+          db.close();
+          resolve(0);
+        };
+      };
+    }, () => resolve(0));
+  });
+}
+
+/**
+ * Quits a finished list and opens the analysis screen with the game listed.
+ *
+ * `ListRecorder`'s write is fire-and-forget and `AnalysisScreen` reads history
+ * exactly once on mount, so opening the screen a moment too early shows an
+ * empty list *for good* — no amount of retrying on the row itself would
+ * recover. Polling the store instead settles the race at its source: no dead
+ * time when the write has already landed (the usual case), and no fixed
+ * timeout to re-tune when a loaded CI box makes it slow.
+ */
+async function openAnalysisAfterList(page: Page): Promise<void> {
+  await page.locator(".round-over-overlay").getByRole("button", { name: de.quit }).click();
+  await expect(page.locator(".home-screen")).toBeVisible();
+
+  await expect
+    .poll(() => page.evaluate(countStoredGames), { message: "recorded list to reach IndexedDB" })
+    .toBe(1);
+
+  await page.getByTitle(de.analysis).click();
+  await expect(page.locator(".analysis-screen")).toBeVisible();
+  await expect(page.locator(".stats-game-row")).toHaveCount(1);
+}
+
 /** Dev-skips every round of a list and readies up, until list-over shows. */
 async function fastForwardList(page: Page, rounds: number): Promise<void> {
   for (let round = 1; round <= rounds; round++) {
@@ -36,16 +92,9 @@ test.describe("analysis replay", () => {
     await startSolo(page, { seed: 5, rounds: 4, name: "Wastl" });
     await fastForwardList(page, 4);
 
-    await page.locator(".round-over-overlay").getByRole("button", { name: de.quit }).click();
-    await expect(page.locator(".home-screen")).toBeVisible();
-    // The IndexedDB write from ListRecorder is fire-and-forget.
-    await page.waitForTimeout(1500);
-
-    await page.getByTitle(de.analysis).click();
-    await expect(page.locator(".analysis-screen")).toBeVisible();
+    await openAnalysisAfterList(page);
 
     const rows = page.locator(".stats-game-row");
-    await expect(rows).toHaveCount(1);
     await expect(rows.first().locator(".stats-opponent")).toHaveText(de.statsSoloOpponent);
 
     // The collapsed row offers the whole list in one click; expanding swaps
@@ -94,6 +143,12 @@ test.describe("analysis replay", () => {
     await expect(page.locator(".replay-progress")).toContainText(`${de.trick} 8/8`);
     await expect(page.locator(".replay-result")).toBeVisible();
 
+    // The last trick is banked like every other one, so the seat totals account
+    // for the whole deck. Held back, they would contradict the result strip
+    // rendered right below them.
+    const totals = await page.locator(".replay-seat-points").allTextContents();
+    expect(totals.reduce((sum, text) => sum + Number.parseInt(text, 10), 0)).toBe(120);
+
     // Rewinding restores the full deal — the derivation is pure, not stateful.
     await page.getByTitle(de.replayStart).click();
     await expect(page.locator(".replay-hand-card")).toHaveCount(32);
@@ -109,11 +164,7 @@ test.describe("analysis replay", () => {
   test("playback runs across round borders through the whole list", async ({ page }) => {
     await startSolo(page, { seed: 5, rounds: 4, name: "Wastl" });
     await fastForwardList(page, 4);
-    await page.locator(".round-over-overlay").getByRole("button", { name: de.quit }).click();
-    await expect(page.locator(".home-screen")).toBeVisible();
-    await page.waitForTimeout(1500);
-
-    await page.getByTitle(de.analysis).click();
+    await openAnalysisAfterList(page);
     await page.locator(".analysis-play-game").first().click();
     await expect(page.locator(".replay-screen")).toBeVisible();
 

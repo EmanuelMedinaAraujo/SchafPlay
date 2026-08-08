@@ -395,6 +395,24 @@
   min-width: 0;
 }
 
+/* Narrow window (html.narrow: effective width <= 820). Width is the scarce
+   axis here, and the top and bottom hands are the constraint: eight cards in
+   one nowrap row need 8 x --rc-w + 7 x 2px + the screen's 28px of padding, so
+   the 80px default stops fitting just under 700px. `html.in-game` hides the
+   overflow, which means the outer cards of those hands are not merely cut off
+   but unreachable — hence a step down rather than letting them run off.
+
+   62x92 is the app's standard card size (cards.css), and it fits the row down
+   to ~540px, below which no landscape phone goes. Declared *before* the
+   compact block on purpose: the two selectors have equal specificity, and on
+   a screen that is both narrow and short (an iPhone SE at 568x320) the
+   vertical budget is the tighter one, so compact's smaller card must win. */
+html.narrow .replay-table {
+  --rc-w: 62px;
+  --rc-h: 92px;
+  --rc-dy: 52px;
+}
+
 /* Phone landscape (iPhone 13 Pro is 844x390). Height is the scarce axis, and
    card *legibility* is what the height is for — a rank you cannot read makes
    the whole replay pointless. So the top and bottom seats put their name line
@@ -432,12 +450,6 @@ html.compact .replay-table {
   --rc-dy: 25px;
   gap: 4px;
 }
-
-html.compact .replay-felt {
-  min-height: 0;
-}
-
-
 
 html.compact .replay-seat-head {
   font-size: 11px;
