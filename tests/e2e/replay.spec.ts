@@ -3,21 +3,15 @@ import { de, startSolo } from "./helpers/fixtures";
 import { expect, test } from "./helpers/test";
 
 /**
- * Analysis view + round replay (#85).
- *
- * The replay reads exclusively from the stored `RoundRecord`, so this spec
- * plays a real seeded list to completion first (dev-skip drives the same
- * engine, so the trick log it records is a genuine one), then drives the
- * replay purely through the UI. Numbers are read off the DOM rather than
- * hardcoded, so a seed/AI change can't break it.
+ * Analysis view + round replay (#85). Plays a real seeded list to completion
+ * first, then drives the replay through the UI. Numbers are read off the DOM
+ * rather than hardcoded, so a seed/AI change can't break it.
  */
 
 /**
- * Runs in the page: how many finished lists are in the history store.
- *
- * Deliberately does not open a database that does not exist yet — a
- * versionless `open` would create an empty `schafplay` at version 1, and the
- * app could then never upgrade into its object stores.
+ * Finished lists in the history store. Deliberately does not open a database
+ * that does not exist yet — a versionless `open` would create an empty
+ * `schafplay` at version 1 the app could never upgrade into its stores.
  */
 function countStoredGames(): Promise<number> {
   return new Promise<number>((resolve) => {
@@ -47,13 +41,8 @@ function countStoredGames(): Promise<number> {
 
 /**
  * Quits a finished list and opens the analysis screen with the game listed.
- *
- * `ListRecorder`'s write is fire-and-forget and `AnalysisScreen` reads history
- * exactly once on mount, so opening the screen a moment too early shows an
- * empty list *for good* — no amount of retrying on the row itself would
- * recover. Polling the store instead settles the race at its source: no dead
- * time when the write has already landed (the usual case), and no fixed
- * timeout to re-tune when a loaded CI box makes it slow.
+ * The write is fire-and-forget and the screen reads history once on mount, so
+ * opening it too early shows an empty list *for good* — poll the store first.
  */
 async function openAnalysisAfterList(page: Page): Promise<void> {
   await page.locator(".round-over-overlay").getByRole("button", { name: de.quit }).click();
@@ -143,9 +132,8 @@ test.describe("analysis replay", () => {
     await expect(page.locator(".replay-progress")).toContainText(`${de.trick} 8/8`);
     await expect(page.locator(".replay-result")).toBeVisible();
 
-    // The last trick is banked like every other one, so the seat totals account
-    // for the whole deck. Held back, they would contradict the result strip
-    // rendered right below them.
+    // The last trick banks immediately, so the seat totals reach 120 — held
+    // back they would contradict the result strip right below them.
     const totals = await page.locator(".replay-seat-points").allTextContents();
     expect(totals.reduce((sum, text) => sum + Number.parseInt(text, 10), 0)).toBe(120);
 

@@ -63,12 +63,9 @@ test.describe("pairing", () => {
       await expect(guest.getByRole("tab", { name: de.joinGame })).toHaveAttribute("aria-selected", "true");
       await expect(guestFlow.getByPlaceholder(de.pasteInviteHint)).toHaveValue(invite);
 
-      // NOTE: the panel also *auto-submits* that invite on mount, but React
-      // StrictMode's dev double-invoke tears the auto-created peer down (the
-      // mount cleanup in PairingPanel disconnects a not-yet-connected peer), so
-      // the automatic reply generation fails with an "invalid code" error in the
-      // dev build under test. We therefore drive the exchange explicitly, which
-      // still proves the deep-linked invite pairs end to end. See report.
+      // The panel also auto-submits on mount, but StrictMode's dev
+      // double-invoke tears the auto-created peer down, so that path fails in
+      // the dev build. Drive the exchange explicitly instead.
       await exchangeCodes(host, guest);
 
       await expect(host.locator(".game-screen")).toBeVisible({ timeout: 15_000 });
@@ -92,7 +89,5 @@ test.describe("pairing", () => {
     await expect(flow.getByPlaceholder(de.pasteInviteHint)).toHaveValue("test-clipboard-value");
   });
 
-  // Name propagation in both directions (guest→host and host→guest seats, plus
-  // the local hand labels) is already fully asserted by smoke.spec.ts, so it is
-  // deliberately not duplicated here.
+  // Name propagation is asserted by smoke.spec.ts, not duplicated here.
 });

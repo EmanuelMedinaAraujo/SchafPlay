@@ -1,6 +1,6 @@
 # SchafPlay 🃏
 
-Bavarian **Schafkopf for two players** as an offline-first PWA. Two humans (seats 1 & 3) play against each other over a serverless **WebRTC direct connection**; seats 2 & 4 are AI opponents (Resi & Sepp).
+Bavarian **Schafkopf for two players** as an offline-first PWA. Two humans (seats 1 & 3) play against each other over a serverless **WebRTC direct connection**; seats 2 & 4 are AI opponents (Resi & Sepp). Solo mode fills seat 3 with a third AI (Zenzi).
 
 ## How does the connection work?
 
@@ -15,8 +15,10 @@ If the connection drops, the host pauses the game: they exchange fresh codes, an
 ## Game rules
 
 - **Two-stage bidding**: first "Do you want to play?" (I dad spuin / Weiter), then "What do you play?" with overbidding by priority: Sauspiel < Wenz < Solo < Wenz Tout < Solo Tout
-- **Everyone passes** → cards are thrown in and redealt (no Ramsch)
+- **Everyone passes** → cards are thrown in and redealt, or the deal is played out as a **Ramsch** if that house rule is enabled in Settings
 - **Between rounds** both players must tap "Ready", then the dealer rotates
+
+Optional house rules (Settings, all off by default unless noted): Ramsch on an all-pass, Stoß/Retour doubling, and disabling Laufende.
 
 ### Tournament scoring (plus/minus, zero-sum)
 
@@ -40,7 +42,7 @@ The output in `dist/` is a purely static site — deployable to any static host 
 
 ## Testing
 
-The project has a Playwright E2E suite (`tests/e2e/`, see [TEST_INFRA.md](TEST_INFRA.md)) covering WebRTC pairing and reconnect, bidding legality, card-play rule enforcement, scored gameplay across full rounds and lists, Sauspiel partner-reveal redaction, settings persistence and local statistics.
+The project has a Playwright E2E suite (`tests/e2e/`) covering WebRTC pairing and reconnect, bidding legality, card-play rule enforcement, scored gameplay across full rounds and lists, Sauspiel partner-reveal redaction, the analysis replay, settings persistence and local statistics.
 
 ```bash
 npm run test:e2e   # run the suite headless (starts the Vite dev server automatically)
@@ -55,7 +57,7 @@ The repo ships a workflow ([.github/workflows/deploy.yml](.github/workflows/depl
 One-time setup: in **Settings → Pages → Build and deployment**, set the source to **GitHub Actions**. The site is then served at `https://<user>.github.io/SchafPlay/`.
 
 - **Base path**: production builds use `base: '/SchafPlay/'` (the project-site sub-path). Override it with the `BASE_PATH` env var when deploying to a custom domain or a different repo name; `npm run dev` always runs at `/`.
-- **Offline-first with a once-a-day online check**: the service worker serves the whole app from cache, so opening it never depends on the network. The app checks for a new version **at most once every 24 hours** — the last check time is stored in `localStorage` (`schafplay.lastUpdateCheck`), so closing and reopening the app within a day never pulls online.
+- **Offline-first**: the service worker serves the whole app from cache, so opening it never depends on the network. Version checks are **manual** — "Check for update" in Settings is the only code path that goes online; a found update activates and reloads the app without a restart.
 
 ## Hosting and Playing over Tailscale
 
@@ -71,8 +73,8 @@ To allow Tailscale to generate HTTPS certificates for your devices:
 3. Scroll down to **HTTPS Certificates** and enable the feature.
 
 ### 3. Vite Configuration
-Tailscale's local proxy forwards traffic to the local loopback address. This project is configured to support this out-of-the-box in [vite.config.ts](file:///d:/Emanuel/Projekte/SchafPlay/vite.config.ts#L35-L38):
-- Vite is forced to bind to IPv4 loopback (`host: '127.0.0.1'`) to match Tailscale Serve's default target.
+Tailscale's local proxy forwards traffic to the local loopback address. This project is configured to support this out-of-the-box in [vite.config.ts](vite.config.ts):
+- Vite binds to IPv4 loopback (`host: '127.0.0.1'`) to match Tailscale Serve's default target, unless you pass `--host`.
 - The tailnet domain suffix (`.ts.net`) is added to Vite's `server.allowedHosts` configuration to prevent "Host header blocking" security errors when accessing it via Tailscale.
 
 ### 4. Running the Game
@@ -103,6 +105,7 @@ src/
 ├── net/                   # Transport & Signaling interfaces, WebRTCPeer, sdpCodec, protocol
 ├── session/               # HostSession/GuestSession/SoloSession + useGameSession
 ├── persistence/           # GameHistoryStore interface, IndexedDB store, ListRecorder
+├── analysis/              # Pure replay derivation over stored RoundRecords
 ├── components/            # GameBoard, PlayerHand, BiddingPanel, TrickArea, PairingPanel, …
 └── lib/i18n.ts            # German/English incl. structured game log entries
 ```
@@ -116,8 +119,8 @@ The statistics page (chart icon in the header) shows how many matches you have p
 
 - **Fully local, per device.** Statistics never leave the device — there is no backend to send them to. Each player's device records its own view of the match, so both players keep their own history.
 - **A game counts once a match is finished.** Matches you quit or abandon are not recorded at all.
-- Alongside the summary, the full raw data of every round is stored — the hand you were dealt, the contract, every trick in play order and the scoring result — so richer analysis can be added later without losing history.
-- Stored under the localStorage key `schafplay.stats`. Clearing the site data (or the browser's storage for the PWA) clears the statistics.
+- Alongside the summary, the full raw data of every round is stored — the hand you were dealt, the contract, every trick in play order and the scoring result. The analysis view replays any recorded round from it, trick by trick.
+- Stored in IndexedDB (database `schafplay`). Clearing the site data (or the browser's storage for the PWA) clears the statistics.
 
 ## Tech stack
 

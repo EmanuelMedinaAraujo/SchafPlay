@@ -2,17 +2,11 @@ import { CardValue, GameState, GameType, Suit } from "../game/types";
 import { getPlaySuit } from "../game/rules";
 
 /**
- * State as seen by one player: every other hand is replaced by face-down
- * placeholders and the Sauspiel partner stays hidden until the called Ace
- * has been played.
+ * State as seen by one player: other hands become face-down placeholders and
+ * the Sauspiel partner stays hidden until the called Ace is played.
  *
- * This is THE privacy boundary of the host-authoritative model — nothing may
- * reach a guest that did not pass through here. Callers pass a snapshot
- * (`engine.getState()` already clones); the input object is not mutated.
- *
- * Ramsch (#11) needs no contract redaction: its contract carries no
- * partnerId and an empty declarerId, so beyond the hand placeholders there
- * is nothing to hide.
+ * THE privacy boundary of the host-authoritative model — nothing may reach a
+ * guest without passing through here. Does not mutate the input.
  */
 export function redactStateFor(state: GameState, viewerId: string): GameState {
   const redacted: GameState = {
@@ -39,9 +33,8 @@ export function redactStateFor(state: GameState, viewerId: string): GameState {
   ) {
     redacted.currentContract = { ...redacted.currentContract, partnerId: undefined };
     // The engine stores the SAME contract object in currentContract and
-    // biddingState.resolvedContract (finalizeBidding), so the partner must be
-    // blanked in both — copying one and forgetting the other leaks the
-    // partner's identity to the guest through the bidding state.
+    // biddingState.resolvedContract, so the partner must be blanked in BOTH —
+    // forgetting one leaks the partner through the bidding state.
     if (redacted.biddingState?.resolvedContract) {
       redacted.biddingState = {
         ...redacted.biddingState,

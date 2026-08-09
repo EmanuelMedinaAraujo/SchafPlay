@@ -3,10 +3,7 @@ import { GuestSignaling, HostSignaling } from "./Signaling";
 import { Transport, TransportState } from "./Transport";
 import { decodeSignal, encodeSignal, SDPBundle } from "./sdpCodec";
 
-/**
- * Factory used by the pairing UI — the one line to touch when a
- * settings-driven transport choice arrives.
- */
+/** Factory used by the pairing UI. */
 export function createWebRTCPeer(): WebRTCPeer {
   return new WebRTCPeer();
 }
@@ -26,10 +23,7 @@ export class WebRTCPeer implements Transport, HostSignaling, GuestSignaling {
   private messageHandlers = new Set<(message: P2PMessage) => void>();
   private stateHandlers = new Set<(state: TransportState) => void>();
 
-  /**
-   * Host side: create an offer and collect ICE candidates.
-   * Returns the compressed invite code string to display / copy.
-   */
+  /** Host: create an offer, returning the compressed invite code. */
   async host(): Promise<string> {
     this.isHost = true;
     this.emitState("connecting");
@@ -56,9 +50,7 @@ export class WebRTCPeer implements Transport, HostSignaling, GuestSignaling {
     });
   }
 
-  /**
-   * Host side, step 2: paste the guest's reply code to complete the handshake.
-   */
+  /** Host, step 2: the guest's reply code completes the handshake. */
   async acceptAnswer(replyCode: string): Promise<void> {
     const pc = this.pc;
     if (!pc) throw new Error("Call host() first");
@@ -67,8 +59,7 @@ export class WebRTCPeer implements Transport, HostSignaling, GuestSignaling {
     try {
       bundle = await decodeSignal(replyCode.trim());
     } catch {
-      // The paste itself is garbage — the connection is still usable,
-      // the user can simply paste again.
+      // Garbage paste — the connection is still usable, the user can retry.
       throw new Error("INVALID_CODE");
     }
     await pc.setRemoteDescription({ type: bundle.type, sdp: bundle.sdp });
@@ -77,10 +68,7 @@ export class WebRTCPeer implements Transport, HostSignaling, GuestSignaling {
     }
   }
 
-  /**
-   * Guest side: accept the host's invite code, create an answer.
-   * Returns the compressed reply code string.
-   */
+  /** Guest: answer the host's invite code, returning the reply code. */
   async join(inviteCode: string): Promise<string> {
     this.isHost = false;
     this.emitState("connecting");
@@ -151,10 +139,7 @@ export class WebRTCPeer implements Transport, HostSignaling, GuestSignaling {
     dc.onerror = () => this.fail();
   }
 
-  /**
-   * Gather ICE candidates until gathering is complete.
-   * With iceServers: [] on a LAN this resolves almost instantly.
-   */
+  /** With `iceServers: []` on a LAN this resolves almost instantly. */
   private gatherCandidates(pc: RTCPeerConnection): Promise<RTCIceCandidateInit[]> {
     return new Promise((resolve) => {
       const candidates: RTCIceCandidateInit[] = [];
@@ -192,10 +177,7 @@ export class WebRTCPeer implements Transport, HostSignaling, GuestSignaling {
     if (!this.closed) this.emitState("failed");
   }
 
-  /**
-   * Surface ICE-level failures. Without this, a handshake whose ICE never
-   * connects (wrong network, stale code) sits in "connecting" forever.
-   */
+  /** Without this, a handshake whose ICE never connects hangs in "connecting". */
   private watchConnection(pc: RTCPeerConnection) {
     pc.onconnectionstatechange = () => {
       if (this.closed || this.pc !== pc) return;

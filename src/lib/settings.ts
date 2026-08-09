@@ -8,25 +8,19 @@ export type GameMode = "host" | "join" | "solo";
 export const ROUND_OPTIONS = [4, 8, 12] as const;
 
 /**
- * Every persisted local-device preference, in one shape (#44). These are UI
- * settings only — small scalars that belong in synchronous storage so the
- * right value is available on first paint. The large, structured game history
- * lives behind `GameHistoryStore` (`src/persistence/`) instead.
+ * Every persisted local-device preference (#44). Small scalars only, in
+ * synchronous storage so the right value is on screen at first paint.
  */
 export interface Settings {
   language: Language;
   playerName: string;
-  /**
-   * Own profile picture (#14): a `preset:<id>` key or a `data:` URL (see
-   * `lib/avatars.ts`). Empty string means "no choice" — the legacy default
-   * photo is shown. Synced to the other human when hosting/joining.
-   */
+  /** Own profile picture (#14); see `lib/avatars.ts`. Synced to the other human. */
   avatar: string;
   totalRounds: number;
   disableLaufende: boolean;
-  /** House rule (#11): an all-pass starts a Ramsch instead of a redeal. The HOST's setting governs a game. */
+  /** House rule #11. The HOST's setting governs a game. */
   enableRamsch: boolean;
-  /** House rule (#57): defenders may Stoß (double) and the declarer may Retour. The HOST's setting governs a game. */
+  /** House rule #57. The HOST's setting governs a game. */
   enableStoss: boolean;
   /** The mode tab last used on the home screen, preselected next open. */
   lastMode: GameMode;
@@ -44,15 +38,9 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 /**
- * The persistence seam. `useSettings` and the app depend only on this
- * interface, so the backing store can be swapped (localStorage today, an
- * in-memory fake in tests, IndexedDB later) without touching consumers —
- * the same contract `GameHistoryStore` provides for stats.
- *
- * `load` is synchronous and total: it always returns a full `Settings`,
- * substituting the default for any field that is missing or unparseable
- * (e.g. written by an older app version). `save` persists a single field and
- * must degrade silently when storage is unavailable (private mode, quota).
+ * The persistence seam. `load` is total — it always returns a full `Settings`,
+ * defaulting any missing or unparseable field. `save` degrades silently when
+ * storage is unavailable.
  */
 export interface SettingsStore {
   load(): Settings;
@@ -60,11 +48,9 @@ export interface SettingsStore {
 }
 
 /**
- * Per-field mapping to a `localStorage` key plus tolerant parse/serialize.
- * Centralizing this here is the point of the refactor: previously each
- * setting hand-rolled its own read + validation + write effect and they
- * drifted (one ended up not persisted at all, #37). Keys match the historical
- * `schafplay.*` names so existing stored preferences keep working.
+ * Per-field `localStorage` key plus tolerant parse/serialize. Add a new
+ * preference here, never hand-rolled in a component (#37). Keys match the
+ * historical `schafplay.*` names so stored preferences keep working.
  */
 interface FieldCodec<T> {
   key: string;
@@ -154,11 +140,7 @@ export class LocalStorageSettingsStore implements SettingsStore {
 /** Shared app-wide instance. Swap the argument to `useSettings` in tests. */
 export const settingsStore: SettingsStore = new LocalStorageSettingsStore();
 
-/**
- * React bridge over a `SettingsStore`: seeds state synchronously from the
- * store (no flash) and writes through on every change. Returns the current
- * settings and a typed `update(key, value)` setter.
- */
+/** Seeds state synchronously from the store (no flash) and writes through. */
 export function useSettings(store: SettingsStore = settingsStore) {
   const [settings, setSettings] = useState<Settings>(() => store.load());
 

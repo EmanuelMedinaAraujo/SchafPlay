@@ -1,34 +1,12 @@
 /**
- * Compact, URL-safe encoding for signaling bundles.
+ * Compact, URL-safe encoding for signaling bundles (#33).
  *
- * ## Why not "compress twice"?
- *
- * The obvious idea (issue #33) is to run the code through deflate a second
- * time. That cannot help: deflate output is already near-maximal-entropy, so a
- * second pass only adds framing overhead and usually grows the blob. The win
- * has to come from feeding the compressor *less* data in the first place.
- *
- * ## What we do instead: minify the SDP before compressing.
- *
- * A browser offer/answer for a single data channel is ~600-800 characters, but
- * almost all of it is fixed boilerplate that we can regenerate deterministically
- * (`v=0`, the `m=application … webrtc-datachannel` line, `c=`, `t=`, …). The only
- * per-session entropy is: ice-ufrag, ice-pwd, the DTLS fingerprint, the setup
- * role, a handful of numeric shape fields, and the ICE candidates.
- *
- * So we extract just those fields into a positional array (no JSON keys), store
- * the fingerprint as raw bytes instead of colon-separated hex, then deflate +
- * base64url as before. On decode we rebuild a canonical SDP that
- * `setRemoteDescription` accepts for a single UDP/DTLS/SCTP data-channel
- * m-section. Both players run this same PWA and update together, so the rebuilt
- * SDP only has to be valid — it need not byte-match the browser's original.
- *
- * The encoded string carries a short version prefix (`SP1`) so future format
- * changes are detectable and codes from an old version fail with a clear
- * `INVALID_CODE` error instead of a JSON-parse crash.
- *
- * Exported on its own so future pairing carriers (deep links, QR codes —
- * issue #7) can reuse the exact same code format.
+ * The SDP is minified before compressing, not compressed twice — deflate
+ * output is already near-maximal-entropy. Only the per-session entropy
+ * (ice-ufrag, ice-pwd, DTLS fingerprint, setup role, numeric shape fields,
+ * ICE candidates) is extracted into a positional array; the rest is
+ * regenerated on decode. The rebuilt SDP only has to be valid for
+ * `setRemoteDescription` — it need not byte-match the browser's original.
  */
 
 /** Current on-the-wire format version prefix. Bump on any layout change. */
@@ -226,8 +204,8 @@ function minifyBundle(bundle: SDPBundle): MinBundle {
   ];
 }
 
-// A fixed session origin — the value is irrelevant to setRemoteDescription for a
-// single one-shot negotiation, so we regenerate a constant rather than store it.
+// Irrelevant to setRemoteDescription for a one-shot negotiation, so it is a
+// regenerated constant rather than a stored field.
 const SDP_ORIGIN = "o=- 1 2 IN IP4 127.0.0.1";
 
 function reconstructBundle(min: MinBundle): SDPBundle {
@@ -281,14 +259,9 @@ export async function encodeSignal(bundle: SDPBundle): Promise<string> {
   return CODE_PREFIX + payload;
 }
 
-/**
- * Decode a code produced by {@link encodeSignal} back into a full SDP bundle.
- * Throws `Error("INVALID_CODE")` on a malformed code or one from an
- * incompatible (older) version — the pairing UI surfaces this as "invalid code".
- */
+/** Throws `Error("INVALID_CODE")` on a malformed code or an older version. */
 export async function decodeSignal(code: string): Promise<SDPBundle> {
-  // Codes travel through messengers/clipboards that inject line breaks, spaces
-  // or invisible characters — strip everything that can't be part of the code.
+  // Messengers and clipboards inject line breaks, spaces and invisible chars.
   const cleaned = code.replace(/[^A-Za-z0-9_-]/g, "");
   if (!cleaned.startsWith(CODE_PREFIX)) throw new Error("INVALID_CODE");
   const payload = cleaned.slice(CODE_PREFIX.length);

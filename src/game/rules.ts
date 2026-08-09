@@ -1,7 +1,6 @@
 /**
- * Pure Schafkopf rules: trump/rank order, follow-suit legality, trick
- * resolution and bid legality. Shared vocabulary for the engine, the AI and
- * the UI — the single source of truth so their derivations cannot drift.
+ * Pure Schafkopf rules. The single source of truth for the engine, the AI and
+ * the UI alike, so their derivations cannot drift.
  */
 
 import { Card, CardValue, Contract, GameDeclaration, GamePriority, GameType, PlayedCard, Suit, Trick } from "./types";
@@ -72,11 +71,7 @@ const HAND_SUIT_ORDER: Record<Suit, number> = {
   [Suit.BELLS]: 3,
 };
 
-/**
- * Order a hand the way it is laid out during play: trumps first (highest on
- * the left), then the plain suits grouped Acorns/Leaves/Hearts/Bells, each
- * from high to low.
- */
+/** Trumps first, then plain suits Acorns/Leaves/Hearts/Bells, each high to low. */
 export function sortCardsForHand(cards: Card[], gameType: GameType): Card[] {
   return [...cards].sort((a, b) => {
     const aTrump = isTrump(a, gameType);
@@ -87,10 +82,7 @@ export function sortCardsForHand(cards: Card[], gameType: GameType): Card[] {
   });
 }
 
-/**
- * Number of called-suit cards that unlock "Davonlaufen" — leading the called
- * suit with something other than its Ace.
- */
+/** Called-suit cards needed to unlock "Davonlaufen". */
 const DAVONLAUFEN_MIN_CARDS = 4;
 
 export function getLegalCards(
@@ -112,33 +104,28 @@ export function getLegalCards(
   // Not a Sauspiel (or no called suit): plain follow-suit rules.
   if (!calledSuit) return followSuit();
 
-  // Sauspiel "Rufsau" rules. `calledSuit` is a *play* suit throughout: the Ober
-  // and Unter of that suit are trump, never part of it, so none of the
-  // restrictions below may ever touch them.
+  // Sauspiel "Rufsau" rules. `calledSuit` is a *play* suit throughout — the
+  // Ober and Unter of that suit are trump, so no restriction below touches them.
   const calledSuitCards = hand.filter((card) => getPlaySuit(card, gameType) === calledSuit);
   const calledAce = calledSuitCards.find((card) => card.value === CardValue.ACE);
-  // Once the called suit has been led the Ace is loose: it was either forced
-  // into that trick, or its holder ran away from it (Davonlaufen).
+  // Once the called suit has been led the Ace is loose.
   const aceFreed = tricks.some(
     (trick) => trick.playedCards.length > 0 && getPlaySuit(trick.playedCards[0].card, gameType) === calledSuit,
   );
   if (!calledAce || aceFreed) return followSuit();
 
-  // Leading: the Ace itself may be led at any time. The rest of the called suit
-  // is locked unless the hand holds four or more of it — "Davonlaufen", which
-  // exists only as a lead and frees the whole suit from here on.
+  // Leading: the Ace may be led any time; the rest of the suit is locked unless
+  // the hand holds four or more of it (Davonlaufen — a lead only).
   if (!ledPlaySuit) {
     if (calledSuitCards.length >= DAVONLAUFEN_MIN_CARDS) return hand;
     return hand.filter((card) => getPlaySuit(card, gameType) !== calledSuit || card.id === calledAce.id);
   }
 
-  // The called suit was led ("gesucht"): the Ace must be given. Holding four of
-  // the suit is no excuse here — Davonlaufen is a lead, and this is not one.
+  // Called suit led ("gesucht"): the Ace must be given, four-in-hand or not.
   if (ledPlaySuit === calledSuit) return [calledAce];
 
-  // Some other suit led: serve it when possible. Otherwise discard freely —
-  // including a low card of the called suit — but never the Ace itself, unless
-  // it is the only card left.
+  // Another suit led: serve it, else discard freely — but never the Ace,
+  // unless it is the only card left.
   if (following.length > 0) return following;
   const withoutCalledAce = hand.filter((card) => card.id !== calledAce.id);
   return withoutCalledAce.length > 0 ? withoutCalledAce : hand;
@@ -178,9 +165,8 @@ export function canOverrideBid(existing: GameDeclaration | null, incoming: GameD
 }
 
 /**
- * Suits whose Ace this hand may call for a Sauspiel: a plain card (not
- * Ober/Unter) of the suit is held, but its Ace is not. Canonical order
- * Acorns/Leaves/Bells — callers rely on it (the AI calls the first).
+ * Suits whose Ace this hand may call. Canonical order Acorns/Leaves/Bells —
+ * callers rely on it (the AI takes the first).
  */
 export function getCallableSuits(hand: Card[]): Suit[] {
   return [Suit.ACORNS, Suit.LEAVES, Suit.BELLS].filter((suit) => {
@@ -195,11 +181,7 @@ export function isValidSauspielCall(hand: Card[], suit: Suit): boolean {
   return getCallableSuits(hand).includes(suit);
 }
 
-/**
- * "Doch passen" (#24): retreating from the bidding is only permitted once a
- * Wenz or Solo already stands. A standing Sauspiel (or no bid yet) does not let
- * an interested player bow out — they must top it with a higher game.
- */
+/** "Doch passen" (#24): retreat only once a Wenz or Solo stands. */
 export function isRetreatAllowed(highBid: GameDeclaration | null | undefined): boolean {
   return !!highBid && getGamePriority(highBid.type, Boolean(highBid.isTout)) >= GamePriority.WENZ;
 }

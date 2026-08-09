@@ -16,11 +16,7 @@ interface PairingPanelProps {
   connectionState: TransportState | "idle";
   /** Called with every freshly created transport so the app can attach handlers. */
   onPeer: (peer: Transport) => void;
-  /**
-   * Guest-only: an invite code delivered via a deep link (`#invite=…`). When
-   * present it pre-fills the paste field and is processed automatically on
-   * mount, exactly as if the user had pasted it and clicked "Generate reply".
-   */
+  /** Guest-only: a deep-link (`#invite=…`) code, processed automatically on mount. */
   initialInvite?: string;
 }
 
@@ -135,19 +131,7 @@ function QrPopup({ data, label, t, onClose }: { data: string; label: string; t: 
   );
 }
 
-/**
- * Two-way copy-paste pairing via compressed SDP blobs.
- *
- * Host flow:
- *   1. On mount, creates a transport (WebRTCPeer), generates an invite code.
- *   2. Displays invite code for copying.
- *   3. Waits for user to paste the guest's reply code, then calls acceptAnswer().
- *
- * Guest flow:
- *   1. User pastes the host's invite code.
- *   2. Clicks "Generate reply" → generates reply code.
- *   3. Displays reply code for copying. Connection completes once host pastes it.
- */
+/** Two-way copy-paste pairing via compressed SDP blobs. */
 export default function PairingPanel({ language, mode, connectionState, onPeer, initialInvite }: PairingPanelProps) {
   const t = translations[language];
   const [inviteCode, setInviteCode] = useState("");
@@ -156,8 +140,7 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
   const [busy, setBusy] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState("");
-  // QR pairing (issue #7, Option C): scanning is only offered where camera is
-  // supported; QR *display* is always available.
+  // QR scanning needs a camera; QR *display* is always available (#7).
   const [scanSupported, setScanSupported] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [showingQrModal, setShowingQrModal] = useState(false);
@@ -204,9 +187,7 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
-  // A WebRTC session whose handshake failed can never recover — the offer is
-  // consumed. When ICE fails, start over: the host mints a fresh invite code,
-  // the guest goes back to the paste field.
+  // A failed handshake can never recover — the offer is consumed. Start over.
   const prevStateRef = useRef(connectionState);
   useEffect(() => {
     const prev = prevStateRef.current;
@@ -239,8 +220,7 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
       if (err instanceof Error && err.message === "INVALID_CODE") {
         setError(t.invalidCode);
       } else {
-        // The answer couldn't be applied (usually a stale reply already
-        // consumed the offer). This peer is dead — mint a fresh code.
+        // Usually a stale reply already consumed the offer. Mint a fresh code.
         setPastedCode("");
         setInviteCode("");
         setError(t.codeExpired);
@@ -270,9 +250,7 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
     }
   }
 
-  // Deep-link (`#invite=…`) join: process the supplied invite code once on
-  // mount, exactly as if the user had pasted it and clicked "Generate reply".
-  // A bad/expired code surfaces the same error UI as a bad pasted code.
+  // Deep-link join: same path as a pasted code, including its error UI.
   const autoSubmittedRef = useRef(false);
   useEffect(() => {
     if (mode !== "join" || autoSubmittedRef.current) return;

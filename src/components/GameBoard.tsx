@@ -21,12 +21,11 @@ interface GameBoardProps {
   onDevSkipRound?: () => void;
 }
 
-/** The contract chip is the red game indicator. When the contract is first
- * decided it takes centre stage: it appears enlarged over the table centre,
- * holds for ~a second, then scales down and flies up to its resting spot in
- * the toolbar. Fires once on the undecided -> decided edge; state snapshots
- * re-emit on pause/resume with the contract still set, so they don't
- * retrigger it. Mirrors the FLIP measurement TrickArea uses for trick cards. */
+/**
+ * The contract chip's entrance: enlarged over the table centre, then flies up
+ * to the toolbar. Fires once on the undecided -> decided edge, since snapshots
+ * re-emit on pause/resume with the contract still set.
+ */
 function useContractChipReveal(decided: boolean) {
   const chipRef = useRef<HTMLSpanElement>(null);
   const prevDecidedRef = useRef(false);
@@ -44,8 +43,7 @@ function useContractChipReveal(decided: boolean) {
     const centerRect = center.getBoundingClientRect();
     let dx = centerRect.left + centerRect.width / 2 - (chipRect.left + chipRect.width / 2);
     let dy = centerRect.top + centerRect.height / 2 - (chipRect.top + chipRect.height / 2);
-    // Forced-landscape mode rotates the page 90°, so screen-space deltas
-    // must be mapped into the rotated local coordinate space.
+    // Forced landscape rotates the page 90°: map screen-space deltas into it.
     if (document.documentElement.classList.contains("rotated")) {
       [dx, dy] = [dy, -dx];
     }
@@ -92,13 +90,10 @@ export default function GameBoard({
     onAction({ type: PlayerActionType.STOSS, playerId: myPlayerId });
   }
 
-  // The local player's own already-made announcement (badge on the name plate).
   const myStossKind: StossKind | null = state.stoss?.find((entry) => entry.playerId === myPlayerId)?.kind ?? null;
 
-  // Whether the local seat may announce a Stoß/Retour right now — decided from
-  // OWN knowledge only (never the redacted partner id): I know the declarer,
-  // and I can see whether I hold the called Ace (which would make me the
-  // partner). The engine re-validates, so this only governs button visibility.
+  // Decided from OWN knowledge only, never the redacted partner id. Button
+  // visibility only — the engine re-validates.
   const stossOption: StossKind | null = ((): StossKind | null => {
     const contract = state.currentContract;
     if (!state.stossEnabled || state.status !== "PLAYING") return null;

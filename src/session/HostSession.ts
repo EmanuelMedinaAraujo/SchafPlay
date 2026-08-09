@@ -7,16 +7,12 @@ import { Transport } from "../net/Transport";
 import { heavyAvatars, sanitizeAvatar, withoutHeavyAvatars } from "./avatarSync";
 import { GameSession, SessionDeps } from "./GameSession";
 
-/**
- * The remote human seats the host fans redacted state out to. A single guest
- * on p3 today; variable multiplayer (#6) turns this into per-transport seats.
- */
+/** The fan-out seam for variable multiplayer (#6). */
 const REMOTE_HUMAN_SEATS: readonly SeatId[] = ["p3"];
 
 /**
- * Host side: runs the authoritative engine. The engine is created lazily on
- * the first successful connection and survives reconnects — attaching a
- * fresh transport resumes the same game.
+ * Runs the authoritative engine. It is created lazily on the first successful
+ * connection and survives reconnects — a fresh transport resumes the same game.
  */
 export class HostSession implements GameSession {
   readonly role = "host" as const;
@@ -25,11 +21,7 @@ export class HostSession implements GameSession {
   private engine: GameEngine | null = null;
   private recorder: ListRecorder | null = null;
   private transport: Transport | null = null;
-  /**
-   * Signature of the avatar map last delivered to the current peer (#14), so
-   * pictures are sent once rather than in every snapshot. Reset per transport:
-   * a re-paired peer needs the map again.
-   */
+  /** Reset per transport: a re-paired peer needs the avatar map again (#14). */
   private sentAvatars = "";
 
   constructor(private readonly deps: SessionDeps) {}
@@ -68,19 +60,13 @@ export class HostSession implements GameSession {
       if (message.type === P2PMessageType.CONNECTION_ACK) {
         const payload = message.payload as { name?: string; avatar?: unknown } | undefined;
         if (payload?.name) engine.setGuestName(payload.name);
-        // The session is the network boundary, so the wire value is validated
-        // and size-capped here (same reason the action's playerId is
-        // overwritten above); the engine just stores what it is given.
+        // The session is the network boundary; the engine stores what it is given.
         if (payload?.avatar !== undefined) engine.setGuestAvatar(sanitizeAvatar(payload.avatar));
       }
     });
   }
 
-  /**
-   * Constructed lazily at the moment the connection actually succeeds, not at
-   * attach time, so it picks up whatever name and round count the user last
-   * selected before the game actually starts.
-   */
+  /** Lazily at connect, not at attach, so it picks up the latest settings. */
   private createEngine(): void {
     const engine = new GameEngine(this.deps.getPlayerName(), "Gast", this.deps.getTotalRounds(), {
       devToolsEnabled: import.meta.env.DEV,
@@ -110,10 +96,8 @@ export class HostSession implements GameSession {
     for (const seat of REMOTE_HUMAN_SEATS) {
       const state = engine.getRedactedState(seat);
       try {
-        // Profile pictures (#14) are the same for every seat (avatars are not
-        // redacted) and never change mid-round, so they go once per peer
-        // instead of in every snapshot — see session/avatarSync.ts. Sent
-        // before the state it belongs to; the channel is ordered.
+        // Once per peer instead of in every snapshot (see session/avatarSync.ts).
+        // Sent before the state it belongs to; the channel is ordered.
         const avatars = heavyAvatars(state);
         const signature = JSON.stringify(avatars);
         if (signature !== this.sentAvatars) {

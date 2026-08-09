@@ -1,16 +1,9 @@
 import { BidDeclaration, Contract, RoundResult, WillBid } from "../game/types";
 
 /**
- * Local game statistics, persisted per device.
- *
- * Stability rules (binding — see CLAUDE.md):
- * - Never remove or repurpose a stored field without bumping the database
- *   version and adding an upgrade step (see persistence/idb.ts).
- * - Loading must never throw and never delete user data.
- * - `totals` are the authoritative lifetime counters, never pruned.
- * - `games` are pruned to MAX_GAMES (newest first). All games keep their
- *   full per-round `rounds` detail.
- * - All reads/writes of stored stats go through this module's store.
+ * Local game statistics, persisted per device. Binding: never remove or
+ * repurpose a stored field without bumping DB_VERSION and adding an
+ * `onupgradeneeded` branch; loading must never throw or delete user data.
  */
 
 export type StatsMode = "solo" | "multiplayer";
@@ -66,11 +59,7 @@ export interface StatsTotals {
   mpWon: number;
 }
 
-/**
- * The persistence boundary for game history. IndexedDB-backed today
- * (IdbGameHistoryStore); the interface keeps recorders, screens and future
- * consumers (analysis view #16, achievements #9) independent of the backend.
- */
+/** The persistence boundary for game history. */
 export interface GameHistoryStore {
   /** Append a finished game. Fire-and-forget: must never throw into the game. */
   recordGame(record: Omit<GameRecord, "id" | "finishedAt">): void;

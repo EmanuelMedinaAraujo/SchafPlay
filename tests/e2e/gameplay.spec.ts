@@ -47,10 +47,8 @@ test.describe("gameplay (solo, 4 rounds)", () => {
   });
 
   test("the whole list resolves via dev-skip and rematch clears it", async ({ page }) => {
-    // dev-skip races the AI seats' own 40ms will-bids (whoever already bid
-    // keeps their bid), so the exact trajectory is NOT the simulation's —
-    // the list summary is asserted for internal consistency against the
-    // standings the UI itself displays, not against predicted totals.
+    // dev-skip races the AI seats' 40ms will-bids, so the trajectory is NOT the
+    // simulation's — assert internal consistency against the displayed standings.
     await startSolo(page, { seed: 42, name: "Toni", rounds: 4 });
 
     for (let round = 1; round <= 4; round += 1) {

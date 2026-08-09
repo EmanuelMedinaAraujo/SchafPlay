@@ -1,19 +1,8 @@
 /**
- * Zero-dependency QR code encoder (ISO/IEC 18004), byte mode, error
- * correction level L, versions 1–40 with automatic version selection.
- *
- * Built for issue #7 (Option C): pairing codes are deflate→base64url blobs
- * (see net/sdpCodec.ts) of roughly 650–700 characters, which lands on
- * version 18-L (capacity 718 bytes). Auto-selection up to version 40
- * (2953 bytes) leaves ample headroom for devices with many network
- * interfaces / ICE candidates. Level L is deliberate: screen-to-screen
- * scanning is a high-contrast, glare-free environment, and the lower EC
- * overhead keeps the symbol several versions smaller — easier to scan on
- * small phone screens than a denser, more redundant one.
- *
- * The only export consumers need is `encodeQR(text)`, which returns the
- * finished module matrix (`true` = dark). `matrixToSvgPath` turns that into
- * one SVG path string at unit module scale for crisp vector rendering.
+ * Zero-dependency QR encoder (ISO/IEC 18004), byte mode, EC level L,
+ * versions 1–40 auto-selected (#7). Level L is deliberate: screen-to-screen
+ * scanning is high-contrast, and the lower EC overhead keeps the symbol
+ * several versions smaller — easier to scan on a small phone screen.
  */
 
 /** Finished QR symbol: square matrix of modules, `matrix[row][col]`. */
@@ -42,11 +31,9 @@ function gfMul(a: number, b: number): number {
 }
 
 /**
- * Generator polynomial for `degree` error-correction codewords, returned
- * highest-degree coefficient first so `gen[0]` is the leading term (always 1)
- * and `gen[1..degree]` are the taps `rsComputeEC` subtracts. The product
- * (x−α⁰)(x−α¹)… is built up constant-term-first, so it is reversed on the way
- * out to match that convention.
+ * Generator polynomial for `degree` EC codewords, highest-degree coefficient
+ * first: `gen[0]` is the leading term (always 1), `gen[1..degree]` the taps.
+ * Built constant-term-first, hence the reverse on the way out.
  */
 function rsGeneratorPoly(degree: number): Uint8Array {
   let poly = new Uint8Array([1]);
@@ -484,10 +471,8 @@ function penaltyScore(m: QRMatrix): number {
 // ---------------------------------------------------------------------------
 
 /**
- * Encode `text` (UTF-8, byte mode, EC level L) into a QR module matrix.
- * Version is auto-selected; all eight masks are trialled and the one with
- * the lowest penalty score wins, as the spec prescribes.
- * Throws if the payload exceeds version 40 capacity (2953 bytes).
+ * Encode `text` into a QR module matrix. All eight masks are trialled and the
+ * lowest penalty score wins. Throws past version 40 capacity (2953 bytes).
  */
 export function encodeQR(text: string): QRMatrix {
   const bytes = new TextEncoder().encode(text);
@@ -521,10 +506,8 @@ export function encodeQR(text: string): QRMatrix {
 }
 
 /**
- * One SVG path covering all dark modules at unit scale (module = 1×1 at
- * integer coordinates). Render inside a viewBox that adds the 4-module
- * quiet zone, with `shape-rendering: crispEdges` for clean squares.
- * Horizontal runs are merged to keep the path string compact.
+ * One SVG path over all dark modules at unit scale. Render inside a viewBox
+ * that adds the 4-module quiet zone, with `shape-rendering: crispEdges`.
  */
 export function matrixToSvgPath(matrix: QRMatrix): string {
   const parts: string[] = [];

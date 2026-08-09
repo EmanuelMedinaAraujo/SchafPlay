@@ -43,10 +43,9 @@ function newId(): string {
 }
 
 /**
- * IndexedDB-backed game history. Every method degrades silently when storage
- * is unavailable (private mode, quota, blocked upgrade): recordGame no-ops
- * and reads resolve to empty defaults — a stats failure must never break a
- * game that just finished.
+ * Every method degrades silently when storage is unavailable: recordGame
+ * no-ops, reads resolve to empty defaults. A stats failure must never break
+ * a game that just finished.
  */
 export class IdbGameHistoryStore implements GameHistoryStore {
   private dbPromise: Promise<IDBDatabase> | null = null;

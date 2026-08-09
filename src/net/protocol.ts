@@ -6,10 +6,9 @@ import { GameState, PlayerAction } from "../game/types";
  *
  * - Host → Guest: GAME_STATE_UPDATE `{ state: RedactedGameState }`
  * - Guest → Host: PLAYER_ACTION `{ action: PlayerAction }`
- * - Guest → Host on connect: CONNECTION_ACK `{ name, avatar }` (guest display name + profile picture, #14)
- * - Host → Guest: AVATAR_UPDATE `{ avatars }` — the seat→profile-picture map
- *   (#14), sent once per connection instead of riding in every state snapshot;
- *   see `session/avatarSync.ts` for why.
+ * - Guest → Host on connect: CONNECTION_ACK `{ name, avatar }` (#14)
+ * - Host → Guest: AVATAR_UPDATE `{ avatars }` — the seat→picture map, once per
+ *   connection rather than in every snapshot (see `session/avatarSync.ts`)
  * - PING/PONG are transport-level keepalive, handled inside the transport.
  */
 export enum P2PMessageType {

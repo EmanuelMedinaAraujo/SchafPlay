@@ -14,14 +14,14 @@ export interface SessionEvents {
 export interface SessionDeps {
   /** Read at engine-creation time so name/round changes made after mount are picked up. */
   getPlayerName(): string;
-  /** Profile picture (#14) of the local player, synced to the other human (host in-state, guest via CONNECTION_ACK). */
+  /** Profile picture (#14) of the local player, synced to the other human. */
   getPlayerAvatar(): string;
   getTotalRounds(): number;
-  /** House rule (#31): whether Laufende are disabled for the round scoring. Read when the engine is created. */
+  /** House rule #31. Read when the engine is created. */
   getDisableLaufende(): boolean;
-  /** House rule (#11): whether an all-pass starts a Ramsch. Read when the engine is created — the host's/solo player's device setting governs the game. */
+  /** House rule #11. The host's/solo player's setting governs the game. */
   getEnableRamsch(): boolean;
-  /** House rule (#57): whether Stoß/Retour is enabled. Read when the engine is created — the host's/solo player's device setting governs the game. */
+  /** House rule #57. The host's/solo player's setting governs the game. */
   getEnableStoss(): boolean;
   events: SessionEvents;
 }

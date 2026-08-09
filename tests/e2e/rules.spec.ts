@@ -74,10 +74,8 @@ test.describe("rules enforcement (solo)", () => {
   });
 
   test("hand stays locked until it is the local player's turn to play", async ({ page }) => {
-    // The UI locks the hand through one mechanism (PlayerHand's `disabled` =
-    // not PLAYING or not my turn), so the stable will-phase state — where the
-    // engine waits indefinitely for p1's bid — is the deterministic place to
-    // assert the lock; an AI seat's 40ms turn window would be a race.
+    // The will phase, where the engine waits indefinitely for p1's bid, is the
+    // deterministic place to assert the lock; an AI's 40ms turn would race.
     const { seed, trace } = findSeed((tr) => Boolean(tr[0].contract), { totalRounds: 4 });
 
     await startSolo(page, { seed, name: "Toni", rounds: 4 });

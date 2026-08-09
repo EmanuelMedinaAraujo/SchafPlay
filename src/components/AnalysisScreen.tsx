@@ -26,19 +26,13 @@ interface Selection {
   roundIndex: number;
 }
 
-/**
- * Analysis view (#85, first slice of #16): a row per recorded list — date,
- * mode, opponent, result — expanding into its rounds, each with a replay
- * button. Selecting a round hands over to ReplayScreen; nothing here is
- * derived live, it all comes from the stored history.
- */
+/** Analysis view (#85): a row per recorded list, expanding into its rounds. */
 export default function AnalysisScreen({ language, onReplayActiveChange }: AnalysisScreenProps) {
   const t = translations[language];
   const [games, setGames] = useState<GameRecord[]>([]);
   const [selection, setSelection] = useState<Selection | null>(null);
 
-  // History only changes when a list finishes, which cannot happen while this
-  // screen is mounted — one read on mount is enough (same as StatsScreen).
+  // History can't change while this screen is mounted; one read is enough.
   useEffect(() => {
     let active = true;
     gameHistoryStore.loadGames().then((value) => active && setGames(value));
@@ -47,8 +41,7 @@ export default function AnalysisScreen({ language, onReplayActiveChange }: Analy
     };
   }, []);
 
-  // The replay runs chrome-free (no topbar) — tell App when it is up, and
-  // hand the chrome back when this screen unmounts for any reason.
+  // The replay runs chrome-free; hand the chrome back on unmount too.
   useEffect(() => {
     onReplayActiveChange?.(selection !== null);
   }, [onReplayActiveChange, selection]);
@@ -120,8 +113,7 @@ function AnalysisGameItem({
     year: "2-digit",
   });
   const hasRounds = game.rounds.length > 0;
-  // The first round that actually holds a trick log — where "play the whole
-  // list" starts. -1 when nothing in this list can be replayed.
+  // Where "play the whole list" starts; -1 when nothing can be replayed.
   const firstPlayable = game.rounds.findIndex(isReplayable);
 
   return (

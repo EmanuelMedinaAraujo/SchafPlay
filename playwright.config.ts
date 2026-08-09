@@ -1,13 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * E2E suite for SchafPlay (see TEST_INFRA.md). Runs against the Vite dev
- * server: the DEV-only hooks the tests rely on (`?e2e-seed` determinism from
- * src/lib/e2e.ts, the dev skip buttons) are compiled out of production builds.
- *
- * WebRTC pairing tests connect two browser contexts over loopback host
- * candidates; Chromium's mDNS obfuscation is disabled so those candidates
- * stay resolvable in headless/CI environments without an mDNS responder.
+ * Runs against the Vite dev server: the DEV-only hooks the tests rely on
+ * (`?e2e-seed` from src/lib/e2e.ts, the dev skip buttons) are compiled out of
+ * production builds. Chromium's mDNS obfuscation is disabled so the loopback
+ * host candidates WebRTC pairing needs stay resolvable in CI.
  */
 export default defineConfig({
   testDir: "tests/e2e",

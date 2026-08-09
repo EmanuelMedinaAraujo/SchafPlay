@@ -11,23 +11,20 @@ export interface UseGameSessionOptions {
   /** Profile picture (#14) of the local player, synced to the other human. */
   getPlayerAvatar(): string;
   getTotalRounds(): number;
-  /** House rule (#31): whether Laufende are disabled. Read when a session starts a new engine. */
+  /** House rule #31. Read when a session starts a new engine. */
   getDisableLaufende(): boolean;
-  /** House rule (#11): whether an all-pass starts a Ramsch. Read when a session starts a new engine. */
+  /** House rule #11. Read when a session starts a new engine. */
   getEnableRamsch(): boolean;
-  /** House rule (#57): whether Stoß/Retour is enabled. Read when a session starts a new engine. */
+  /** House rule #57. Read when a session starts a new engine. */
   getEnableStoss(): boolean;
   /** Show the game screen (also fires on reconnect, where it is a no-op). */
   onEnterGame(): void;
 }
 
 /**
- * Bridges GameSession lifecycles to React state. Session reuse rules mirror
- * the pre-refactor behavior exactly:
- * - re-attaching the same role (reconnect) reuses the session, so the engine
- *   and the stats recorder survive a dropped peer;
- * - switching roles (host ↔ join ↔ solo) destroys the old session;
- * - quitting destroys the session — the next join records a fresh list.
+ * Bridges GameSession lifecycles to React state. Reuse rules: re-attaching the
+ * same role (reconnect) keeps the engine and recorder; switching roles or
+ * quitting destroys the session, so the next join records a fresh list.
  */
 export function useGameSession(options: UseGameSessionOptions) {
   const sessionRef = useRef<GameSession | null>(null);

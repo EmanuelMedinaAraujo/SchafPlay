@@ -2,12 +2,8 @@ import { Card } from "../game/types";
 import { seededShuffle } from "./seededShuffle";
 
 /**
- * E2E test hooks — dev builds only, and only when the page URL carries
- * `?e2e-seed=<integer>`. The Playwright suite (tests/e2e/) boots the app with
- * that parameter to get a deterministic deal (seeded shuffle, mirrored by the
- * test-side simulation helper) and fast AI/trick pacing so scripted games run
- * in seconds. Production builds compile `import.meta.env.DEV` to false, so
- * this whole hook is dead code there and the tree stays untouched.
+ * E2E test hooks — dev builds only, gated on `?e2e-seed=<integer>`. Production
+ * compiles `import.meta.env.DEV` to false, so this is dead code there.
  */
 export interface E2EEngineOverrides {
   aiDelayMs: number;
@@ -25,9 +21,7 @@ export function getE2EOverrides(): E2EEngineOverrides | null {
   if (raw === null) return null;
   const seed = Number(raw);
   if (!Number.isInteger(seed)) return null;
-  // Optional pacing overrides (`e2e-ai`, `e2e-hold`) let a demo/recording run
-  // the seeded engine at a human-watchable speed; absent, the fast suite
-  // constants apply, so the Playwright tests are unaffected.
+  // `e2e-ai` / `e2e-hold` let a demo run the seeded engine at watchable speed.
   const params = new URLSearchParams(window.location.search);
   const num = (name: string, fallback: number) => {
     const raw = params.get(name);
