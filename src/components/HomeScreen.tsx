@@ -77,6 +77,17 @@ export default function HomeScreen(props: HomeScreenProps) {
 
           <div>
             <div className="mode-switch" role="tablist">
+              {/* Solo leads (#94): it is the default mode and the common case. */}
+              <button
+                className={mode === "solo" ? "active" : ""}
+                onClick={() => selectMode("solo")}
+                role="tab"
+                aria-selected={mode === "solo"}
+                type="button"
+              >
+                <BotIcon />
+                {t.soloGame}
+              </button>
               <button
                 className={mode === "host" ? "active" : ""}
                 onClick={() => selectMode("host")}
@@ -96,16 +107,6 @@ export default function HomeScreen(props: HomeScreenProps) {
               >
                 <RadioIcon />
                 {t.joinGame}
-              </button>
-              <button
-                className={mode === "solo" ? "active" : ""}
-                onClick={() => selectMode("solo")}
-                role="tab"
-                aria-selected={mode === "solo"}
-                type="button"
-              >
-                <BotIcon />
-                {t.soloGame}
               </button>
             </div>
           </div>

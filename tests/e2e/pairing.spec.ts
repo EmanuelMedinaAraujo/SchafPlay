@@ -32,7 +32,7 @@ test.describe("pairing", () => {
   });
 
   test("host rejects a garbage reply code and keeps the invite live", async ({ page }) => {
-    await bootHome(page); // defaults to host mode; the invite is minted on mount.
+    await bootHome(page, { mode: "host" }); // the invite is minted when the panel mounts.
     const invite = await hostInvite(page);
     expect(invite.length).toBeGreaterThan(0);
 
@@ -53,7 +53,7 @@ test.describe("pairing", () => {
     const guest = await guestContext.newPage();
 
     try {
-      await bootHome(host);
+      await bootHome(host, { mode: "host" });
       const invite = await hostInvite(host);
 
       // Opening the deep link routes the guest straight into the join flow with

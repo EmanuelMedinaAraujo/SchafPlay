@@ -40,7 +40,9 @@ export const DEFAULT_SETTINGS: Settings = {
   disableLaufende: false,
   enableRamsch: false,
   enableStoss: true,
-  lastMode: "host",
+  // Solo (#94): opening on host would mint an invite and run signaling before
+  // the player has chosen multiplayer at all.
+  lastMode: "solo",
 };
 
 /**
