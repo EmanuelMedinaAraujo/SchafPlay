@@ -4,17 +4,13 @@ SchafPlay: Bavarian Schafkopf for two humans as an offline-first PWA. Seats 1 & 
 
 ## Commands
 
-`npm run dev` · `lint` · `build` · `start` · `test:e2e`
-
 `lint` is a type-check over two projects, app and E2E tests — a broken spec fails lint. There is no ESLint.
-
-Use `bws run -- gh …` for the GitHub CLI.
 
 ## Invariants
 
 Layers run `game/` → `players/` → `engine/` → `session/` → `components/`, with `net/` and `persistence/` as services and `analysis/` deriving over stored records. Dependencies flow downward only; `game/` and `analysis/` stay pure (no React, no I/O, no engine import).
 
-**Host-authoritative.** `GameEngine` is the single source of truth and runs only on the host and in solo. The guest runs no engine.
+**Host-authoritative.** `GameEngine` is the single source of truth and runs only on the host and in solo — the guest runs no engine.
 
 - **`redactStateFor` is the only privacy boundary.** Treat anything reaching a guest without passing through it as an info leak.
 - **`HostSession` overwrites the guest's action `playerId` with `"p3"`** — the wire value is never trusted.
@@ -39,7 +35,7 @@ Terminology: a **list** is a session, made of **rounds**, made of **tricks**.
 
 ## Replay (`analysis/`)
 
-Pure, no engine import: a completed round's trick log holds all 32 cards, so hands reconstruct from any stored game — including a guest's redacted recording — with no `DB_VERSION` bump.
+A completed round's trick log holds all 32 cards, so hands reconstruct from any stored game — including a guest's redacted recording — with no `DB_VERSION` bump.
 
 - A finished trick stays on the table for exactly one step with its winner marked, banking from the next step on. **That hold is what makes stepping readable — keep it.**
 - Playback spans the whole list; the round is part of the cursor.
