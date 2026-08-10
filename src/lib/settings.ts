@@ -22,8 +22,6 @@ export interface Settings {
   enableRamsch: boolean;
   /** House rule #57. The HOST's setting governs a game. */
   enableStoss: boolean;
-  /** The mode tab last used on the home screen, preselected next open. */
-  lastMode: GameMode;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -34,7 +32,6 @@ export const DEFAULT_SETTINGS: Settings = {
   disableLaufende: false,
   enableRamsch: false,
   enableStoss: true,
-  lastMode: "host",
 };
 
 /**
@@ -99,11 +96,6 @@ const CODECS: { [K in keyof Settings]: FieldCodec<Settings[K]> } = {
     // Defaults to enabled; only an explicit "false" turns it off.
     parse: (raw) => raw !== "false",
     serialize: String,
-  },
-  lastMode: {
-    key: "schafplay.lastMode",
-    parse: (raw) => (raw === "join" || raw === "solo" || raw === "host" ? raw : DEFAULT_SETTINGS.lastMode),
-    serialize: identity,
   },
 };
 

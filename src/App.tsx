@@ -25,7 +25,7 @@ function readInviteFromHash(): string {
 export default function App() {
   // All persisted device preferences flow through one store (see lib/settings).
   const [settings, updateSetting] = useSettings();
-  const { language, playerName, avatar, totalRounds, disableLaufende, enableRamsch, enableStoss, lastMode } = settings;
+  const { language, playerName, avatar, totalRounds, disableLaufende, enableRamsch, enableStoss } = settings;
   const [screen, setScreen] = useState<"home" | "game" | "stats" | "analysis" | "settings">("home");
   const [rulesOpen, setRulesOpen] = useState(false);
   // A running replay takes the whole viewport, chrome-free (#85).
@@ -177,8 +177,6 @@ export default function App() {
           totalRounds={totalRounds}
           onTotalRoundsChange={(value) => updateSetting("totalRounds", value)}
           onSoloStart={session.startSolo}
-          lastMode={lastMode}
-          onLastModeChange={(value) => updateSetting("lastMode", value)}
           initialInvite={initialInvite}
         />
       ) : (

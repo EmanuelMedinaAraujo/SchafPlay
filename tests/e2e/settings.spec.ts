@@ -77,23 +77,21 @@ test.describe("settings", () => {
     await expect(page.locator(".game-toolbar")).toContainText("1/4");
   });
 
-  test("last-used game mode is preselected after reload (#44)", async ({ page }) => {
+  test("the home screen always opens on solo (#94)", async ({ page }) => {
     await bootHome(page);
 
-    // Default mode is host.
+    // Solo is selected on open, and nothing has minted an invite — no
+    // signaling runs before the player asks for multiplayer.
+    await expect(page.getByRole("tab", { name: de.soloGame })).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator(".pairing-flow textarea[readonly]")).toHaveCount(0);
+
+    // Using host does not stick: the next open is solo again (the mode is no
+    // longer a persisted preference).
+    await page.getByRole("tab", { name: de.hostGame }).click();
     await expect(page.getByRole("tab", { name: de.hostGame })).toHaveAttribute("aria-selected", "true");
-
-    // Switch to join and reload — the join tab comes back selected.
-    await page.getByRole("tab", { name: de.joinGame }).click();
-    await expect(page.getByRole("tab", { name: de.joinGame })).toHaveAttribute("aria-selected", "true");
-    await page.reload();
-    await expect(page.getByRole("tab", { name: de.joinGame })).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByRole("tab", { name: de.hostGame })).toHaveAttribute("aria-selected", "false");
-
-    // Solo persists too.
-    await page.getByRole("tab", { name: de.soloGame }).click();
     await page.reload();
     await expect(page.getByRole("tab", { name: de.soloGame })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tab", { name: de.hostGame })).toHaveAttribute("aria-selected", "false");
   });
 
   test("player name is enforced in-game and persists on the home screen", async ({ page }) => {

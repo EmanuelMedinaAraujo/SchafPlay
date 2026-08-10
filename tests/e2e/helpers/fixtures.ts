@@ -1,14 +1,23 @@
 import { Browser, BrowserContext, Locator, Page, expect } from "@playwright/test";
 import { translations } from "../../../src/lib/i18n";
+import { GameMode } from "../../../src/lib/settings";
 
 /** The suite drives the app in its default language. */
 export const de = translations.de;
+
+const modeTab: Record<GameMode, "soloGame" | "hostGame" | "joinGame"> = {
+  solo: "soloGame",
+  host: "hostGame",
+  join: "joinGame",
+};
 
 export interface BootOptions {
   /** Activates the DEV determinism hook (`src/lib/e2e.ts`): seeded deal + fast AI pacing. */
   seed?: number;
   name?: string;
   rounds?: 4 | 8 | 12;
+  /** Mode tab to select; the app opens on solo (#94), so host/join tests must ask for theirs. */
+  mode?: GameMode;
 }
 
 /** Load the home screen and apply the pre-game options a player would set there. */
@@ -17,6 +26,10 @@ export async function bootHome(page: Page, options: BootOptions = {}): Promise<v
   if (options.name !== undefined) {
     await page.locator("#player-name").fill(options.name);
   }
+  // Before the round count: the list-length row only exists in host and solo.
+  if (options.mode !== undefined) {
+    await page.getByRole("tab", { name: de[modeTab[options.mode]] }).click();
+  }
   if (options.rounds !== undefined) {
     await page.locator(".list-length-row").getByRole("button", { name: String(options.rounds), exact: true }).click();
   }
@@ -24,8 +37,7 @@ export async function bootHome(page: Page, options: BootOptions = {}): Promise<v
 
 /** Boot straight into a solo game; resolves once the table is on screen. */
 export async function startSolo(page: Page, options: BootOptions = {}): Promise<void> {
-  await bootHome(page, options);
-  await page.getByRole("tab", { name: de.soloGame }).click();
+  await bootHome(page, { ...options, mode: "solo" });
   await page.getByRole("button", { name: de.startGame }).click();
   await expect(page.locator(".game-screen")).toBeVisible();
 }
@@ -78,9 +90,8 @@ export async function pairHostGuest(browser: Browser, options: PairOptions = {})
   const host = await hostContext.newPage();
   const guest = await guestContext.newPage();
 
-  await bootHome(host, { seed: options.seed, name: options.hostName, rounds: options.rounds });
-  await bootHome(guest, { name: options.guestName });
-  await guest.getByRole("tab", { name: de.joinGame }).click();
+  await bootHome(host, { seed: options.seed, name: options.hostName, rounds: options.rounds, mode: "host" });
+  await bootHome(guest, { name: options.guestName, mode: "join" });
 
   await exchangeCodes(host, guest);
   await expect(host.locator(".game-screen")).toBeVisible({ timeout: 15_000 });

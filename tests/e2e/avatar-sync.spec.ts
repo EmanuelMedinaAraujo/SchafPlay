@@ -56,9 +56,8 @@ test.describe("profile pictures over the wire (#14)", () => {
     await presetAvatar(host, CUSTOM_AVATAR);
     await presetAvatar(guest, "preset:wastl");
 
-    await bootHome(host, { seed: 12345, name: "Wirt" });
-    await bootHome(guest, { name: "Gast" });
-    await guest.getByRole("tab", { name: de.joinGame }).click();
+    await bootHome(host, { seed: 12345, name: "Wirt", mode: "host" });
+    await bootHome(guest, { name: "Gast", mode: "join" });
     await exchangeCodes(host, guest);
     await expect(host.locator(".game-screen")).toBeVisible({ timeout: 15_000 });
     await expect(guest.locator(".game-screen")).toBeVisible({ timeout: 15_000 });
@@ -110,9 +109,8 @@ test.describe("profile pictures over the wire (#14)", () => {
     // and re-broadcast (sanitizeAvatar in session/avatarSync.ts).
     await presetAvatar(guest, `data:image/png;base64,${"A".repeat(200_000)}`);
 
-    await bootHome(host, { seed: 12345, name: "Wirt" });
-    await bootHome(guest, { name: "Gast" });
-    await guest.getByRole("tab", { name: de.joinGame }).click();
+    await bootHome(host, { seed: 12345, name: "Wirt", mode: "host" });
+    await bootHome(guest, { name: "Gast", mode: "join" });
     await exchangeCodes(host, guest);
     await expect(host.locator(".game-screen")).toBeVisible({ timeout: 15_000 });
 
@@ -134,9 +132,8 @@ test.describe("profile pictures over the wire (#14)", () => {
     // (sanitizeStateAvatars). SVG is the one image type the boundary refuses.
     await rewriteOutboundAvatar(host, "data:image/svg+xml;base64,PHN2Zy8+");
 
-    await bootHome(host, { seed: 12345, name: "Wirt" });
-    await bootHome(guest, { name: "Gast" });
-    await guest.getByRole("tab", { name: de.joinGame }).click();
+    await bootHome(host, { seed: 12345, name: "Wirt", mode: "host" });
+    await bootHome(guest, { name: "Gast", mode: "join" });
     await exchangeCodes(host, guest);
     await expect(guest.locator(".game-screen")).toBeVisible({ timeout: 15_000 });
 
