@@ -12,11 +12,7 @@ import { translations } from "./lib/i18n";
 import { useSettings } from "./lib/settings";
 import { BookOpenIcon, BotIcon, ChartColumnIcon, HistoryIcon, HomeIcon, PlugZapIcon, SettingsIcon, WifiIcon } from "./components/icons";
 
-/**
- * Deep-link join (#7, Option A): read an invite code from the URL fragment
- * (`…#invite=<code>`). Returns "" when absent. The code is an opaque string
- * that was percent-encoded when the host copied the link.
- */
+/** Deep-link join (#7): the invite code from `…#invite=<code>`, or "". */
 function readInviteFromHash(): string {
   try {
     const match = window.location.hash.match(/[#&]invite=([^&]*)/);
@@ -36,9 +32,7 @@ export default function App() {
   const [replayActive, setReplayActive] = useState(false);
   // A replay is only on screen from within the analysis view.
   const inReplay = screen === "analysis" && replayActive;
-  // Captured once at startup, before we scrub the fragment below. Reading the
-  // hash is synchronous and independent of the service-worker update check in
-  // main.tsx, so nothing can race away the invite before we see it.
+  // Captured once at startup, before the fragment is scrubbed below.
   const [initialInvite] = useState(readInviteFromHash);
 
   const session = useGameSession({
@@ -52,8 +46,7 @@ export default function App() {
   });
   const { gameState, connectionState, role, myPlayerId } = session;
 
-  // Strip the `#invite=…` fragment once we've captured it so a reload doesn't
-  // re-trigger a stale invite. Uses replaceState (no navigation / history entry).
+  // Strip the fragment so a reload doesn't re-trigger a stale invite.
   useEffect(() => {
     if (!initialInvite) return;
     try {
@@ -63,10 +56,9 @@ export default function App() {
     }
   }, [initialInvite]);
 
-  // Landscape-only UI: on portrait screens the whole app is rotated 90°
-  // via CSS (html.rotated). html.compact / html.narrow drive the phone
-  // layout based on the *effective* landscape height/width, which media
-  // queries can't see once the UI is rotated.
+  // Landscape-only UI: portrait screens rotate 90° via `html.rotated`.
+  // `html.compact` / `html.narrow` key off the *effective* post-rotation
+  // dimensions, which plain media queries cannot see.
   useEffect(() => {
     const root = document.documentElement;
     const update = () => {
@@ -89,8 +81,7 @@ export default function App() {
     };
   }, []);
 
-  // In-game the whole UI fits the viewport; page scrolling is disabled and
-  // only the game screen itself may scroll if it genuinely doesn't fit.
+  // In-game the UI fits the viewport, so page scrolling is disabled.
   useEffect(() => {
     const root = document.documentElement;
     root.classList.toggle("in-game", screen === "game" || inReplay);
@@ -109,8 +100,7 @@ export default function App() {
   }
 
   const inGame = screen === "game" && gameState;
-  // Keep the overlay up during the whole re-pairing flow ("connecting"
-  // included) — it only closes once the peer is actually back.
+  // Stays up through "connecting" — it only closes once the peer is back.
   const needsReconnect = Boolean(inGame && role !== "solo" && connectionState !== "connected");
 
   return (

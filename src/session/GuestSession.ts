@@ -14,15 +14,9 @@ export class GuestSession implements GameSession {
   readonly myPlayerId: SeatId = "p3";
 
   private transport: Transport | null = null;
-  // Created once per session: re-pairing after a drop reuses this session and
-  // keeps the in-progress recording, while a fresh join after quitting gets a
-  // brand-new session (and so a new recorder).
+  // Once per session, so a re-pairing keeps the in-progress recording.
   private recorder: ListRecorder | null = new ListRecorder("multiplayer", "guest", "p3");
-  /**
-   * Profile pictures (#14) received out of band, merged into every incoming
-   * state. Kept across re-pairing so a reconnect does not flash the default
-   * picture before the host re-sends the map.
-   */
+  /** Kept across re-pairing so a reconnect doesn't flash the default picture. */
   private avatars: AvatarMap = {};
 
   constructor(private readonly deps: SessionDeps) {}
@@ -55,8 +49,7 @@ export class GuestSession implements GameSession {
         return;
       }
       if (message.type === P2PMessageType.GAME_STATE_UPDATE) {
-        // The avatars inside the state are peer input too, and sanitizing only
-        // the out-of-band map above would leave this path as a way around it.
+        // Peer input too: sanitizing only the map above would be bypassable.
         const incoming = sanitizeStateAvatars((message.payload as { state: GameState }).state);
         const state = withAvatars(incoming, this.avatars);
         this.recorder?.observe(state);

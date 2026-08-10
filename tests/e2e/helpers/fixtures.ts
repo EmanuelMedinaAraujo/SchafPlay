@@ -31,11 +31,9 @@ export async function startSolo(page: Page, options: BootOptions = {}): Promise<
 }
 
 /**
- * Run one host↔guest code exchange through whatever PairingPanel is currently
- * on each page — the home screen's panel and the mid-game reconnect overlay
- * render the same flow, so this drives initial pairing and re-pairing alike.
- * The host page must already show the host panel, the guest page the join
- * panel (paste field visible).
+ * One host↔guest code exchange through whatever PairingPanel is on each page —
+ * the home screen and the reconnect overlay render the same flow, so this
+ * drives initial pairing and re-pairing alike.
  */
 export async function exchangeCodes(host: Page, guest: Page): Promise<void> {
   const hostFlow = host.locator(".pairing-flow");
@@ -71,9 +69,8 @@ export interface PairOptions {
 }
 
 /**
- * Boot two isolated browser contexts, pair them over real WebRTC (loopback
- * host candidates) and wait until both sit at the table. Caller closes the
- * contexts (or lets the test teardown do it).
+ * Two isolated browser contexts paired over real WebRTC (loopback host
+ * candidates), both sitting at the table. The caller closes the contexts.
  */
 export async function pairHostGuest(browser: Browser, options: PairOptions = {}): Promise<PairedGame> {
   const hostContext = await browser.newContext();

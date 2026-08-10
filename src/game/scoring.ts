@@ -1,29 +1,12 @@
-/**
- * Scoring: the tournament tariff, round evaluation and Laufende counting.
- * Change point values in TARIFF, not in the engine.
- */
+/** Scoring. Change point values in TARIFF, not in the engine. */
 
 import { Card, CardValue, Contract, GameType, Player, RamschResult, RoundResult, Suit, Trick } from "./types";
 import { isSolo } from "./rules";
 
 /**
- * Tournament tariff (plus/minus scoring), zero-sum per round.
- *
- * Kept deliberately small so the numbers stay in the single digits — the
- * common casual convention is "a solo counts roughly three times a normal
- * game" (issue #21).
- *
- * Normal game (Rufspiel): value per PLAYER (2 vs 2) —
- *   base 1, Schneider 2, Schwarz 3, plus 1 per Laufendem.
- * Solo/Wenz: value per DEFENDER; the soloist receives/pays 3x —
- *   base 1, Schneider 2, Schwarz 3, Tout 4, Sie 6, plus 1 per Laufendem.
- *   Soloist totals: 3 / 6 / 9 / 12 / 18 (+3 per Laufendem).
- * Laufende count from 3 upwards (Wenz from 2), "mit" and "ohne" alike.
- * Ramsch (#11): the loser pays `base` (Sauspiel level) to EACH opponent,
- *   doubled once per Jungfrau (a player without a trick). A Durchmarsch
- *   (one player takes every trick) WINS and receives `durchmarsch` from each
- *   opponent — the Schwarz-solo level (+9 total), since sweeping all tricks
- *   is the Ramsch equivalent of a solo won schwarz. No Laufende in Ramsch.
+ * Tournament tariff (#21), zero-sum per round. Rufspiel values are per PLAYER;
+ * solo/Wenz values are per DEFENDER and the soloist stakes 3x. See README.md
+ * for the full table.
  */
 export const TARIFF = {
   rufspiel: { base: 1, schneider: 2, schwarz: 3, perLaufendem: 1 },
@@ -35,20 +18,13 @@ export const TARIFF = {
   maxLaufendeWenz: 4,
 } as const;
 
-/**
- * House-rule toggles that affect round scoring. Passed in from the engine so
- * scoring stays pure — no globals.
- */
+/** House-rule toggles, passed in so scoring stays pure. */
 export interface ScoringOptions {
-  /** When true, Laufende (matadors) pay nothing — laufende is forced to 0. Default false. */
+  /** #31: Laufende pay nothing. */
   disableLaufende?: boolean;
-  /** Index of the dealer seat; used only for the Ramsch tiebreak (#11). Defaults to seat 4. */
+  /** Ramsch tiebreak only (#11). Defaults to seat 4. */
   dealerIdx?: number;
-  /**
-   * Stoß/Retour multiplier: the whole round result (base tariff + Laufende) is
-   * multiplied by this. 1 = no Stoß, 2 = one Stoß, 4 = Stoß + Retour. Default 1.
-   * Not applicable to Ramsch (no declaring party, so no Stoß).
-   */
+  /** 1 = none, 2 = one Stoß, 4 = Stoß + Retour. Never applies to Ramsch. */
   stossMultiplier?: number;
 }
 
@@ -74,12 +50,8 @@ export function calculateRoundResult(
     ? tricks.every((trick) => declarerTeam.includes(trick.winnerId ?? ""))
     : tricks.every((trick) => defenderTeam.includes(trick.winnerId ?? ""));
   const teamCards = declarerTeam.flatMap((id) => initialHands[id] ?? []);
-  // House rule (#31): when Laufende are disabled they pay nothing, so the run
-  // is never counted and no bonus flows into the tariff.
   const laufende = options.disableLaufende ? 0 : countLaufende(teamCards, contract.type);
   const scoreChanges = scoreTournament(players, contract, declarerTeam, declarerWon, isSchneider, isSchwarz, laufende, initialHands);
-  // Stoß/Retour multiplies the whole round result. Ramsch already returned
-  // above, so this only ever applies to a game with a declaring party.
   const stossMultiplier = options.stossMultiplier && options.stossMultiplier > 1 ? options.stossMultiplier : 1;
   if (stossMultiplier > 1) {
     for (const id of Object.keys(scoreChanges)) scoreChanges[id] *= stossMultiplier;
@@ -142,18 +114,8 @@ function scoreTournament(
 }
 
 /**
- * Ramsch scoring (#11). Everyone plays for themselves; the player who
- * collected the MOST card points loses and pays TARIFF.ramsch.base to each
- * opponent, doubled once per Jungfrau (a player who took no trick).
- *
- * Tiebreak for "most points" (documented house choice): among the tied
- * players, the one with MORE tricks loses; if still tied, the tied player
- * seated LATER in play order from the dealer (forehand counts as first,
- * the dealer as last) loses.
- *
- * Durchmarsch: a player who takes ALL tricks wins instead and receives
- * TARIFF.ramsch.durchmarsch from each opponent. Schneider/Schwarz and
- * Laufende do not apply to Ramsch.
+ * Ramsch (#11): most card points loses. House-rule tiebreak — more tricks
+ * loses, then the seat later in play order from the dealer.
  */
 function calculateRamschResult(players: Player[], contract: Contract, tricks: Trick[], dealerIdx: number): RoundResult {
   const pointsByPlayer: Record<string, number> = {};
@@ -174,7 +136,6 @@ function calculateRamschResult(players: Player[], contract: Contract, tricks: Tr
   let ramsch: RamschResult;
 
   if (sweeper) {
-    // Durchmarsch: the sweeper wins the premium from every opponent.
     ramsch = { playerId: sweeper.id, isDurchmarsch: true, jungfrauIds: [], pointsByPlayer };
     for (const player of players) {
       changes[player.id] =
@@ -199,9 +160,8 @@ function calculateRamschResult(players: Player[], contract: Contract, tricks: Tr
   const keyPoints = pointsByPlayer[ramsch.playerId] ?? 0;
   return {
     contract,
-    // "Declarer" framing for a game without one: the key player (loser, or
-    // Durchmarsch winner) fills the declarer slots so generic consumers keep
-    // rendering something sensible.
+    // Ramsch has no declarer: the key player (loser, or Durchmarsch winner)
+    // fills the declarer slots so generic consumers still render.
     declarerPoints: keyPoints,
     defenderPoints: 120 - keyPoints,
     declarerWon: ramsch.isDurchmarsch,
@@ -215,9 +175,8 @@ function calculateRamschResult(players: Player[], contract: Contract, tricks: Tr
 }
 
 /**
- * Count Laufende (matadors): the unbroken run of top trumps counted from the
- * highest trump down, held by ("mit") or missing from ("ohne") the declaring
- * party's dealt cards. Counted from 3 upwards (Wenz: from 2).
+ * Laufende (matadors): the unbroken run of top trumps from the highest down,
+ * held by ("mit") or missing from ("ohne") the declaring party's dealt cards.
  */
 export function countLaufende(teamCards: Card[], gameType: GameType): number {
   const topTrumps: Array<{ suit: Suit; value: CardValue }> = [];

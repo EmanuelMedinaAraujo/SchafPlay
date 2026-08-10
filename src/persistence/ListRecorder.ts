@@ -3,14 +3,9 @@ import { CardId, GameHistoryStore, RoundRecord, StatsMode, TrickRecord } from ".
 import { gameHistoryStore } from "./store";
 
 /**
- * Snapshot-driven list recorder: a pure observer of GameState snapshots
- * that persists a finished list via the store's recordGame exactly once. (A
- * list is a whole session of rounds; each round is a series of tricks.)
- *
- * It never mutates game state and has no engine or network dependency, so
- * it works identically for the host (redacted p1 view), solo (full state)
- * and the guest (redacted wire state) — each device records its own view.
- * A quit mid-list simply drops the recorder, leaving no trace.
+ * A pure observer of GameState snapshots that calls `recordGame` exactly once,
+ * on the first LIST_OVER. No engine or network dependency, so it serves host,
+ * solo and guest alike — each device records its own view.
  */
 export class ListRecorder {
   private prevStatus: GameStatus | null = null;
@@ -43,9 +38,8 @@ export class ListRecorder {
       this.finalized = false;
     }
 
-    // Initial-hand capture. Keyed on a fresh WILL_PHASE (0 bids) rather than
-    // the round number so an all-pass redeal — which keeps the same round
-    // number — overwrites the draft with the hand that is actually played.
+    // Keyed on a fresh WILL_PHASE (0 bids), not the round number, so an
+    // all-pass redeal overwrites the draft with the hand actually played.
     if (
       state.status === "BIDDING" &&
       state.biddingState?.phase === "WILL_PHASE" &&
@@ -55,9 +49,8 @@ export class ListRecorder {
       this.draftHand = me.cards.map((card) => card.id);
     }
 
-    // Round completion: only on the status *edge*, since ROUND_OVER /
-    // LIST_OVER re-emit on every ready toggle and pause/resume. The
-    // draftHand guard makes a double push impossible either way.
+    // On the status *edge* only: ROUND_OVER / LIST_OVER re-emit on every
+    // ready toggle and pause/resume.
     if (
       (state.status === "ROUND_OVER" || state.status === "LIST_OVER") &&
       this.prevStatus !== state.status &&

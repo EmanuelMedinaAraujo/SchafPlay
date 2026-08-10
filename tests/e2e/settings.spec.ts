@@ -43,9 +43,7 @@ test.describe("settings", () => {
     await expect(offButton).toHaveAttribute("aria-pressed", "true");
     await expect(countButton).toHaveAttribute("aria-pressed", "false");
 
-    // Its scoring effect is engine-internal (disableLaufende reaches
-    // calculateRoundResult) — out of scope for E2E. Here we only assert the
-    // selection is persisted, which is what a page reload can observe.
+    // The scoring effect is engine-internal; only persistence is observable here.
     await page.reload();
     await page.getByTitle(de.settings).click();
     await expect(page.getByRole("button", { name: de.settingsLaufendeOff })).toHaveAttribute("aria-pressed", "true");

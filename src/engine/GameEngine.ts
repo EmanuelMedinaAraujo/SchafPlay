@@ -32,41 +32,31 @@ import { BidContext, PlayerController } from "../players/PlayerController";
 type Listener = (state: GameState) => void;
 
 export interface EngineOptions {
-  /** Delay before an AI seat acts. 0 = act synchronously (used by tests). */
+  /** 0 = act synchronously (tests). */
   aiDelayMs?: number;
-  /** How long a completed trick stays visible before it is collected. */
   trickHoldMs?: number;
-  /** Deck arrangement, injectable for deterministic tests. */
+  /** Injectable for deterministic tests. */
   shuffleFn?: (deck: Card[]) => Card[];
-  /** Solo mode: seat p3 is a third AI instead of the remote human. */
+  /** Seat p3 is a third AI instead of the remote human. */
   soloMode?: boolean;
-  /** Decision-makers for engine-driven seats; defaults to an AIController on every non-human seat. */
+  /** Defaults to an AIController on every non-human seat. */
   controllers?: Partial<Record<SeatId, PlayerController>>;
-  /** Enables devSkipTrick/devSkipRound (the app wires this to its dev build flag). */
+  /** Enables devSkipTrick/devSkipRound. */
   devToolsEnabled?: boolean;
-  /** House rule (#31): when true, Laufende (matadors) pay nothing. Default false. */
+  /** House rule #31. */
   disableLaufende?: boolean;
-  /** House rule (#11): when true, an all-pass starts a Ramsch instead of a redeal. Default false. */
+  /** House rule #11: an all-pass starts a Ramsch instead of a redeal. */
   enableRamsch?: boolean;
-  /** House rule (#57): when true, defenders may Stoß (double) and the declarer may Retour. Default false. */
+  /** House rule #57. */
   enableStoss?: boolean;
-  /** Profile picture (#14) for the host seat (p1), from the host's device settings. */
   hostAvatar?: string;
-  /** Profile picture (#14) for the guest seat (p3); the guest sends its own via CONNECTION_ACK. */
   guestAvatar?: string;
 }
 
-/** Dev-skip fallback for seats without a controller of their own. */
 const devFallbackAI = new AIController();
 
-/**
- * Default profile picture (#14) for each AI seat, as a distinct preset key —
- * each seat gets the portrait of the character it is named after (Resi, Sepp,
- * and Zenzi on the solo p3 seat). The engine only stores these opaque strings;
- * the UI resolves them against `lib/avatars.ts` (kept out of the engine graph,
- * which must stay DOM-free for the Node-side E2E sim). The ids here must match
- * `AVATAR_PRESETS` there.
- */
+/** Opaque preset keys (#14); must match `AVATAR_PRESETS` in `lib/avatars.ts`,
+ *  which the engine cannot import — it stays DOM-free for the Node-side sim. */
 const AI_SEAT_AVATAR: Record<"p2" | "p3" | "p4", string> = {
   p2: "preset:resi",
   p3: "preset:zenzi",
@@ -107,8 +97,7 @@ export class GameEngine {
       makePlayer("p4", "Sepp (KI)", false, 3, AI_SEAT_AVATAR.p4),
     ];
 
-    // A seat is engine-driven iff it has a controller; defaults keep the
-    // controller map and the players' isHuman flags in agreement.
+    // A seat is engine-driven iff it has a controller.
     this.controllers =
       options.controllers ??
       Object.fromEntries(players.filter((player) => !player.isHuman).map((player) => [player.id, new AIController()]));
@@ -144,10 +133,7 @@ export class GameEngine {
     return structuredClone(this.state);
   }
 
-  /**
-   * State as seen by one player — see engine/redaction.ts, the privacy
-   * boundary of the host-authoritative model.
-   */
+  /** The privacy boundary of the host-authoritative model. */
   getRedactedState(playerId: string): GameState {
     return redactStateFor(this.getState(), playerId);
   }
@@ -158,11 +144,7 @@ export class GameEngine {
     });
   }
 
-  /**
-   * Apply the guest's own profile picture (#14), sent on connect. The value is
-   * validated and size-capped by `HostSession` before it gets here — the
-   * network boundary belongs to the session layer, not the engine.
-   */
+  /** Already sanitized by `HostSession` — the wire boundary is the session's job. */
   setGuestAvatar(avatar: string): void {
     this.mutate((state) => {
       state.players[2].avatar = avatar || "";
@@ -230,15 +212,11 @@ export class GameEngine {
     if (this.activePlayer().id !== playerId) return;
     // The current high bidder cannot retreat from their own declaration.
     if (!declaration && bidding.highBid?.playerId === playerId) return;
-    // "Doch passen" (#24): a player who said "I'd play" may only bow out once a
-    // Wenz or Solo already stands. You cannot retreat out of a Sauspiel — you
-    // must top it with a higher game.
+    // "Doch passen" (#24): you cannot retreat out of a Sauspiel, only top it.
     if (!declaration && !isRetreatAllowed(bidding.highBid?.declaration)) return;
-    // Declarations must strictly outrank the current high bid.
     if (declaration && bidding.highBid?.declaration && !canOverrideBid(bidding.highBid.declaration, declaration)) return;
     // Sauspiel Tout does not exist.
     if (declaration?.type === GameType.SAUSPIEL && declaration.isTout) return;
-    // Sauspiel: caller must hold a plain card of the called suit but not its Ace.
     if (declaration?.type === GameType.SAUSPIEL) {
       const suit = declaration.calledSuit;
       if (!suit || !isValidSauspielCall(this.activePlayer().cards, suit)) return;
@@ -305,15 +283,6 @@ export class GameEngine {
     this.scheduleProgress();
   }
 
-  /**
-   * Announce a Stoß (defender) or Retour (declarer). The doubling window runs
-   * from the moment the contract is announced (PLAYING) until the second card
-   * of the first trick is played. The chain is capped at Stoß + Retour: the
-   * first entry must be a Stoß from a defender (not the declarer and — in a
-   * Sauspiel — not the hidden partner); the second must be a Retour from the
-   * declarer. Retour is restricted to the declarer so the Sauspiel partner is
-   * never revealed early. Each announcement doubles the round value.
-   */
   processStoss(playerId: string): void {
     const kind = this.stossKindFor(playerId);
     if (!kind) return;
@@ -325,7 +294,10 @@ export class GameEngine {
     });
   }
 
-  /** The kind of announcement `playerId` may make right now, or null if none. */
+  /**
+   * The announcement `playerId` may make right now, or null. Retour is limited
+   * to the declarer so a Sauspiel partner is never revealed early.
+   */
   private stossKindFor(playerId: string): StossKind | null {
     const state = this.state;
     if (!state.stossEnabled) return null;
@@ -342,20 +314,15 @@ export class GameEngine {
     const isPartner = contract.type === GameType.SAUSPIEL && contract.partnerId === playerId;
 
     if (state.stoss.length === 0) {
-      // First announcement: a Stoß, only from a defender.
       return isDeclarer || isPartner ? null : "stoss";
     }
-    // Second announcement: a Retour, only from the declarer, answering a Stoß.
     if (state.stoss[state.stoss.length - 1].kind !== "stoss") return null;
     return isDeclarer ? "retour" : null;
   }
 
   /**
-   * Give AI defenders the chance to Stoß the instant a contract is fixed (the
-   * whole hand is still in front of them, which is when the decision is made).
-   * Only one Stoß is allowed, so the first willing defender in play order takes
-   * the slot; an AI declarer may then answer with a Retour. Human seats are
-   * skipped — they decide via the UI within the same first-trick window.
+   * The first willing AI defender in play order takes the single Stoß slot.
+   * Human seats decide via the UI within the same first-trick window.
    */
   private runAiStossPass(state: GameState): void {
     if (!state.stossEnabled) return;
@@ -544,11 +511,6 @@ export class GameEngine {
     bidding.currentBidderIndex = state.activePlayerIdx;
   }
 
-  /**
-   * Nobody plays: with the Ramsch house rule (#11) the same deal is played out
-   * as a Ramsch; otherwise the cards are thrown in and redealt (unchanged
-   * default behavior).
-   */
   private handleAllPass(state: GameState): void {
     if (this.enableRamsch) {
       this.startRamsch(state);
@@ -558,12 +520,7 @@ export class GameEngine {
     }
   }
 
-  /**
-   * Ramsch (#11): no declarer, no partner — everyone plays for themselves
-   * with normal (Sauspiel-style) trumps. `declarerId: ""` marks the missing
-   * declarer; no seat id ever matches it, so nothing in the UI or the AI
-   * treats any seat as the declaring side.
-   */
+  /** `declarerId: ""` marks the missing declarer — no seat id ever matches it. */
   private startRamsch(state: GameState): void {
     this.enterPlaying(state, { type: GameType.RAMSCH, declarerId: "" });
     this.log(state, "log.ramsch");
@@ -575,11 +532,7 @@ export class GameEngine {
     this.resetBidding(state);
   }
 
-  /**
-   * Fix the contract and open play with forehand leading the first trick.
-   * Deliberately stores the SAME contract object in currentContract and
-   * biddingState.resolvedContract — redaction.ts relies on blanking both.
-   */
+  /** Stores the SAME contract object in both slots — redaction.ts blanks both. */
   private enterPlaying(state: GameState, contract: Contract): void {
     state.currentContract = contract;
     state.status = "PLAYING";
@@ -599,8 +552,6 @@ export class GameEngine {
     }
     this.enterPlaying(state, contract);
     this.log(state, "log.contract", { name: this.playerName(contract.declarerId), ...declarationParams(declaration) });
-    // With the contract fixed and every hand still full, AI defenders get their
-    // one chance to Stoß; a human defender still has the first-trick window.
     this.runAiStossPass(state);
   }
 
@@ -608,16 +559,14 @@ export class GameEngine {
     const result = calculateRoundResult(state.players, state.currentContract!, state.tricks, this.initialHands, {
       disableLaufende: this.disableLaufende,
       dealerIdx: state.dealerIdx,
-      // Each Stoß/Retour doubles the round: 0 -> 1x, 1 -> 2x, 2 -> 4x.
       stossMultiplier: 2 ** state.stoss.length,
     });
     state.lastResult = result;
     Object.entries(result.scoreChanges).forEach(([id, change]) => {
       state.scores[id] = (state.scores[id] ?? 0) + change;
     });
-    // Every round — including the last — first shows its own round summary
-    // (#27). The final round only advances to the list summary once both
-    // players are ready (see setReady).
+    // Even the last round shows its own summary first (#27); setReady then
+    // advances to the list summary.
     state.status = "ROUND_OVER";
     state.currentTrick = null;
     state.readyState = freshReadyState(state.players);
@@ -677,10 +626,7 @@ export class GameEngine {
             this.processBidWill(active.id, wantsToPlay);
           } else {
             if (active.id === "p1") {
-              // Always make a legal, progressing declaration for the human seat.
-              // A Sauspiel needs a *plain* card (not Ober/Unter, not the Ace) of
-              // the suit and only stands when nothing higher was bid. Otherwise:
-              // top a standing Sauspiel with a Wenz, or retreat under a Wenz/Solo.
+              // Any legal, progressing declaration for the human seat.
               const high = this.state.biddingState!.highBid?.declaration ?? null;
               const calledSuit = high ? undefined : getCallableSuits(active.cards)[0];
               if (calledSuit) this.processBidDeclare(active.id, { type: GameType.SAUSPIEL, calledSuit });
@@ -699,10 +645,7 @@ export class GameEngine {
     }
   }
 
-  /**
-   * Dev-skip helper: play one card for the given seat — its controller's
-   * choice, or the first legal card for a human. False when nothing is legal.
-   */
+  /** Dev-skip: one card for the seat. False when nothing is legal. */
   private playStepFor(player: Player): boolean {
     const legal = getLegalCards(player.cards, this.state.currentTrick, this.state.currentContract, this.state.tricks);
     if (legal.length === 0) return false;

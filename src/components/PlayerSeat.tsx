@@ -16,23 +16,15 @@ interface PlayerSeatProps {
 
 type Role = "declarer" | "partner" | null;
 
-// Must match GameBoard's contract-chip-reveal timing: the chip holds at
-// centre until 60% of its 1900ms animation, i.e. it starts flying away at
-// this offset. The declarer badge's own centre reveal is timed to begin
-// exactly then, so it takes over the spotlight as the chip departs.
+// Must match GameBoard's contract-chip reveal: 60% of its 1900ms animation,
+// where the chip starts flying away and this badge takes over the spotlight.
 const DECLARER_BADGE_DELAY_MS = 1900 * 0.6;
 
-/** Runs once, on the null -> role edge, so neither re-renders nor state
- * re-emits (pause/resume) retrigger it.
- *
- * The declarer badge is sequenced with the contract chip's centre-stage
- * reveal (GameBoard drives that first): it appears large over the table
- * centre just as the chip starts flying away, holds there for ~a second,
- * then scales down and flies to its resting spot beside the name — the same
- * FLIP technique GameBoard uses for the chip, measured against `.trick-area`.
- *
- * The partner badge is revealed later in the hand (when the called Ace
- * drops), with no chip animation in flight, so it just pops into place. */
+/**
+ * Runs once, on the null -> role edge, so re-renders and pause/resume state
+ * re-emits don't retrigger it. Only the declarer badge is sequenced with the
+ * contract chip; the partner badge reveals later and just pops into place.
+ */
 function useRoleBadgeReveal(role: Role) {
   const badgeRef = useRef<HTMLSpanElement>(null);
   const prevRoleRef = useRef<Role>(null);
@@ -58,8 +50,7 @@ function useRoleBadgeReveal(role: Role) {
       const centerRect = center.getBoundingClientRect();
       let dx = centerRect.left + centerRect.width / 2 - (badgeRect.left + badgeRect.width / 2);
       let dy = centerRect.top + centerRect.height / 2 - (badgeRect.top + badgeRect.height / 2);
-      // Forced-landscape mode rotates the page 90°, so screen-space deltas
-      // must be mapped into the rotated local coordinate space.
+      // Forced landscape rotates the page 90°: map screen-space deltas into it.
       if (document.documentElement.classList.contains("rotated")) {
         [dx, dy] = [dy, -dx];
       }
@@ -76,10 +67,7 @@ function useRoleBadgeReveal(role: Role) {
   return badgeRef;
 }
 
-/**
- * One compact box per player. When it's this player's turn the box itself
- * pulses — it doubles as the turn indicator, no separate chip needed.
- */
+/** One box per player; it pulses on their turn, doubling as the turn indicator. */
 export default function PlayerSeat({ player, position, active, contract, stoss, language }: PlayerSeatProps) {
   const t = translations[language];
   const stossEntry = stoss?.find((entry) => entry.playerId === player.id);
@@ -89,8 +77,6 @@ export default function PlayerSeat({ player, position, active, contract, stoss, 
   const role: Role = isDeclarer ? "declarer" : isPartner ? "partner" : null;
   const badgeRef = useRoleBadgeReveal(role);
 
-  // Profile picture (#14): a preset or uploaded picture resolved from the
-  // player's synced avatar string, falling back by seat kind.
   const avatarUrl = resolveAvatarSrc(player.avatar, player.isHuman);
 
   return (

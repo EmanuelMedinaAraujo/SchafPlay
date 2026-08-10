@@ -1,17 +1,10 @@
 /**
- * Node-side mirror of a seeded SchafPlay game.
+ * Node-side mirror of a seeded SchafPlay game: the *identical* GameEngine on
+ * the same RNG stream, with pacing at 0 so AI turns resolve synchronously.
+ * Every card id, contract and score is therefore known before the first click.
  *
- * The browser boots the engine with `?e2e-seed=<int>` (seededShuffle + zero-ish
- * pacing). Here we run the *identical* GameEngine with `aiDelayMs: 0` /
- * `trickHoldMs: 0`, so every AI turn and trick collection resolves
- * synchronously and control only ever returns to us on a human seat's turn or
- * at a terminal state. Because it is the same engine consuming the same RNG
- * stream (one deal per round, in order, plus an extra deal on an all-pass
- * redeal), the resulting trace matches what the UI will show for that seed —
- * every card id, contract and score is known ahead of the first click.
- *
- * DOM-free: imports engine + rules + seededShuffle directly (never src/lib/e2e.ts,
- * which reaches for import.meta.env).
+ * DOM-free — imports engine + rules + seededShuffle directly, never
+ * src/lib/e2e.ts, which reaches for import.meta.env.
  */
 import { GameEngine } from "../../../src/engine/GameEngine";
 import { seededShuffle } from "../../../src/lib/seededShuffle";
@@ -33,12 +26,7 @@ export interface Policy {
   decideCard(legal: Card[], hand: Card[]): Card;
 }
 
-/**
- * The default human policy mirrors GameEngine.devSkipRound's own p1 logic so it
- * always makes a legal, progressing move: call the first callable Sauspiel when
- * nothing higher stands, else top a standing Sauspiel with a Wenz, else retreat;
- * play the first legal card.
- */
+/** Mirrors GameEngine.devSkipRound's p1 logic: always a legal, progressing move. */
 export const defaultPolicy: Policy = {
   decideWill: (hand) => getCallableSuits(hand).length > 0,
   decideDeclare: (hand, high) => {
@@ -51,10 +39,8 @@ export const defaultPolicy: Policy = {
 };
 
 /**
- * Mirrors GameEngine.devSkipRound's own p1 logic exactly: p1 always says "will",
- * then declares like defaultPolicy. Use this to predict the outcome of rounds
- * the browser advances with the DEV "skip round" button, whose p1 moves are
- * identical (and whose card play falls through to first-legal, same as here).
+ * p1 always says "will", then declares like defaultPolicy — use this to predict
+ * rounds the browser advances with the DEV "skip round" button.
  */
 export const alwaysWillPolicy: Policy = {
   ...defaultPolicy,
@@ -142,8 +128,7 @@ function simulate(seed: number, options: InternalOptions): Trace {
     trickHoldMs: 0,
     shuffleFn: seededShuffle(seed),
     devToolsEnabled: false,
-    // Mirror the app's default (Stoß enabled) so AI Stoß/Retour decisions —
-    // deterministic and hand-based — resolve identically to the browser.
+    // Mirror the app's default so AI Stoß/Retour resolves as in the browser.
     enableStoss: true,
   });
 
@@ -162,8 +147,7 @@ function simulate(seed: number, options: InternalOptions): Trace {
         wantsToPlay: w.wantsToPlay,
       }));
     }
-    // Exactly the finalizeBidding edge: contract resolved, no card played yet, so
-    // every seat still holds its full dealt hand (post any all-pass redeal).
+    // The finalizeBidding edge: every seat still holds its full dealt hand.
     if (
       s.status === "PLAYING" &&
       s.currentContract &&

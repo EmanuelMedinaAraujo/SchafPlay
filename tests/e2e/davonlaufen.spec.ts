@@ -1,16 +1,6 @@
 /**
- * Sauspiel "Rufsau" play restrictions (#91).
- *
- * The four rules the called Ace's holder plays under, each pinned to a seed
- * whose round 1 actually produces the situation:
- *  - the Ace itself may be led at any time, a lower card of its suit may not;
- *  - Ober and Unter of the called suit are trump and stay untouched by all of it;
- *  - "Davonlaufen": four or more cards of the called suit unlock leading a low one;
- *  - once the suit is led the Ace must be given, and it may never be discarded
- *    on a foreign suit.
- *
- * The partner *reveal* that follows from these plays is covered by
- * partner-badge.spec.ts; here we only assert what the hand allows.
+ * Sauspiel "Rufsau" play restrictions (#91), each pinned to a seed whose round
+ * 1 produces the situation. The partner *reveal* is partner-badge.spec.ts.
  */
 import { Page } from "@playwright/test";
 import { Card, GameType, Suit } from "../../src/game/types";
@@ -21,9 +11,8 @@ import { clickHandCard, performBids, playCardInTurn, waitMyTurn } from "./helper
 import { expect, test } from "./helpers/test";
 
 /**
- * Human policy that takes the *last* legal card instead of the first. Some of
- * these situations only survive into a later trick when p1 stops dumping its
- * cheapest card every turn — the browser replays `chosenId` either way.
+ * Takes the *last* legal card, not the first: some situations only survive
+ * into a later trick when p1 stops dumping its cheapest card every turn.
  */
 const lastLegalPolicy: Policy = { ...defaultPolicy, decideCard: (legal) => legal[legal.length - 1] };
 
@@ -42,9 +31,8 @@ interface BoundTurn {
   calledTrumpIds: string[];
   /** Play suit led into this turn, or null when p1 leads it. */
   ledPlaySuit: Suit | "TRUMP" | null;
-  /** True when the hand holds nothing of the led play suit — a free discard.
-   *  Derived from the hand, never from `legalIds`, so the predicates that use
-   *  it locate the situation instead of restating whatever the rules did. */
+  /** Derived from the hand, never `legalIds`, so predicates locate the
+   *  situation rather than restating whatever the rules did. */
   isVoid: boolean;
 }
 
@@ -143,9 +131,7 @@ async function expectPlayed(page: Page, cardId: string): Promise<void> {
 
 test.describe("Sauspiel called-Ace restrictions", () => {
   test("leading: the called Ace is allowed, a lower card of its suit is not", async ({ page }) => {
-    // p1 holds the called Ace plus a lower card of that suit, has fewer than
-    // four of the suit (no Davonlaufen) and gets to lead — the situation from
-    // the bug report, where the whole suit was locked including the Ace.
+    // The bug from #91: the whole suit was locked, including the Ace.
     const pick = (turns: BoundTurn[]) =>
       turns.find((t) => t.ledPlaySuit === null && t.suitIds.length < 4 && t.lowIds.length > 0);
     const { seed, round, bound } = findBoundTurn(pick, { limit: 400, policy: lastLegalPolicy });

@@ -1,8 +1,4 @@
-/**
- * Domain types: cards, contracts, players, the full game state and the
- * player-action vocabulary the engine consumes. Pure data shapes — no
- * network or UI concerns (those live in net/protocol.ts and src/types.ts).
- */
+/** Domain types. Pure data shapes — wire concerns live in net/protocol.ts. */
 
 export enum Suit {
   ACORNS = "ACORNS",
@@ -36,12 +32,7 @@ export enum GameType {
   SOLO_LEAVES = "SOLO_LEAVES",
   SOLO_HEARTS = "SOLO_HEARTS",
   SOLO_BELLS = "SOLO_BELLS",
-  /**
-   * Ramsch (#11) is never bid — it starts automatically on an all-pass when
-   * the house rule is enabled. Everyone plays for themselves with normal
-   * (Sauspiel-style) trumps; there is no declarer and no partner, so it needs
-   * no `GamePriority` slot. Its contract carries `declarerId: ""`.
-   */
+  /** Never bid — starts on an all-pass (#11). No declarer, so no `GamePriority` slot. */
   RAMSCH = "RAMSCH",
 }
 
@@ -99,13 +90,7 @@ export interface Player {
   difficulty?: Difficulty;
   seatIndex: number;
   connected?: boolean;
-  /**
-   * Profile picture (#14), stored as a compact string resolved by
-   * `lib/avatars.ts`: a `preset:<id>` key or a `data:` URL. For human seats it
-   * comes from the device's own settings (host in-state, guest via
-   * CONNECTION_ACK); AI seats are assigned distinct presets by the engine. Not
-   * touched by redaction — an avatar is public, like the name.
-   */
+  /** Profile picture (#14), resolved by `lib/avatars.ts`. Public — not redacted. */
   avatar?: string;
 }
 
@@ -134,10 +119,8 @@ export interface BiddingState {
 export type ReadyState = Record<string, boolean>;
 
 /**
- * A "Stoß" (also "Kontra") doubles the round's value; a "Retour" (counter by
- * the declaring side) doubles it again. Announcements are PUBLIC — they carry
- * unredacted to the guest. The chain is capped at Stoß + Retour (2 entries,
- * up to 4x). See src/game/scoring.ts for how the multiplier is applied.
+ * A "Stoß" (Kontra) doubles the round; a "Retour" doubles it again. Chain
+ * capped at 2 entries (4x). Public — carried to the guest unredacted.
  */
 export type StossKind = "stoss" | "retour";
 
@@ -146,17 +129,13 @@ export interface StossEntry {
   kind: StossKind;
 }
 
-/** Ramsch-only round detail (#11); present on a RoundResult iff the contract type is RAMSCH. */
+/** Present on a RoundResult iff the contract type is RAMSCH (#11). */
 export interface RamschResult {
-  /**
-   * The round's key player: on a Durchmarsch the player who took every trick
-   * and WINS; otherwise the player with the most card points, who pays everyone.
-   */
+  /** The Durchmarsch winner, or the most-points loser who pays everyone. */
   playerId: string;
   isDurchmarsch: boolean;
-  /** Players who took no trick (Jungfrau) — each doubles the payout. Empty on a Durchmarsch. */
+  /** Took no trick — each doubles the payout. */
   jungfrauIds: string[];
-  /** Card points each player collected this round. */
   pointsByPlayer: Record<string, number>;
 }
 
@@ -170,16 +149,9 @@ export interface RoundResult {
   laufende: number;
   scoreChanges: Record<string, number>;
   winnerIds: string[];
-  /**
-   * Ramsch detail (#11). Optional and additive — stored RoundRecords from
-   * older versions simply lack it (no DB version bump needed).
-   */
+  /** Optional and additive: older stored RoundRecords lack it, no DB bump needed. */
   ramsch?: RamschResult;
-  /**
-   * Stoß/Retour multiplier applied to this round (1, 2 or 4). Optional and
-   * additive — `scoreChanges` already reflect it; this field is for display
-   * (RoundOverScreen) and stats. Absent means 1 (no doubling).
-   */
+  /** 1, 2 or 4. Display only — `scoreChanges` already reflect it. Absent means 1. */
   stossMultiplier?: number;
 }
 
@@ -202,25 +174,13 @@ export interface GameState {
   totalRounds: number;
   logs: LogEntry[];
   lastResult?: RoundResult;
-  /**
-   * Stoß/Retour announcements for the current round, in order (max 2: a Stoß
-   * then a Retour). Public — carried unredacted to the guest so its UI can
-   * render badges. Empty at the start of every round.
-   */
+  /** In order, max 2. Reset every round. */
   stoss: StossEntry[];
-  /**
-   * Host-authoritative Stoß house rule (the host's/solo player's device
-   * setting). Reflected in state so the guest UI only offers the button when
-   * the host has the feature enabled.
-   */
+  /** The host's house-rule setting, in state so the guest UI can follow it. */
   stossEnabled: boolean;
 }
 
-/**
- * A redacted state is the same shape as GameState — other players' hands are
- * face-down placeholders and the Sauspiel partner may be blanked. Produced
- * exclusively by engine/redaction.ts; the name exists for documentation.
- */
+/** Same shape as GameState; documentation alias for engine/redaction.ts output. */
 export type RedactedGameState = GameState;
 
 export enum PlayerActionType {

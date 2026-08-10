@@ -3,11 +3,8 @@ import { bootHome, de, startSolo } from "./helpers/fixtures";
 import { expect, test } from "./helpers/test";
 
 /**
- * Isolation note: Playwright's default `page`/`context` fixtures are
- * test-scoped, so each test below already gets a brand-new browser context
- * (and therefore fresh IndexedDB) — no explicit `describe.configure({mode:
- * "serial"})` or manual context plumbing is needed for the empty-state test
- * to stay unpolluted by the game-recording test.
+ * Playwright's `page`/`context` fixtures are test-scoped, so each test gets a
+ * fresh IndexedDB — no serial mode needed to keep the empty-state test clean.
  */
 
 interface Standing {
@@ -47,9 +44,8 @@ async function fastForwardList(page: Page, rounds: number): Promise<void> {
   await expect(page.locator(".round-over-overlay h2")).toContainText(de.listOver);
 }
 
-/** Home -> Stats screen text/tile checks re-run loadTotals()/loadGames() by
- * remounting StatsScreen (it only fetches once, on mount), which is how this
- * suite polls for the fire-and-forget IndexedDB write from ListRecorder. */
+/** Remounting StatsScreen re-runs its one-shot fetch — how this suite polls
+ * for ListRecorder's fire-and-forget IndexedDB write. */
 async function openStats(page: Page): Promise<void> {
   await page.getByTitle(de.home).click();
   await page.getByTitle(de.stats).click();
@@ -85,8 +81,7 @@ test.describe("stats", () => {
 
     await fastForwardList(page, 4);
 
-    // Read the ground truth straight from the list-over DOM rather than
-    // hardcoding numbers, so this stays robust across seed/AI changes.
+    // Read from the DOM, not hardcoded, so seed/AI changes can't break it.
     const standings = await readStandings(page);
     const p1 = standings.find((s) => s.name === name);
     expect(p1).toBeDefined();

@@ -48,9 +48,7 @@ export default function StatsScreen({ language }: StatsScreenProps) {
   const [totals, setTotals] = useState<StatsTotals>(EMPTY_TOTALS);
   const [games, setGames] = useState<GameRecord[]>([]);
 
-  // Statistics only change when a list finishes, which is impossible while
-  // this screen is mounted — reading once on mount is enough. Reads are async
-  // (IndexedDB), so populate into state; both resolve in a few ms.
+  // Stats can't change while this screen is mounted; one read is enough.
   useEffect(() => {
     let active = true;
     gameHistoryStore.loadTotals().then((value) => active && setTotals(value));
@@ -65,8 +63,7 @@ export default function StatsScreen({ language }: StatsScreenProps) {
   const lost = Math.max(0, played - won);
   const winRate = played > 0 ? `${Math.round((won / played) * 100)}%` : "—";
 
-  // All stored games under the current filter (newest first) — the basis for
-  // every derived figure below; the visible list is capped separately.
+  // Every derived figure below reads from this; the visible list is capped separately.
   const filtered = useMemo(() => games.filter((game) => filter === "all" || game.mode === filter), [games, filter]);
   const visible = filtered.slice(0, VISIBLE_GAMES);
   const locale = language === "de" ? "de-DE" : "en-GB";
@@ -235,12 +232,7 @@ export default function StatsScreen({ language }: StatsScreenProps) {
   );
 }
 
-/**
- * Hand-rolled SVG column chart: the local player's final score per list,
- * oldest → newest. Positive bars grow up from the zero line in green,
- * negative bars grow down in red — the same polarity colors used everywhere
- * else in the app. No chart library (offline-first, react-only).
- */
+/** Hand-rolled SVG column chart — no chart library (offline-first, react-only). */
 function TrendChart({ values, ariaLabel }: { values: number[]; ariaLabel: string }) {
   const W = 600;
   const H = 130;

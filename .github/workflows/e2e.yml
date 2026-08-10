@@ -1,8 +1,7 @@
 name: E2E Tests
 
-# Runs the Playwright E2E suite (see TEST_INFRA.md) against the Vite dev
-# server on every pull request and on every push to main, so the suite
-# stays green as the game engine, redaction and UI evolve.
+# Runs the Playwright E2E suite against the Vite dev server on every pull
+# request and every push to main.
 on:
   pull_request:
   push:

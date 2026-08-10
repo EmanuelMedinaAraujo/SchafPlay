@@ -23,16 +23,9 @@ function signed(score: number): string {
 }
 
 /**
- * The nearest replayable round at or after `from`, moving in `direction`;
- * -1 when there is none.
- *
- * A round with an empty trick log — an aborted record, or one stored before
- * the round even reached its first trick — has nothing to show. Landing on one
- * strands the viewer: the screen falls back to the bare "no data" panel, which
- * carries no round nav and no controls, so the only way out is Back. Stepping
- * and the round arrows therefore skip such rounds instead of stopping on them,
- * and the fallback panel is left to mean what it says — this game has no
- * replayable round at all.
+ * The nearest replayable round at or after `from`; -1 when there is none.
+ * Rounds with an empty trick log are skipped rather than landed on: the
+ * fallback panel has no nav, so stopping on one strands the viewer.
  */
 function nearestReplayable(rounds: RoundRecord[], from: number, direction: 1 | -1): number {
   for (let i = from; i >= 0 && i < rounds.length; i += direction) {
@@ -42,19 +35,10 @@ function nearestReplayable(rounds: RoundRecord[], from: number, direction: 1 | -
 }
 
 /**
- * Post-mortem replay of a stored game (#85).
- *
- * Deliberately *not* a GameBoard "replay mode": GameBoard is wired to a live
- * `onAction` and a redacted `GameState`. This screen renders the pure
- * derivation from `analysis/replay.ts` instead — all four hands face-up,
- * shrinking card by card as the trick log is stepped through.
- *
- * Playback spans the **whole list**, not one round: the round is part of the
- * cursor, so stepping past the last card of a round rolls into the next one
- * (and stepping back from a round's deal returns to the previous round's last
- * card). One continuous timeline means a player can watch a full game without
- * ever going back to the picker; the round chip and its arrows make the
- * position explicit and allow jumping a round at a time.
+ * Post-mortem replay of a stored game (#85). Deliberately *not* a GameBoard
+ * "replay mode" — GameBoard is wired to a live `onAction` and a redacted
+ * `GameState`. Playback spans the whole list: the round is part of the cursor,
+ * so stepping rolls across round borders in both directions.
  */
 export default function ReplayScreen({ game, startRoundIndex, language, onBack }: ReplayScreenProps) {
   const t = translations[language];

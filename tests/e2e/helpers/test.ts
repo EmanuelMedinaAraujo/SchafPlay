@@ -1,14 +1,10 @@
 import { test as base } from "@playwright/test";
 
 /**
- * Shared `test` for the whole suite. Extends the base test with a renderer
- * keepalive: in headless/CI environments Chromium delivers tasks to pages
- * lazily when nothing external touches them, which stalls WebRTC handshakes
- * and the engine's setTimeout-driven AI pacing until the next protocol call
- * happens to wake the renderer. A cheap 250ms evaluate on every open page
- * keeps the event loops pumping; it is a no-op wake, so it cannot mask real
- * timing bugs — it only stops the environment from freezing the app between
- * Playwright polls.
+ * Shared `test` with a renderer keepalive: headless Chromium delivers page
+ * tasks lazily when nothing external touches them, stalling WebRTC handshakes
+ * and the engine's setTimeout pacing. A 250ms no-op evaluate keeps the event
+ * loops pumping without masking real timing bugs.
  */
 export const test = base.extend<{ _keepAlive: void }>({
   _keepAlive: [

@@ -94,9 +94,7 @@ test.describe("Sauspiel partner reveal", () => {
 
     const { host, guest } = await pairHostGuest(browser, { seed, rounds: 8, hostName: "Anna", guestName: "Vroni" });
 
-    // Bidding decisions were recorded chronologically across both human seats
-    // (round 1 forehand is p1, so the host bids first) — replay them in that
-    // order, each on its own page.
+    // Recorded chronologically across both human seats — replay in that order.
     for (const bid of round.bids) {
       await performBids(bid.seat === "p1" ? host : guest, [bid]);
     }

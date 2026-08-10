@@ -1,15 +1,7 @@
 /**
- * Turn a user-picked image file into a small, square JPEG data URL suitable
- * for a profile picture (#14). The result must be tiny: it is persisted in
- * localStorage (a few MB total budget) and synced over the WebRTC data
- * channel to the other player, so we centre-crop to a square and downscale to
- * `SIZE` px before re-encoding as JPEG.
- *
- * The picture is displayed inside a CSS circle, so cropping to a centred
- * square (not a circle) is enough — the round mask is applied at render time.
- *
- * The output is always a re-encoded JPEG, never the bytes the user picked, so
- * a hostile or malformed file cannot survive the trip into the game state.
+ * A user-picked image file into a small square JPEG data URL (#14). Always
+ * re-encoded, never the user's original bytes, so a hostile or malformed file
+ * cannot survive the trip into the game state.
  */
 
 import { MAX_AVATAR_LENGTH } from "./avatars";
@@ -17,12 +9,9 @@ import { MAX_AVATAR_LENGTH } from "./avatars";
 const SIZE = 256;
 
 /**
- * Encoder qualities to try, best first. A noisy photograph can encode to well
- * over 64 kB even at 256 px, which — once base64 inflates it by a third —
- * exceeds `MAX_AVATAR_LENGTH` and would be dropped by the *receiving* peer:
- * the picture would look fine on your own device and silently show as the
- * default on your partner's. So we step the quality down until the data URL is
- * within budget, and halve the size as a last resort.
+ * Tried best first, stepping down until the data URL fits `MAX_AVATAR_LENGTH`.
+ * Over budget, the *receiving* peer drops it — the picture would look fine
+ * locally and silently show as the default on the partner's device.
  */
 const QUALITIES = [0.82, 0.7, 0.6, 0.5];
 
@@ -61,8 +50,7 @@ function drawSquare(img: HTMLImageElement): string {
     best = encodeAt(img, SIZE, quality);
     if (best.length <= BUDGET) return best;
   }
-  // Still too fat at the lowest quality: give up resolution rather than the
-  // picture. 128 px is plenty for a circle a few dozen pixels across.
+  // Give up resolution rather than the picture.
   const smaller = encodeAt(img, SIZE / 2, QUALITIES[QUALITIES.length - 1]);
   return smaller.length < best.length ? smaller : best;
 }

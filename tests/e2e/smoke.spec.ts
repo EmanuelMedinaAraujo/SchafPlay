@@ -8,9 +8,7 @@ test.describe("smoke", () => {
     const seed = 1;
     await startSolo(page, { seed, name: "Toni" });
 
-    // The UI hand must be exactly the seat-p1 slice of the seeded deal —
-    // this pins the contract between src/lib/seededShuffle.ts in the app
-    // and the same module imported by the Node-side test helpers.
+    // Pins the seededShuffle contract between the app and the Node-side helpers.
     const expected = seededShuffle(seed)(createDeck())
       .slice(0, 8)
       .map((card) => card.id)

@@ -7,18 +7,10 @@ import { performBids } from "./helpers/ui";
 import { expect, test } from "./helpers/test";
 
 /**
- * Locate a 4-round solo seed where round 3 is a Stoß-testable scenario:
- *
- * - rounds 1 & 2: p1 says "will", so those rounds never all-pass and consume
- *   exactly one deal each. The dev-skip trajectory (p1 always-will) matches, so
- *   round 3 is dealt from the identical (3rd) shuffle in browser and simulation.
- * - round 3: an AI declares a Sauspiel, p1 passes and is therefore an eligible
- *   defender who does NOT hold the called Ace (partnerId !== p1). By the fixed
- *   dealer rotation p1 sits second in play order, so once the forehand AI has
- *   led, the engine simply waits for p1 — the Stoß window stays open, no race.
- * - no auto-double: the base round is un-Stoßed (multiplier 1) and the AI
- *   declarer would not answer p1's Stoß with a Retour, so the manual Stoß
- *   doubles the round exactly once (x2).
+ * Locate a 4-round solo seed where round 3 is Stoß-testable: rounds 1 & 2 never
+ * all-pass (so browser and simulation deal round 3 from the same shuffle), an
+ * AI declares a Sauspiel with p1 an eligible defender sitting second in play
+ * order (the Stoß window stays open, no race), and nothing auto-doubles.
  */
 function findStossSeed() {
   return findSeed(
@@ -79,8 +71,7 @@ test.describe("Stoß (double)", () => {
     // Once announced it becomes a static badge and the button is gone.
     await expect(page.locator(".player-hand-stoss.announced")).toHaveText(de.stoss);
 
-    // Finish the round; the contract's plays are the same first-legal / AI
-    // trajectory the simulation scored, so the only difference is the x2.
+    // Same trajectory the simulation scored, so the only difference is the x2.
     await page.getByRole("button", { name: de.devSkipRound }).click();
     const overlay = page.locator(".round-over-overlay");
     await expect(overlay).toBeVisible();

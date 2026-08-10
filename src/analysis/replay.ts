@@ -1,17 +1,6 @@
 /**
- * Replay derivation (#85, part of #16).
- *
- * Pure functions turning a stored `RoundRecord` into the board state at an
- * arbitrary playback step. Deliberately **not** a re-run of `GameEngine`: the
- * engine is timer-driven, needs a shuffle seed we never stored, and would add
- * nothing here — a finished round's trick log already contains every card.
- *
- * Why no schema change was needed: a completed round has 8 tricks × 4 plays,
- * so all 32 cards appear in the log with their owner. Every hand can therefore
- * be reconstructed post-mortem, even from a guest's redacted recording (played
- * cards are face-up on the wire). Works retroactively on already-stored games.
- *
- * No React, no I/O, no engine import — the same layering rule as `game/`.
+ * Replay derivation (#85, part of #16). Pure: no React, no I/O, no engine
+ * import — re-running `GameEngine` would need a shuffle seed nobody stored.
  */
 
 import { CARD_POINTS } from "../game/deck";
@@ -21,16 +10,14 @@ import { CardId, RoundRecord } from "../persistence/GameHistoryStore";
 
 /** A trick as far as it has been revealed at the current step. */
 export interface ReplayTrick {
-  /** Index into `round.tricks` — the trick this step belongs to. */
+  /** Index into `round.tricks`. */
   index: number;
   leaderId: string;
-  /** Cards revealed so far, in play order. */
   plays: PlayedCard[];
   /** Set only once the trick is complete at this step. */
   winnerId?: string;
-  /** True when every play of the trick is on the table. */
   complete: boolean;
-  /** Card points on the table, of the revealed plays. */
+  /** Card points of the revealed plays. */
   points: number;
 }
 
@@ -38,16 +25,13 @@ export interface ReplayTrick {
 export interface ReplayStep {
   /** 0 = before the opening lead; `stepCount(round) - 1` = the final card. */
   index: number;
-  /** Remaining cards per seat, in a stable (sorted) display order. */
   hands: Record<string, Card[]>;
   trick: ReplayTrick;
-  /** Card points banked from *completed* tricks only, per seat. */
+  /** Banked from *completed* tricks only. */
   pointsByPlayer: Record<string, number>;
-  /** 1-based trick number for display. */
   trickNumber: number;
-  /** 1-based card number within the current trick; 0 before the opening lead. */
+  /** 1-based within the current trick; 0 before the opening lead. */
   cardNumber: number;
-  /** Cards in the current trick once fully played (for "2/4" style counters). */
   trickSize: number;
 }
 
@@ -63,17 +47,9 @@ export function cardFromId(id: CardId): Card | null {
 }
 
 /**
- * Every card each seat held at the deal, reconstructed from the trick log:
- * a player's dealt hand is exactly the set of cards they played. Unparsable
- * ids are skipped rather than throwing — a replay must tolerate old records.
- *
- * Ordering goes through `rules.sortCardsForHand`, the same function the live
- * `PlayerHand` and `RoundCardsPopup` use, so a replayed hand reads exactly
- * like the hand the player held: trumps first, in the *contract's* order. A
- * contract-blind deck sort would scatter a Wenz's Unter back into their
- * natural suits while `CardFace` still draws them with a trump border.
- * `RoundRecord.contract` is null for a Ramsch — Sauspiel ordering is the
- * fallback there, matching `lib/export.ts`.
+ * Every card each seat held at the deal: a player's dealt hand is exactly the
+ * set of cards they played, so a completed round's trick log holds all 32.
+ * Sorted in the *contract's* trump order, as the live hand was.
  */
 export function reconstructHands(round: RoundRecord): Record<string, Card[]> {
   const gameType = round.contract?.type ?? GameType.SAUSPIEL;
@@ -106,16 +82,9 @@ export function isReplayable(round: RoundRecord): boolean {
 
 /**
  * The board after `index` cards have been played (`index` is clamped).
- *
- * Step 0 shows all four full hands and an empty table. Each later step adds
- * exactly one card: it leaves the player's hand and joins the current trick.
- * The moment a trick is complete it stays on the table for that one step —
- * with its winner marked — and its points are banked from the next step on,
- * which is what makes stepping readable rather than jumping four cards at a time.
- *
- * The last trick is the exception: there is no next step to bank it, so at the
- * final step it counts immediately. Otherwise the seat totals would stop
- * short of 120 exactly where the round's result strip is on screen next to them.
+ * A finished trick stays on the table for exactly one step with its winner
+ * marked; its points bank from the next step on. That hold is what makes
+ * stepping readable — keep it.
  */
 export function replayStep(round: RoundRecord, index: number): ReplayStep {
   const total = stepCount(round);
@@ -127,8 +96,6 @@ export function replayStep(round: RoundRecord, index: number): ReplayStep {
   for (const id of Object.keys(hands)) pointsByPlayer[id] = 0;
 
   let remaining = step;
-  // The trick to display: the one holding the most recently played card, or
-  // the first trick while the table is still empty.
   let current: ReplayTrick = {
     index: 0,
     leaderId: round.tricks[0]?.leaderId ?? "",
@@ -168,9 +135,7 @@ export function replayStep(round: RoundRecord, index: number): ReplayStep {
     trickSize = trick.plays.length;
     remaining -= revealed;
 
-    // Points are banked only once the *next* card is played, so the finished
-    // trick reads as "still on the table" for exactly one step — except at the
-    // end of the round, where no further step would ever bank them.
+    // `isFinalStep`: no further step would ever bank the last trick.
     if (complete && (remaining > 0 || isFinalStep) && trick.winnerId) {
       pointsByPlayer[trick.winnerId] = (pointsByPlayer[trick.winnerId] ?? 0) + points;
     }

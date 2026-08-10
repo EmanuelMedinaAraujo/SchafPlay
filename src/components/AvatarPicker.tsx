@@ -11,13 +11,7 @@ interface AvatarPickerProps {
   language: Language;
 }
 
-/**
- * Profile-picture chooser (#14): a big circular preview of the current pick,
- * a row of the five preselection avatars, and an upload tile for a custom
- * picture. The uploaded image is downscaled to a small square data URL before
- * it is stored/synced (see lib/image.ts). Everything is shown as a circle to
- * keep the round-avatar look the rest of the app uses.
- */
+/** Profile-picture chooser (#14): the presets plus an upload tile. */
 export default function AvatarPicker({ value, onChange, language }: AvatarPickerProps) {
   const t = translations[language];
   const fileRef = useRef<HTMLInputElement>(null);

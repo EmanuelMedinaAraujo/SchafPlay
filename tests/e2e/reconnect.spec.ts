@@ -23,9 +23,7 @@ test.describe("reconnect", () => {
     await expect(host.locator(".bidding-panel")).toContainText(de.willPhaseTitle);
     await expect(guest.locator(".bidding-panel")).toContainText(de.willPhaseTitle);
 
-    // Snapshot the host's authoritative view just before the drop. The engine
-    // is host-driven and the host is a human that never auto-acts, so the hand
-    // and round are stable until we tear the link down.
+    // Stable until the link is torn down: the host is a human that never auto-acts.
     const handBefore = await handCardIds(host);
     const roundBefore = await roundLabel(host);
     expect(handBefore).toHaveLength(8);

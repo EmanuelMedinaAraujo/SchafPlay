@@ -7,21 +7,14 @@ export interface BidContext {
 }
 
 export interface StossContext {
-  /**
-   * "stoss" = a first double as a defender; "retour" = the declarer's counter
-   * after a defender's Stoß. The engine has already checked eligibility and the
-   * timing window; the controller only decides whether it wants to double.
-   */
+  /** Eligibility and the timing window are already checked by the engine. */
   kind: import("../game/types").StossKind;
 }
 
 /**
- * Decision-maker for an engine-driven seat. Human seats have no controller —
- * their decisions arrive as PlayerActions from the UI or the wire.
- *
- * Decisions are synchronous: the engine owns pacing (aiDelayMs) and feeds
- * every result through the same processBidWill/processBidDeclare/
- * processCardPlay validation path as human actions.
+ * Decision-maker for an engine-driven seat. Human seats have no controller.
+ * Synchronous: the engine owns pacing and runs every result through the same
+ * validation path as human actions.
  */
 export interface PlayerController {
   decideWill(player: Player, willBids?: WillBid[]): boolean;

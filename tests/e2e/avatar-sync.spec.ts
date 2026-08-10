@@ -1,15 +1,7 @@
 import { Page, expect, test } from "@playwright/test";
 import { bootHome, de, exchangeCodes } from "./helpers/fixtures";
 
-/**
- * Profile pictures over the wire (#14).
- *
- * Both directions are covered — the host's picture rides to the guest, the
- * guest's rides back in the CONNECTION_ACK — plus the property that makes it
- * affordable: a custom (data URL) picture is sent once in its own
- * AVATAR_UPDATE message and is *not* repeated in every state snapshot. See
- * `src/session/avatarSync.ts`.
- */
+/** Profile pictures over the wire (#14); see `src/session/avatarSync.ts`. */
 
 /** A 1x1 PNG, distinctive enough to assert on and tiny enough to inline. */
 const CUSTOM_AVATAR =
@@ -22,10 +14,7 @@ async function presetAvatar(page: Page, value: string): Promise<void> {
   }, value);
 }
 
-/**
- * Record every frame the host puts on the data channel, so the test can assert
- * what the picture actually costs per message rather than just that it arrives.
- */
+/** Record every frame the host puts on the data channel, with its size. */
 async function recordSentFrames(page: Page): Promise<void> {
   await page.addInitScript(() => {
     const sent: { type: string; length: number; hasDataUrl: boolean }[] = [];
@@ -85,9 +74,8 @@ test.describe("profile pictures over the wire (#14)", () => {
     // The guest sees its own picture on its own name plate.
     await expect(guest.locator(".player-hand-avatar img")).toHaveAttribute("src", /avatars\/wastl\.[a-z]+$/);
 
-    // Drive the will phase so the host emits a good number of snapshots — the
-    // point of the fix is what those repeated snapshots carry. Both seats pass
-    // concurrently, so the bidding order does not matter.
+    // Drive the will phase so the host emits a good number of snapshots.
+    // Both seats pass concurrently, so the bidding order does not matter.
     await Promise.all([
       host.getByRole("button", { name: de.pass, exact: true }).click(),
       guest.getByRole("button", { name: de.pass, exact: true }).click(),
@@ -118,9 +106,8 @@ test.describe("profile pictures over the wire (#14)", () => {
     const host = await hostContext.newPage();
     const guest = await guestContext.newPage();
 
-    // A peer that claims a megabyte-sized avatar: the host must drop it and
-    // fall back to the default picture rather than pin it into game state and
-    // re-broadcast it (sanitizeAvatar in session/avatarSync.ts).
+    // A megabyte-sized avatar must be dropped, not pinned into game state
+    // and re-broadcast (sanitizeAvatar in session/avatarSync.ts).
     await presetAvatar(guest, `data:image/png;base64,${"A".repeat(200_000)}`);
 
     await bootHome(host, { seed: 12345, name: "Wirt" });
@@ -142,12 +129,9 @@ test.describe("profile pictures over the wire (#14)", () => {
     const host = await hostContext.newPage();
     const guest = await guestContext.newPage();
 
-    // The mirror of the test above, in the direction the guest is exposed to.
-    // A hostile host can route around AVATAR_UPDATE (and therefore around
-    // sanitizeAvatarMap) by putting the payload directly into the state it
-    // broadcasts, so the guest sanitizes that path too — sanitizeStateAvatars.
-    // Here the host claims an SVG avatar, the one image type the boundary
-    // deliberately refuses.
+    // A hostile host can route around AVATAR_UPDATE by putting the payload
+    // directly into the broadcast state, so the guest sanitizes that path too
+    // (sanitizeStateAvatars). SVG is the one image type the boundary refuses.
     await rewriteOutboundAvatar(host, "data:image/svg+xml;base64,PHN2Zy8+");
 
     await bootHome(host, { seed: 12345, name: "Wirt" });
@@ -169,10 +153,9 @@ test.describe("profile pictures over the wire (#14)", () => {
 });
 
 /**
- * Make the host smuggle `avatar` into the state it broadcasts, bypassing the
- * AVATAR_UPDATE message the sanitizer on that path would see. Patching the
- * data channel is the only way to play a peer that does not follow our own
- * protocol — which is exactly the peer the boundary exists for.
+ * Smuggle `avatar` into the broadcast state, bypassing AVATAR_UPDATE. Patching
+ * the data channel is the only way to play a peer that ignores our protocol —
+ * exactly the peer the boundary exists for.
  */
 async function rewriteOutboundAvatar(page: Page, avatar: string): Promise<void> {
   await page.addInitScript((injected) => {
