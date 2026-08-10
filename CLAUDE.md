@@ -6,6 +6,10 @@ SchafPlay: Bavarian Schafkopf for two humans as an offline-first PWA. Seats 1 & 
 
 `lint` is a type-check over two projects, app and E2E tests — a broken spec fails lint. There is no ESLint.
 
+## Pull requests
+
+Never sign work as AI-generated. No "Generated with Claude Code" footer, no bot attribution line, no equivalent phrasing anywhere in a PR title, description or review comment.
+
 ## Invariants
 
 Layers run `game/` → `players/` → `engine/` → `session/` → `components/`, with `net/` and `persistence/` as services and `analysis/` deriving over stored records. Dependencies flow downward only; `game/` and `analysis/` stay pure (no React, no I/O, no engine import).
