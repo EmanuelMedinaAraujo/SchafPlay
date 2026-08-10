@@ -13,7 +13,12 @@ export interface BootOptions {
 
 /** Load the home screen and apply the pre-game options a player would set there. */
 export async function bootHome(page: Page, options: BootOptions = {}): Promise<void> {
-  await page.goto(options.seed === undefined ? "/" : `/?e2e-seed=${options.seed}`);
+  // `E2E_SLOW=1` stretches the in-game pacing through the URL overrides
+  // `lib/e2e.ts` exposes — timing only, so the deal and the outcome are the
+  // same. It buys a slow machine time to see a card before the trick is
+  // collected; CI has the headroom and runs at full speed.
+  const pacing = process.env.E2E_SLOW ? "&e2e-ai=200&e2e-hold=1200" : "";
+  await page.goto(options.seed === undefined ? "/" : `/?e2e-seed=${options.seed}${pacing}`);
   if (options.name !== undefined) {
     await page.locator("#player-name").fill(options.name);
   }
