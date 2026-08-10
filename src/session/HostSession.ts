@@ -10,6 +10,13 @@ import { GameSession, SessionDeps } from "./GameSession";
 /** The fan-out seam for variable multiplayer (#6). */
 const REMOTE_HUMAN_SEATS: readonly SeatId[] = ["p3"];
 
+/** What a `CONNECTION_ACK` carries, already past the wire boundary. */
+interface GuestIdentity {
+  name: string | undefined;
+  /** Sanitized; `undefined` means the peer sent none, not "clear it". */
+  avatar: string | undefined;
+}
+
 /**
  * Runs the authoritative engine. It is created lazily on the first successful
  * connection and survives reconnects — a fresh transport resumes the same game.
@@ -23,6 +30,8 @@ export class HostSession implements GameSession {
   private transport: Transport | null = null;
   /** Reset per transport: a re-paired peer needs the avatar map again (#14). */
   private sentAvatars = "";
+  /** An ACK that beat the engine into existence, held for `createEngine` (#95). */
+  private pendingGuestIdentity: GuestIdentity | null = null;
 
   constructor(private readonly deps: SessionDeps) {}
 
@@ -30,6 +39,7 @@ export class HostSession implements GameSession {
     this.transport?.disconnect();
     this.transport = transport;
     this.sentAvatars = "";
+    this.pendingGuestIdentity = null;
 
     transport.onConnectionStateChange((state) => {
       this.deps.events.onConnectionState(state);
@@ -50,6 +60,20 @@ export class HostSession implements GameSession {
     });
 
     transport.onMessage((message) => {
+      if (message.type === P2PMessageType.CONNECTION_ACK) {
+        const payload = message.payload as { name?: string; avatar?: unknown } | undefined;
+        // The session is the network boundary; the engine stores what it is given.
+        const identity: GuestIdentity = {
+          name: payload?.name,
+          avatar: payload?.avatar === undefined ? undefined : sanitizeAvatar(payload.avatar),
+        };
+        // The guest sends this once, as soon as *its* channel opens, which can
+        // be before the host's own "connected" callback has built the engine.
+        // Dropping it then left the seat as „Gast" for the whole game (#95).
+        if (this.engine) this.applyGuestIdentity(this.engine, identity);
+        else this.pendingGuestIdentity = identity;
+        return;
+      }
       const engine = this.engine;
       if (!engine) return;
       if (message.type === P2PMessageType.PLAYER_ACTION) {
@@ -57,13 +81,12 @@ export class HostSession implements GameSession {
         // The guest is always seat 3 — never trust the id on the wire.
         engine.processAction({ ...action, playerId: "p3" });
       }
-      if (message.type === P2PMessageType.CONNECTION_ACK) {
-        const payload = message.payload as { name?: string; avatar?: unknown } | undefined;
-        if (payload?.name) engine.setGuestName(payload.name);
-        // The session is the network boundary; the engine stores what it is given.
-        if (payload?.avatar !== undefined) engine.setGuestAvatar(sanitizeAvatar(payload.avatar));
-      }
     });
+  }
+
+  private applyGuestIdentity(engine: GameEngine, identity: GuestIdentity): void {
+    if (identity.name) engine.setGuestName(identity.name);
+    if (identity.avatar !== undefined) engine.setGuestAvatar(identity.avatar);
   }
 
   /** Lazily at connect, not at attach, so it picks up the latest settings. */
@@ -86,6 +109,11 @@ export class HostSession implements GameSession {
       this.deps.events.onGameState(redacted);
       this.broadcastState();
     });
+    // After the listener above, so the seat it fills in is broadcast like any other change.
+    if (this.pendingGuestIdentity) {
+      this.applyGuestIdentity(engine, this.pendingGuestIdentity);
+      this.pendingGuestIdentity = null;
+    }
   }
 
   /** Send each remote human seat its own redacted view of the current state. */
@@ -128,6 +156,7 @@ export class HostSession implements GameSession {
     this.transport = null;
     this.engine?.destroy();
     this.engine = null;
+    this.pendingGuestIdentity = null;
     // An aborted list leaves no trace in the statistics.
     this.recorder = null;
   }
