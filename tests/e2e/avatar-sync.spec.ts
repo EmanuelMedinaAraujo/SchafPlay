@@ -149,6 +149,53 @@ test.describe("profile pictures over the wire (#14)", () => {
   });
 });
 
+test.describe("the guest's identity survives a slow host (#95)", () => {
+  test("a CONNECTION_ACK arriving before the host's engine is not dropped", async ({ browser }) => {
+    const hostContext = await browser.newContext();
+    const guestContext = await browser.newContext();
+    const host = await hostContext.newPage();
+    const guest = await guestContext.newPage();
+
+    // The host builds its engine on the transport's "connected" callback, so an
+    // ACK delivered before that callback used to land on a session with no
+    // engine and be dropped — the guest never repeats it.
+    await delayOpenCallback(host, 750);
+    await presetAvatar(guest, "preset:wastl");
+
+    await bootHome(host, { seed: 12345, name: "Wirt", mode: "host" });
+    await bootHome(guest, { name: "Franzi", mode: "join" });
+    await exchangeCodes(host, guest);
+    await expect(host.locator(".game-screen")).toBeVisible({ timeout: 15_000 });
+
+    // Seat 3 is opposite the host, and it must carry what the guest sent.
+    const guestSeat = host.locator(".seat-top");
+    await expect(guestSeat.locator(".seat-name")).toContainText("Franzi", { timeout: 15_000 });
+    await expect(guestSeat.locator(".seat-avatar-img")).toHaveAttribute("src", /avatars\/wastl\.[a-z]+$/);
+
+    await hostContext.close();
+    await guestContext.close();
+  });
+});
+
+/**
+ * Hold back the app's reaction to the data channel opening, without touching
+ * message delivery — that inverts the two events whose order the host used to
+ * depend on, making the race in #95 deterministic.
+ */
+async function delayOpenCallback(page: Page, ms: number): Promise<void> {
+  await page.addInitScript((delay) => {
+    const onopen = Object.getOwnPropertyDescriptor(RTCDataChannel.prototype, "onopen")!;
+    Object.defineProperty(RTCDataChannel.prototype, "onopen", {
+      configurable: true,
+      get: onopen.get,
+      set(this: RTCDataChannel, handler: ((event: Event) => void) | null) {
+        const later = (event: Event) => window.setTimeout(() => handler!.call(this, event), delay as number);
+        onopen.set!.call(this, handler && later);
+      },
+    });
+  }, ms);
+}
+
 /**
  * Smuggle `avatar` into the broadcast state, bypassing AVATAR_UPDATE. Patching
  * the data channel is the only way to play a peer that ignores our protocol —
