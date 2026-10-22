@@ -33,6 +33,8 @@ export default defineConfig(({ command }) => {
         apply: 'build',
         closeBundle() {
           const dist = path.resolve(__dirname, 'dist');
+          // A failed build may leave no dist/ — don't mask its real error.
+          if (!fs.existsSync(path.join(dist, 'sw.js'))) return;
           /** Base-prefixed URLs of the files in a dist/ subdirectory. */
           const listFiles = (dir: string, filter?: RegExp) =>
             fs

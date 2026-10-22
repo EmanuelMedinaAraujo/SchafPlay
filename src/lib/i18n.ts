@@ -378,12 +378,12 @@ export function getCardValueTranslated(value: CardValue, lang: Language): string
   return value;
 }
 
-/** Human-readable contract label, e.g. "Sauspiel (Eichel)" or "Wenz Tout". */
 /** "+N" / "N": signed scores as shown in the UI (zero stays unsigned). */
 export function signed(score: number): string {
   return score > 0 ? `+${score}` : String(score);
 }
 
+/** Human-readable contract label, e.g. "Sauspiel (Eichel)" or "Wenz Tout". */
 export function gameLabel(
   lang: Language,
   gameType: GameType,

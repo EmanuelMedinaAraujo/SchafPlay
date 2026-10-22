@@ -48,10 +48,10 @@ export async function startSolo(page: Page, options: BootOptions = {}): Promise<
 }
 
 /** A host page's freshly minted invite code, once its textarea appears. */
-export async function readInvite(host: Page): Promise<string> {
+export async function readInvite(host: Page, timeout = 15_000): Promise<string> {
   const inviteArea = host.locator(".pairing-flow textarea[readonly]").first();
   // Invite code generation gathers ICE candidates (up to ~1.5s by design).
-  await expect(inviteArea).toBeVisible({ timeout: 15_000 });
+  await expect(inviteArea).toBeVisible({ timeout });
   return inviteArea.inputValue();
 }
 

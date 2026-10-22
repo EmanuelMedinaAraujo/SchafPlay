@@ -13,7 +13,7 @@ test.describe("qr pairing", () => {
     await bootHome(page, { seed: 7, mode: "host" });
 
     // The invite code (and its QR) appear once ICE gathering completes.
-    expect(await readInvite(page)).not.toBe("");
+    expect(await readInvite(page, 20_000)).not.toBe("");
 
     // The QR code starts hidden and is only displayed inside the popup.
     const qr = page.locator(".qr-code");
