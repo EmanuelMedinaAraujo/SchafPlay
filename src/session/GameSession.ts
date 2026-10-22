@@ -1,5 +1,8 @@
-import { GameState, PlayerAction, SeatId } from "../game/types";
-import { Transport, TransportState } from "../net/Transport";
+import { EngineOptions } from "../engine/GameEngine";
+import { GameState, PlayerAction } from "../game/types";
+import { getE2EOverrides } from "../lib/e2e";
+import { Settings } from "../lib/settings";
+import { TransportState } from "../net/Transport";
 
 export type SessionRole = "host" | "guest" | "solo";
 
@@ -12,17 +15,12 @@ export interface SessionEvents {
 }
 
 export interface SessionDeps {
-  /** Read at engine-creation time so name/round changes made after mount are picked up. */
-  getPlayerName(): string;
-  /** Profile picture (#14) of the local player, synced to the other human. */
-  getPlayerAvatar(): string;
-  getTotalRounds(): number;
-  /** House rule #31. Read when the engine is created. */
-  getDisableLaufende(): boolean;
-  /** House rule #11. The host's/solo player's setting governs the game. */
-  getEnableRamsch(): boolean;
-  /** House rule #57. The host's/solo player's setting governs the game. */
-  getEnableStoss(): boolean;
+  /**
+   * The latest preferences, read when an engine is created (so changes made
+   * after mount are picked up) and when the guest introduces itself. The
+   * host's/solo player's house rules govern the game.
+   */
+  getSettings(): Settings;
   events: SessionEvents;
 }
 
@@ -32,14 +30,23 @@ export interface SessionDeps {
  * transport swaps (reconnects) and is destroyed on quit.
  */
 export interface GameSession {
-  readonly role: SessionRole;
-  readonly myPlayerId: SeatId;
   /** Local UI intent — processed by the engine (host/solo) or sent over the wire (guest). */
   dispatch(action: PlayerAction): void;
-  /** Attach a (re)established transport; reconnects call this again on the same session. */
-  attachTransport(transport: Transport): void;
-  devSkipTrick(): void;
-  devSkipRound(): void;
+  /** Dev tools live on the engine, so the guest has none. */
+  devSkipTrick?(): void;
+  devSkipRound?(): void;
   /** Quit: drop transport, engine and recorder — an aborted list leaves no stats. */
   destroy(): void;
+}
+
+/** The engine options a host or solo game derives from the local settings. */
+export function engineOptions(settings: Settings): EngineOptions {
+  return {
+    devToolsEnabled: import.meta.env.DEV,
+    hostAvatar: settings.avatar,
+    disableLaufende: settings.disableLaufende,
+    enableRamsch: settings.enableRamsch,
+    enableStoss: settings.enableStoss,
+    ...getE2EOverrides(),
+  };
 }

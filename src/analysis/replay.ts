@@ -3,10 +3,10 @@
  * import — re-running `GameEngine` would need a shuffle seed nobody stored.
  */
 
-import { CARD_POINTS } from "../game/deck";
+import { cardFromId } from "../game/deck";
 import { sortCardsForHand } from "../game/rules";
-import { Card, CardValue, GameType, PlayedCard, Suit } from "../game/types";
-import { CardId, RoundRecord } from "../persistence/GameHistoryStore";
+import { Card, GameType, PlayedCard } from "../game/types";
+import { RoundRecord } from "../persistence/GameHistoryStore";
 
 /** A trick as far as it has been revealed at the current step. */
 export interface ReplayTrick {
@@ -33,17 +33,6 @@ export interface ReplayStep {
   /** 1-based within the current trick; 0 before the opening lead. */
   cardNumber: number;
   trickSize: number;
-}
-
-/** `"ACORNS-A"` → a full `Card`. Returns null for an unparsable id. */
-export function cardFromId(id: CardId): Card | null {
-  const dash = id.lastIndexOf("-");
-  if (dash <= 0) return null;
-  const suit = id.slice(0, dash) as Suit;
-  const value = id.slice(dash + 1) as CardValue;
-  if (!Object.values(Suit).includes(suit)) return null;
-  if (!Object.values(CardValue).includes(value)) return null;
-  return { id, suit, value, points: CARD_POINTS[value] };
 }
 
 /**

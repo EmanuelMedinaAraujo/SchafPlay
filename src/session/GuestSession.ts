@@ -1,4 +1,4 @@
-import { GameState, PlayerAction, SeatId } from "../game/types";
+import { GameState, PlayerAction } from "../game/types";
 import { ListRecorder } from "../persistence";
 import { createMessage, P2PMessageType } from "../net/protocol";
 import { Transport } from "../net/Transport";
@@ -10,9 +10,6 @@ import { GameSession, SessionDeps } from "./GameSession";
  * state arrives over the wire and forwards its intents as PlayerActions.
  */
 export class GuestSession implements GameSession {
-  readonly role = "guest" as const;
-  readonly myPlayerId: SeatId = "p3";
-
   private transport: Transport | null = null;
   // Once per session, so a re-pairing keeps the in-progress recording.
   private recorder: ListRecorder | null = new ListRecorder("multiplayer", "guest", "p3");
@@ -30,12 +27,8 @@ export class GuestSession implements GameSession {
       if (state === "connected") {
         this.deps.events.onEnterGame();
         try {
-          transport.send(
-            createMessage(P2PMessageType.CONNECTION_ACK, {
-              name: this.deps.getPlayerName(),
-              avatar: this.deps.getPlayerAvatar(),
-            }),
-          );
+          const { playerName, avatar } = this.deps.getSettings();
+          transport.send(createMessage(P2PMessageType.CONNECTION_ACK, { name: playerName, avatar }));
         } catch {
           // Ignore; host falls back to a default name.
         }
@@ -64,14 +57,6 @@ export class GuestSession implements GameSession {
     } catch {
       // Disconnected; the reconnect overlay is already showing.
     }
-  }
-
-  devSkipTrick(): void {
-    // Dev tools live on the engine; the guest has none.
-  }
-
-  devSkipRound(): void {
-    // Dev tools live on the engine; the guest has none.
   }
 
   destroy(): void {

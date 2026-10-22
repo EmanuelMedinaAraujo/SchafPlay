@@ -1,6 +1,7 @@
 /** Scoring. Change point values in TARIFF, not in the engine. */
 
-import { Card, CardValue, Contract, GameType, Player, RamschResult, RoundResult, Suit, Trick } from "./types";
+import { Card, CardValue, Contract, GameType, Player, RamschResult, RoundResult, Trick } from "./types";
+import { SUITS } from "./deck";
 import { isSolo } from "./rules";
 
 /**
@@ -179,22 +180,14 @@ function calculateRamschResult(players: Player[], contract: Contract, tricks: Tr
  * held by ("mit") or missing from ("ohne") the declaring party's dealt cards.
  */
 export function countLaufende(teamCards: Card[], gameType: GameType): number {
-  const topTrumps: Array<{ suit: Suit; value: CardValue }> = [];
-  const suitsHighToLow = [Suit.ACORNS, Suit.LEAVES, Suit.HEARTS, Suit.BELLS];
-  if (gameType === GameType.WENZ) {
-    suitsHighToLow.forEach((suit) => topTrumps.push({ suit, value: CardValue.UNTER }));
-  } else {
-    suitsHighToLow.forEach((suit) => topTrumps.push({ suit, value: CardValue.OBER }));
-    suitsHighToLow.forEach((suit) => topTrumps.push({ suit, value: CardValue.UNTER }));
-  }
+  const values = gameType === GameType.WENZ ? [CardValue.UNTER] : [CardValue.OBER, CardValue.UNTER];
+  const topTrumps = values.flatMap((value) => SUITS.map((suit) => `${suit}-${value}`));
+  const teamIds = new Set(teamCards.map((card) => card.id));
 
-  const held = (slot: { suit: Suit; value: CardValue }) =>
-    teamCards.some((card) => card.suit === slot.suit && card.value === slot.value);
-
-  const withTop = held(topTrumps[0]);
+  const withTop = teamIds.has(topTrumps[0]);
   let run = 0;
-  for (const slot of topTrumps) {
-    if (held(slot) === withTop) run += 1;
+  for (const id of topTrumps) {
+    if (teamIds.has(id) === withTop) run += 1;
     else break;
   }
 

@@ -1,7 +1,7 @@
 import { Card, CardValue, Suit } from "./types";
 
 /** Card point values (Augen) — the single source, also used to rebuild Cards from stored ids. */
-export const CARD_POINTS: Record<CardValue, number> = {
+const CARD_POINTS: Record<CardValue, number> = {
   [CardValue.SEVEN]: 0,
   [CardValue.EIGHT]: 0,
   [CardValue.NINE]: 0,
@@ -24,8 +24,11 @@ const DECK_VALUE_ORDER: CardValue[] = [
   CardValue.ACE,
 ];
 
+/** Suits high to low (Ober/Unter rank); also the fresh-deck order seeded shuffles depend on. */
+export const SUITS: Suit[] = [Suit.ACORNS, Suit.LEAVES, Suit.HEARTS, Suit.BELLS];
+
 export function createDeck(): Card[] {
-  return [Suit.ACORNS, Suit.LEAVES, Suit.HEARTS, Suit.BELLS].flatMap((suit) =>
+  return SUITS.flatMap((suit) =>
     DECK_VALUE_ORDER.map((value) => ({
       id: `${suit}-${value}`,
       suit,
@@ -33,6 +36,17 @@ export function createDeck(): Card[] {
       points: CARD_POINTS[value],
     })),
   );
+}
+
+/** `"ACORNS-A"` → a full `Card`. Returns null for an unparsable id. */
+export function cardFromId(id: string): Card | null {
+  const dash = id.lastIndexOf("-");
+  if (dash <= 0) return null;
+  const suit = id.slice(0, dash) as Suit;
+  const value = id.slice(dash + 1) as CardValue;
+  if (!Object.values(Suit).includes(suit)) return null;
+  if (!Object.values(CardValue).includes(value)) return null;
+  return { id, suit, value, points: CARD_POINTS[value] };
 }
 
 export function shuffleDeck(deck: Card[]): Card[] {

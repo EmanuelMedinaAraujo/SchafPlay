@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { GameState, PlayerAction, SeatId } from "../game/types";
+import { Settings } from "../lib/settings";
 import { Transport, TransportState } from "../net/Transport";
 import { GameSession, SessionDeps, SessionRole } from "./GameSession";
 import { GuestSession } from "./GuestSession";
@@ -7,16 +8,7 @@ import { HostSession } from "./HostSession";
 import { SoloSession } from "./SoloSession";
 
 export interface UseGameSessionOptions {
-  getPlayerName(): string;
-  /** Profile picture (#14) of the local player, synced to the other human. */
-  getPlayerAvatar(): string;
-  getTotalRounds(): number;
-  /** House rule #31. Read when a session starts a new engine. */
-  getDisableLaufende(): boolean;
-  /** House rule #11. Read when a session starts a new engine. */
-  getEnableRamsch(): boolean;
-  /** House rule #57. Read when a session starts a new engine. */
-  getEnableStoss(): boolean;
+  settings: Settings;
   /** Show the game screen (also fires on reconnect, where it is a no-op). */
   onEnterGame(): void;
 }
@@ -40,12 +32,7 @@ export function useGameSession(options: UseGameSessionOptions) {
   const depsRef = useRef<SessionDeps | null>(null);
   if (!depsRef.current) {
     depsRef.current = {
-      getPlayerName: () => optionsRef.current.getPlayerName(),
-      getPlayerAvatar: () => optionsRef.current.getPlayerAvatar(),
-      getTotalRounds: () => optionsRef.current.getTotalRounds(),
-      getDisableLaufende: () => optionsRef.current.getDisableLaufende(),
-      getEnableRamsch: () => optionsRef.current.getEnableRamsch(),
-      getEnableStoss: () => optionsRef.current.getEnableStoss(),
+      getSettings: () => optionsRef.current.settings,
       events: {
         onGameState: (state) => setGameState(state),
         onConnectionState: (state) => setConnectionState(state),
@@ -55,25 +42,15 @@ export function useGameSession(options: UseGameSessionOptions) {
   }
   const deps = depsRef.current;
 
-  function attachHostPeer(peer: Transport): void {
-    let session = sessionRef.current;
-    if (!(session instanceof HostSession)) {
-      session?.destroy();
-      session = new HostSession(deps);
+  function attachPeer(Session: typeof HostSession | typeof GuestSession, peerRole: "host" | "guest", peer: Transport): void {
+    const current = sessionRef.current;
+    // Re-attaching the same role is a reconnect: keep the session.
+    const session: HostSession | GuestSession = current instanceof Session ? current : new Session(deps);
+    if (session !== current) {
+      current?.destroy();
       sessionRef.current = session;
     }
-    setRole("host");
-    session.attachTransport(peer);
-  }
-
-  function attachGuestPeer(peer: Transport): void {
-    let session = sessionRef.current;
-    if (!(session instanceof GuestSession)) {
-      session?.destroy();
-      session = new GuestSession(deps);
-      sessionRef.current = session;
-    }
-    setRole("guest");
+    setRole(peerRole);
     session.attachTransport(peer);
   }
 
@@ -104,12 +81,12 @@ export function useGameSession(options: UseGameSessionOptions) {
     connectionState,
     role,
     myPlayerId,
-    attachHostPeer,
-    attachGuestPeer,
+    attachHostPeer: (peer: Transport) => attachPeer(HostSession, "host", peer),
+    attachGuestPeer: (peer: Transport) => attachPeer(GuestSession, "guest", peer),
     startSolo,
     dispatch,
     quit,
-    devSkipTrick: () => sessionRef.current?.devSkipTrick(),
-    devSkipRound: () => sessionRef.current?.devSkipRound(),
+    devSkipTrick: () => sessionRef.current?.devSkipTrick?.(),
+    devSkipRound: () => sessionRef.current?.devSkipRound?.(),
   };
 }

@@ -1,5 +1,5 @@
 import { CardValue, GameState, GameType, Suit } from "../game/types";
-import { getPlaySuit } from "../game/rules";
+import { getPlaySuit, isCalledAce } from "../game/rules";
 
 /**
  * State as seen by one player: other hands become face-down placeholders and
@@ -32,15 +32,6 @@ export function redactStateFor(state: GameState, viewerId: string): GameState {
     !isPartnerRevealed(state)
   ) {
     redacted.currentContract = { ...redacted.currentContract, partnerId: undefined };
-    // The engine stores the SAME contract object in currentContract and
-    // biddingState.resolvedContract, so the partner must be blanked in BOTH —
-    // forgetting one leaks the partner through the bidding state.
-    if (redacted.biddingState?.resolvedContract) {
-      redacted.biddingState = {
-        ...redacted.biddingState,
-        resolvedContract: { ...redacted.biddingState.resolvedContract, partnerId: undefined },
-      };
-    }
   }
 
   return redacted;
@@ -59,7 +50,7 @@ function isPartnerRevealed(state: GameState): boolean {
     const isCalledSuitLed = ledPlaySuit === contract.calledSuit;
 
     for (const played of trick.playedCards) {
-      if (played.playerId === contract.partnerId && played.card.suit === contract.calledSuit && played.card.value === CardValue.ACE) {
+      if (played.playerId === contract.partnerId && isCalledAce(played.card, contract)) {
         return true;
       }
       if (isCalledSuitLed && played.playerId === contract.partnerId) {

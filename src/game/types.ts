@@ -44,14 +44,8 @@ export enum GamePriority {
   SOLO_TOUT = 5,
 }
 
-export enum Difficulty {
-  EASY = "EASY",
-  MEDIUM = "MEDIUM",
-  HARD = "HARD",
-}
-
 export type SeatId = "p1" | "p2" | "p3" | "p4";
-export type BiddingPhase = "WILL_PHASE" | "DECLARE_PHASE" | "RESOLVED";
+export type BiddingPhase = "WILL_PHASE" | "DECLARE_PHASE";
 export type GameStatus = "LOBBY" | "BIDDING" | "PLAYING" | "ROUND_OVER" | "LIST_OVER";
 
 /** Structured log entry rendered client-side in the viewer's language. */
@@ -87,7 +81,6 @@ export interface Player {
   isHuman: boolean;
   cards: Card[];
   pointsCollected: number;
-  difficulty?: Difficulty;
   seatIndex: number;
   connected?: boolean;
   /** Profile picture (#14), resolved by `lib/avatars.ts`. Public — not redacted. */
@@ -111,9 +104,7 @@ export interface BiddingState {
   willBids: WillBid[];
   interestedPlayerIds: string[];
   declarations: BidDeclaration[];
-  currentBidderIndex: number;
   highBid: BidDeclaration | null;
-  resolvedContract: Contract | null;
 }
 
 export type ReadyState = Record<string, boolean>;
@@ -179,9 +170,6 @@ export interface GameState {
   /** The host's house-rule setting, in state so the guest UI can follow it. */
   stossEnabled: boolean;
 }
-
-/** Same shape as GameState; documentation alias for engine/redaction.ts output. */
-export type RedactedGameState = GameState;
 
 export enum PlayerActionType {
   BID_WILL = "BID_WILL",

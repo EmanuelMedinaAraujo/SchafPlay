@@ -1,11 +1,10 @@
 import { GameEngine } from "../engine/GameEngine";
 import { PlayerAction, SeatId } from "../game/types";
-import { getE2EOverrides } from "../lib/e2e";
 import { ListRecorder } from "../persistence";
 import { createMessage, P2PMessageType } from "../net/protocol";
 import { Transport } from "../net/Transport";
 import { heavyAvatars, sanitizeAvatar, withoutHeavyAvatars } from "./avatarSync";
-import { GameSession, SessionDeps } from "./GameSession";
+import { engineOptions, GameSession, SessionDeps } from "./GameSession";
 
 /** The fan-out seam for variable multiplayer (#6). */
 const REMOTE_HUMAN_SEATS: readonly SeatId[] = ["p3"];
@@ -22,9 +21,6 @@ interface GuestIdentity {
  * connection and survives reconnects — a fresh transport resumes the same game.
  */
 export class HostSession implements GameSession {
-  readonly role = "host" as const;
-  readonly myPlayerId: SeatId = "p1";
-
   private engine: GameEngine | null = null;
   private recorder: ListRecorder | null = null;
   private transport: Transport | null = null;
@@ -91,14 +87,8 @@ export class HostSession implements GameSession {
 
   /** Lazily at connect, not at attach, so it picks up the latest settings. */
   private createEngine(): void {
-    const engine = new GameEngine(this.deps.getPlayerName(), "Gast", this.deps.getTotalRounds(), {
-      devToolsEnabled: import.meta.env.DEV,
-      hostAvatar: this.deps.getPlayerAvatar(),
-      disableLaufende: this.deps.getDisableLaufende(),
-      enableRamsch: this.deps.getEnableRamsch(),
-      enableStoss: this.deps.getEnableStoss(),
-      ...getE2EOverrides(),
-    });
+    const settings = this.deps.getSettings();
+    const engine = new GameEngine(settings.playerName, settings.totalRounds, engineOptions(settings));
     this.engine = engine;
     this.recorder = new ListRecorder("multiplayer", "host", "p1");
     engine.onStateChange(() => {
