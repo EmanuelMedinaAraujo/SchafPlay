@@ -1,5 +1,5 @@
 import { Page } from "@playwright/test";
-import { de, exchangeCodes, handCards, pairHostGuest } from "./helpers/fixtures";
+import { bootHome, de, exchangeCodes, handCards } from "./helpers/fixtures";
 import { expect, test } from "./helpers/test";
 
 /** The local hand's card ids, order-independent (the host never auto-plays). */
@@ -16,8 +16,8 @@ function roundLabel(page: Page): Promise<string> {
 }
 
 test.describe("reconnect", () => {
-  test("mid-game disconnect pauses the host and re-pairing resumes intact", async ({ browser }) => {
-    const { host, guest, guestContext } = await pairHostGuest(browser, { seed: 3, rounds: 8 });
+  test("mid-game disconnect pauses the host and re-pairing resumes intact", async ({ newPage, pair }) => {
+    const { host, guest } = await pair({ seed: 3, rounds: 8 });
 
     // Both sides are at the table in the bidding phase.
     await expect(host.locator(".bidding-panel")).toContainText(de.willPhaseTitle);
@@ -31,7 +31,7 @@ test.describe("reconnect", () => {
     // Closing the guest CONTEXT (not just the page) tears down the
     // RTCPeerConnection so the host detects the drop promptly; if it ever falls
     // back to the 15s heartbeat timeout the overlay still appears within 20s.
-    await guestContext.close();
+    await guest.context().close();
 
     const overlay = host.locator(".reconnect-overlay");
     await expect(overlay).toBeVisible({ timeout: 20_000 });
@@ -51,27 +51,21 @@ test.describe("reconnect", () => {
     expect(hitInsideOverlay).toBe(true);
 
     // Bring a fresh guest in and re-pair through the overlay's PairingPanel.
-    const newGuestContext = await browser.newContext();
-    const newGuest = await newGuestContext.newPage();
-    try {
-      await newGuest.goto("/");
-      await newGuest.getByRole("tab", { name: de.joinGame }).click();
-      await exchangeCodes(host, newGuest);
+    const newGuest = await newPage();
+    await bootHome(newGuest, { mode: "join" });
+    await exchangeCodes(host, newGuest);
 
-      // The engine survived the pause: overlay clears and the host shows the
-      // exact same hand and round it had before the drop.
-      await expect(overlay).toBeHidden({ timeout: 20_000 });
-      await expect(host.locator(".game-screen")).toBeVisible();
-      expect(await handCardIds(host)).toEqual(handBefore);
-      expect(await roundLabel(host)).toBe(roundBefore);
+    // The engine survived the pause: overlay clears and the host shows the
+    // exact same hand and round it had before the drop.
+    await expect(overlay).toBeHidden({ timeout: 20_000 });
+    await expect(host.locator(".game-screen")).toBeVisible();
+    expect(await handCardIds(host)).toEqual(handBefore);
+    expect(await roundLabel(host)).toBe(roundBefore);
 
-      // The new guest lands at the table on the same round.
-      await expect(newGuest.locator(".game-screen")).toBeVisible({ timeout: 20_000 });
-      await expect(async () => {
-        expect(await roundLabel(newGuest)).toBe(roundBefore);
-      }).toPass({ timeout: 20_000 });
-    } finally {
-      await newGuestContext.close();
-    }
+    // The new guest lands at the table on the same round.
+    await expect(newGuest.locator(".game-screen")).toBeVisible({ timeout: 20_000 });
+    await expect(async () => {
+      expect(await roundLabel(newGuest)).toBe(roundBefore);
+    }).toPass({ timeout: 20_000 });
   });
 });

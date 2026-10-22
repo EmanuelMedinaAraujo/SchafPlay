@@ -1,22 +1,12 @@
-import { Page } from "@playwright/test";
-import { bootHome, de, exchangeCodes } from "./helpers/fixtures";
+import { bootHome, de, exchangeCodes, readInvite } from "./helpers/fixtures";
 import { expect, test } from "./helpers/test";
 
 /** Garbage that decompresses to nothing — exercises the INVALID_CODE path. */
 const GARBAGE = "this-is-not-a-valid-sdp-code-!!!";
 
-/** Read a host page's freshly minted invite code once its textarea appears. */
-async function hostInvite(host: Page): Promise<string> {
-  const inviteArea = host.locator(".pairing-flow textarea[readonly]").first();
-  // Invite generation gathers ICE candidates (up to ~1.5s by design).
-  await expect(inviteArea).toBeVisible({ timeout: 15_000 });
-  return inviteArea.inputValue();
-}
-
 test.describe("pairing", () => {
   test("guest rejects a garbage invite code without crashing", async ({ page }) => {
-    await bootHome(page);
-    await page.getByRole("tab", { name: de.joinGame }).click();
+    await bootHome(page, { mode: "join" });
 
     const flow = page.locator(".pairing-flow");
     await flow.getByPlaceholder(de.pasteInviteHint).fill(GARBAGE);
@@ -33,7 +23,7 @@ test.describe("pairing", () => {
 
   test("host rejects a garbage reply code and keeps the invite live", async ({ page }) => {
     await bootHome(page, { mode: "host" }); // the invite is minted when the panel mounts.
-    const invite = await hostInvite(page);
+    const invite = await readInvite(page);
     expect(invite.length).toBeGreaterThan(0);
 
     const flow = page.locator(".pairing-flow");
@@ -46,42 +36,34 @@ test.describe("pairing", () => {
     await expect(flow.locator("textarea[readonly]").first()).toHaveValue(invite);
   });
 
-  test("deep-link opens the join flow with the invite pre-filled and pairs", async ({ browser }) => {
-    const hostContext = await browser.newContext();
-    const guestContext = await browser.newContext();
-    const host = await hostContext.newPage();
-    const guest = await guestContext.newPage();
+  test("deep-link opens the join flow with the invite pre-filled and pairs", async ({ newPage }) => {
+    const host = await newPage();
+    const guest = await newPage();
 
-    try {
-      await bootHome(host, { mode: "host" });
-      const invite = await hostInvite(host);
+    await bootHome(host, { mode: "host" });
+    const invite = await readInvite(host);
 
-      // Opening the deep link routes the guest straight into the join flow with
-      // the invite already loaded into the paste field.
-      await guest.goto(`/#invite=${encodeURIComponent(invite)}`);
-      const guestFlow = guest.locator(".pairing-flow");
-      await expect(guest.getByRole("tab", { name: de.joinGame })).toHaveAttribute("aria-selected", "true");
-      await expect(guestFlow.getByPlaceholder(de.pasteInviteHint)).toHaveValue(invite);
+    // Opening the deep link routes the guest straight into the join flow with
+    // the invite already loaded into the paste field.
+    await guest.goto(`/#invite=${encodeURIComponent(invite)}`);
+    const guestFlow = guest.locator(".pairing-flow");
+    await expect(guest.getByRole("tab", { name: de.joinGame })).toHaveAttribute("aria-selected", "true");
+    await expect(guestFlow.getByPlaceholder(de.pasteInviteHint)).toHaveValue(invite);
 
-      // The panel also auto-submits on mount, but StrictMode's dev
-      // double-invoke tears the auto-created peer down, so that path fails in
-      // the dev build. Drive the exchange explicitly instead.
-      await exchangeCodes(host, guest);
+    // The panel also auto-submits on mount, but StrictMode's dev
+    // double-invoke tears the auto-created peer down, so that path fails in
+    // the dev build. Drive the exchange explicitly instead.
+    await exchangeCodes(host, guest);
 
-      await expect(host.locator(".game-screen")).toBeVisible({ timeout: 15_000 });
-      await expect(guest.locator(".game-screen")).toBeVisible({ timeout: 15_000 });
-    } finally {
-      await hostContext.close();
-      await guestContext.close();
-    }
+    await expect(host.locator(".game-screen")).toBeVisible({ timeout: 15_000 });
+    await expect(guest.locator(".game-screen")).toBeVisible({ timeout: 15_000 });
   });
 
   test("paste button fills the invite code from clipboard", async ({ context, page }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
-    await bootHome(page);
+    await bootHome(page, { mode: "join" });
     await page.evaluate(() => navigator.clipboard.writeText("test-clipboard-value"));
-    await page.getByRole("tab", { name: de.joinGame }).click();
 
     const flow = page.locator(".pairing-flow");
     await flow.getByRole("button", { name: de.paste }).click();

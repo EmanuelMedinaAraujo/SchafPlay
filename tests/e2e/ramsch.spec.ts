@@ -1,4 +1,4 @@
-import { bootHome, de } from "./helpers/fixtures";
+import { bootHome, de, startSolo } from "./helpers/fixtures";
 import { expect, test } from "./helpers/test";
 import { GameType } from "../../src/game/types";
 import { gameLabel } from "../../src/lib/i18n";
@@ -17,10 +17,7 @@ test.describe("ramsch", () => {
     await expect(page.getByRole("button", { name: de.settingsRamschPlay })).toHaveAttribute("aria-pressed", "true");
 
     // The setting persists across this navigation, so the fresh engine sees it.
-    await bootHome(page, { seed: 79, name: "Wastl" });
-    await page.getByRole("tab", { name: de.soloGame }).click();
-    await page.getByRole("button", { name: de.startGame }).click();
-    await expect(page.locator(".game-screen")).toBeVisible();
+    await startSolo(page, { seed: 79, name: "Wastl" });
 
     // The three AI seats pass on their own; this completes the all-pass.
     await page.getByRole("button", { name: de.pass, exact: true }).click();

@@ -3,11 +3,12 @@
  * 1 produces the situation. The partner *reveal* is partner-badge.spec.ts.
  */
 import { Page } from "@playwright/test";
-import { Card, GameType, Suit } from "../../src/game/types";
+import { GameType, Suit } from "../../src/game/types";
 import { getPlaySuit } from "../../src/game/rules";
 import { handCard, startSolo } from "./helpers/fixtures";
 import { defaultPolicy, findSeed, HumanTurn, Policy, RoundTrace, Trace } from "./helpers/simulate";
-import { clickHandCard, performBids, playCardInTurn, waitMyTurn } from "./helpers/ui";
+import { dealtCard } from "./helpers/trace";
+import { expectPlayed, expectRefused, performBids, playCardInTurn, waitMyTurn } from "./helpers/ui";
 import { expect, test } from "./helpers/test";
 
 /**
@@ -36,15 +37,7 @@ interface BoundTurn {
   isVoid: boolean;
 }
 
-function dealt(round: RoundTrace, cardId: string): Card {
-  for (const hand of Object.values(round.hands)) {
-    const card = hand.find((candidate) => candidate.id === cardId);
-    if (card) return card;
-  }
-  throw new Error(`card ${cardId} was not dealt this round`);
-}
-
-const playSuitOf = (round: RoundTrace, cardId: string) => getPlaySuit(dealt(round, cardId), GameType.SAUSPIEL);
+const playSuitOf = (round: RoundTrace, cardId: string) => getPlaySuit(dealtCard(round, cardId), GameType.SAUSPIEL);
 
 /**
  * Every round-1 turn where p1 sits on the called Ace and the suit has not been
@@ -82,7 +75,7 @@ function boundTurns(trace: Trace): BoundTurn[] {
         suitIds,
         lowIds: suitIds.filter((id) => id !== aceId),
         calledTrumpIds: turn.handIds.filter(
-          (id) => dealt(round, id).suit === suit && playSuitOf(round, id) === "TRUMP",
+          (id) => dealtCard(round, id).suit === suit && playSuitOf(round, id) === "TRUMP",
         ),
         ledPlaySuit,
         isVoid: ledPlaySuit !== null && turn.handIds.every((id) => playSuitOf(round, id) !== ledPlaySuit),
@@ -111,22 +104,6 @@ async function playUpTo(page: Page, seed: number, round: RoundTrace, bound: Boun
   const p1Turns = round.turns.filter((turn) => turn.seat === "p1");
   for (let i = 0; i < bound.turnIdx; i += 1) await playCardInTurn(page, p1Turns[i].chosenId);
   await waitMyTurn(page);
-}
-
-/** Assert a card is refused: it grays out, stays in hand and never reaches the table. */
-async function expectRefused(page: Page, cardId: string): Promise<void> {
-  await clickHandCard(page, cardId);
-  await expect(handCard(page, cardId)).toHaveCount(1);
-  await expect(handCard(page, cardId)).toHaveClass(/grayed-out/);
-  await expect(page.locator(`.trick-area [data-card-id="${cardId}"]`)).toHaveCount(0);
-}
-
-/** Assert a card is accepted: it leaves the hand and lands in the trick. */
-async function expectPlayed(page: Page, cardId: string): Promise<void> {
-  await expect(handCard(page, cardId)).not.toHaveClass(/grayed-out/);
-  await clickHandCard(page, cardId);
-  await expect(handCard(page, cardId)).toHaveCount(0);
-  await expect(page.locator(`.trick-area [data-card-id="${cardId}"]`)).toBeVisible();
 }
 
 test.describe("Sauspiel called-Ace restrictions", () => {

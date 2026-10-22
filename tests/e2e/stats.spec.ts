@@ -1,60 +1,23 @@
 import { Page } from "@playwright/test";
 import { bootHome, de, startSolo } from "./helpers/fixtures";
 import { expect, test } from "./helpers/test";
+import { readStandings, skipRounds, waitForStoredGames } from "./helpers/ui";
 
 /**
  * Playwright's `page`/`context` fixtures are test-scoped, so each test gets a
  * fresh IndexedDB — no serial mode needed to keep the empty-state test clean.
  */
 
-interface Standing {
-  name: string;
-  score: number;
-}
-
-/** Reads every player's name + running total off the currently visible
- * round-over/list-over score grid, in on-screen (sorted) order. */
-async function readStandings(page: Page): Promise<Standing[]> {
-  const rows = page.locator(".score-grid > div");
-  const count = await rows.count();
-  const standings: Standing[] = [];
-  for (let i = 0; i < count; i++) {
-    const row = rows.nth(i);
-    const name = ((await row.locator("strong").textContent()) ?? "").trim();
-    const scoreText = ((await row.locator("span").nth(1).textContent()) ?? "0").trim();
-    standings.push({ name, score: Number(scoreText) });
-  }
-  return standings;
-}
-
 /** Same "+N / N" formatting the UI uses for a signed score. */
 function formatScore(score: number): string {
   return score > 0 ? `+${score}` : String(score);
 }
 
-/** Dev-skips every round of a list (bidding + all tricks in one call each)
- * and readies up after each, until the list-over summary is showing. */
-async function fastForwardList(page: Page, rounds: number): Promise<void> {
-  for (let round = 1; round <= rounds; round++) {
-    await page.locator(".dev-round-btn").click();
-    await expect(page.locator(".round-over-overlay h2")).toContainText(de.roundOver);
-    const isLast = round === rounds;
-    await page.getByRole("button", { name: isLast ? de.toFinalStandings : de.ready }).click();
-  }
-  await expect(page.locator(".round-over-overlay h2")).toContainText(de.listOver);
-}
-
-/** Remounting StatsScreen re-runs its one-shot fetch — how this suite polls
- * for ListRecorder's fire-and-forget IndexedDB write. */
+/** Remounting StatsScreen re-runs its one-shot fetch. */
 async function openStats(page: Page): Promise<void> {
   await page.getByTitle(de.home).click();
   await page.getByTitle(de.stats).click();
   await expect(page.locator(".stats-screen")).toBeVisible();
-}
-
-async function playedTileText(page: Page): Promise<string> {
-  await openStats(page);
-  return ((await page.locator(".stat-tiles > div").nth(0).locator("strong").textContent()) ?? "").trim();
 }
 
 test.describe("stats", () => {
@@ -79,7 +42,7 @@ test.describe("stats", () => {
     const name = "Wastl";
     await startSolo(page, { seed: 5, rounds: 4, name });
 
-    await fastForwardList(page, 4);
+    await skipRounds(page, 4);
 
     // Read from the DOM, not hardcoded, so seed/AI changes can't break it.
     const standings = await readStandings(page);
@@ -95,11 +58,9 @@ test.describe("stats", () => {
     await page.locator(".round-over-overlay").getByRole("button", { name: de.quit }).click();
     await expect(page.locator(".home-screen")).toBeVisible();
 
-    // Wait a brief moment for the fire-and-forget IndexedDB write to settle, then open Stats.
-    await page.waitForTimeout(1500);
+    await waitForStoredGames(page, 1);
     await openStats(page);
 
-    // We're on the stats screen (fresh mount) with the write settled now.
     const tiles = page.locator(".stat-tiles > div strong");
     await expect(tiles.nth(0)).toHaveText("1"); // played
     await expect(tiles.nth(1)).toHaveText(expectedWon ? "1" : "0"); // won

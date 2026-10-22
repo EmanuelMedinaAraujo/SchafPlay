@@ -1,5 +1,6 @@
-import { Page, expect, test } from "@playwright/test";
-import { bootHome, de, exchangeCodes } from "./helpers/fixtures";
+import { Page } from "@playwright/test";
+import { de, pairPages } from "./helpers/fixtures";
+import { expect, test } from "./helpers/test";
 
 /** Profile pictures over the wire (#14); see `src/session/avatarSync.ts`. */
 
@@ -14,10 +15,16 @@ async function presetAvatar(page: Page, value: string): Promise<void> {
   }, value);
 }
 
+interface SentFrame {
+  type: string;
+  length: number;
+  hasDataUrl: boolean;
+}
+
 /** Record every frame the host puts on the data channel, with its size. */
 async function recordSentFrames(page: Page): Promise<void> {
   await page.addInitScript(() => {
-    const sent: { type: string; length: number; hasDataUrl: boolean }[] = [];
+    const sent: SentFrame[] = [];
     (window as unknown as { __sent: typeof sent }).__sent = sent;
     const send = RTCDataChannel.prototype.send as (this: RTCDataChannel, data: unknown) => void;
     RTCDataChannel.prototype.send = function (this: RTCDataChannel, data: unknown) {
@@ -35,32 +42,20 @@ async function recordSentFrames(page: Page): Promise<void> {
   });
 }
 
-interface SentFrame {
-  type: string;
-  length: number;
-  hasDataUrl: boolean;
-}
-
 const sentFrames = (page: Page): Promise<SentFrame[]> =>
   page.evaluate(() => (window as unknown as { __sent: SentFrame[] }).__sent ?? []);
 
 test.describe("profile pictures over the wire (#14)", () => {
-  test("both pictures cross the channel, and a custom one is not in every snapshot", async ({ browser }) => {
-    const hostContext = await browser.newContext();
-    const guestContext = await browser.newContext();
-    const host = await hostContext.newPage();
-    const guest = await guestContext.newPage();
+  test("both pictures cross the channel, and a custom one is not in every snapshot", async ({ newPage }) => {
+    const host = await newPage();
+    const guest = await newPage();
 
     // The host uploaded a custom picture; the guest picked the 4th preset.
     await recordSentFrames(host);
     await presetAvatar(host, CUSTOM_AVATAR);
     await presetAvatar(guest, "preset:wastl");
 
-    await bootHome(host, { seed: 12345, name: "Wirt", mode: "host" });
-    await bootHome(guest, { name: "Gast", mode: "join" });
-    await exchangeCodes(host, guest);
-    await expect(host.locator(".game-screen")).toBeVisible({ timeout: 15_000 });
-    await expect(guest.locator(".game-screen")).toBeVisible({ timeout: 15_000 });
+    await pairPages(host, guest, { seed: 12345, hostName: "Wirt", guestName: "Gast" });
 
     // Host → guest: the custom picture arrives and renders on the host's seat.
     const hostSeatOnGuest = guest.locator(".seat", { hasText: "Wirt" }).locator(".seat-avatar-img");
@@ -94,48 +89,32 @@ test.describe("profile pictures over the wire (#14)", () => {
     expect(states.filter((frame) => frame.hasDataUrl)).toHaveLength(0);
     // Sanity: a snapshot is now far smaller than the picture it used to carry.
     expect(Math.max(...states.map((frame) => frame.length))).toBeLessThan(CUSTOM_AVATAR.length * 40);
-
-    await hostContext.close();
-    await guestContext.close();
   });
 
-  test("an oversized picture from a peer is rejected, not stored", async ({ browser }) => {
-    const hostContext = await browser.newContext();
-    const guestContext = await browser.newContext();
-    const host = await hostContext.newPage();
-    const guest = await guestContext.newPage();
+  test("an oversized picture from a peer is rejected, not stored", async ({ newPage }) => {
+    const host = await newPage();
+    const guest = await newPage();
 
     // A megabyte-sized avatar must be dropped, not pinned into game state
     // and re-broadcast (sanitizeAvatar in session/avatarSync.ts).
     await presetAvatar(guest, `data:image/png;base64,${"A".repeat(200_000)}`);
 
-    await bootHome(host, { seed: 12345, name: "Wirt", mode: "host" });
-    await bootHome(guest, { name: "Gast", mode: "join" });
-    await exchangeCodes(host, guest);
-    await expect(host.locator(".game-screen")).toBeVisible({ timeout: 15_000 });
+    await pairPages(host, guest, { seed: 12345, hostName: "Wirt", guestName: "Gast" });
 
     const guestSeatOnHost = host.locator(".seat", { hasText: "Gast" }).locator(".seat-avatar-img");
     await expect(guestSeatOnHost).toHaveAttribute("src", /avatars\/default\.[a-z]+$/, { timeout: 15_000 });
-
-    await hostContext.close();
-    await guestContext.close();
   });
 
-  test("a picture smuggled inside a state snapshot is rejected by the guest", async ({ browser }) => {
-    const hostContext = await browser.newContext();
-    const guestContext = await browser.newContext();
-    const host = await hostContext.newPage();
-    const guest = await guestContext.newPage();
+  test("a picture smuggled inside a state snapshot is rejected by the guest", async ({ newPage }) => {
+    const host = await newPage();
+    const guest = await newPage();
 
     // A hostile host can route around AVATAR_UPDATE by putting the payload
     // directly into the broadcast state, so the guest sanitizes that path too
     // (sanitizeStateAvatars). SVG is the one image type the boundary refuses.
     await rewriteOutboundAvatar(host, "data:image/svg+xml;base64,PHN2Zy8+");
 
-    await bootHome(host, { seed: 12345, name: "Wirt", mode: "host" });
-    await bootHome(guest, { name: "Gast", mode: "join" });
-    await exchangeCodes(host, guest);
-    await expect(guest.locator(".game-screen")).toBeVisible({ timeout: 15_000 });
+    await pairPages(host, guest, { seed: 12345, hostName: "Wirt", guestName: "Gast" });
 
     // The host's seat must show the fallback, never the injected value.
     const hostSeatOnGuest = guest.locator(".seat", { hasText: "Wirt" }).locator(".seat-avatar-img");
@@ -143,18 +122,13 @@ test.describe("profile pictures over the wire (#14)", () => {
     // Give the host time to emit further snapshots, then confirm it held.
     await guest.waitForTimeout(1_000);
     await expect(hostSeatOnGuest).toHaveAttribute("src", /avatars\/default\.[a-z]+$/);
-
-    await hostContext.close();
-    await guestContext.close();
   });
 });
 
 test.describe("the guest's identity survives a slow host (#95)", () => {
-  test("a CONNECTION_ACK arriving before the host's engine is not dropped", async ({ browser }) => {
-    const hostContext = await browser.newContext();
-    const guestContext = await browser.newContext();
-    const host = await hostContext.newPage();
-    const guest = await guestContext.newPage();
+  test("a CONNECTION_ACK arriving before the host's engine is not dropped", async ({ newPage }) => {
+    const host = await newPage();
+    const guest = await newPage();
 
     // The host builds its engine on the transport's "connected" callback, so an
     // ACK delivered before that callback used to land on a session with no
@@ -162,18 +136,12 @@ test.describe("the guest's identity survives a slow host (#95)", () => {
     await delayOpenCallback(host, 750);
     await presetAvatar(guest, "preset:wastl");
 
-    await bootHome(host, { seed: 12345, name: "Wirt", mode: "host" });
-    await bootHome(guest, { name: "Franzi", mode: "join" });
-    await exchangeCodes(host, guest);
-    await expect(host.locator(".game-screen")).toBeVisible({ timeout: 15_000 });
+    await pairPages(host, guest, { seed: 12345, hostName: "Wirt", guestName: "Franzi" });
 
     // Seat 3 is opposite the host, and it must carry what the guest sent.
     const guestSeat = host.locator(".seat-top");
     await expect(guestSeat.locator(".seat-name")).toContainText("Franzi", { timeout: 15_000 });
     await expect(guestSeat.locator(".seat-avatar-img")).toHaveAttribute("src", /avatars\/wastl\.[a-z]+$/);
-
-    await hostContext.close();
-    await guestContext.close();
   });
 });
 

@@ -1,12 +1,21 @@
-import { test as base } from "@playwright/test";
+import { BrowserContext, Page, test as base } from "@playwright/test";
+import { PairedGame, PairOptions, pairPages } from "./fixtures";
+
+interface Fixtures {
+  _keepAlive: void;
+  /** A page in its own fresh browser context (a separate device), closed at teardown. */
+  newPage: () => Promise<Page>;
+  /** Host and guest on two fresh contexts, paired and seated; closed at teardown. */
+  pair: (options?: PairOptions) => Promise<PairedGame>;
+}
 
 /**
- * Shared `test` with a renderer keepalive: headless Chromium delivers page
- * tasks lazily when nothing external touches them, stalling WebRTC handshakes
- * and the engine's setTimeout pacing. A 250ms no-op evaluate keeps the event
- * loops pumping without masking real timing bugs.
+ * Shared `test`. Its renderer keepalive exists because headless Chromium
+ * delivers page tasks lazily when nothing external touches them, stalling
+ * WebRTC handshakes and the engine's setTimeout pacing. A 250ms no-op evaluate
+ * keeps the event loops pumping without masking real timing bugs.
  */
-export const test = base.extend<{ _keepAlive: void }>({
+export const test = base.extend<Fixtures>({
   _keepAlive: [
     async ({ browser }, use) => {
       const timer = setInterval(() => {
@@ -21,6 +30,23 @@ export const test = base.extend<{ _keepAlive: void }>({
     },
     { auto: true },
   ],
+  newPage: async ({ browser }, use) => {
+    const contexts: BrowserContext[] = [];
+    await use(async () => {
+      const context = await browser.newContext();
+      contexts.push(context);
+      return context.newPage();
+    });
+    // A test may already have closed one on purpose (reconnect drops its guest).
+    await Promise.all(contexts.map((context) => context.close().catch(() => undefined)));
+  },
+  pair: async ({ newPage }, use) => {
+    await use(async (options = {}) => {
+      const game = { host: await newPage(), guest: await newPage() };
+      await pairPages(game.host, game.guest, options);
+      return game;
+    });
+  },
 });
 
 export { expect } from "@playwright/test";
