@@ -1,4 +1,4 @@
-import { bootHome, de } from "./helpers/fixtures";
+import { bootHome, de, readInvite } from "./helpers/fixtures";
 import { expect, test } from "./helpers/test";
 
 /**
@@ -10,13 +10,10 @@ import { expect, test } from "./helpers/test";
  */
 test.describe("qr pairing", () => {
   test("host shows an invite QR with the copy-paste flow intact", async ({ page }) => {
-    await bootHome(page, { seed: 7 });
-    await page.getByRole("tab", { name: de.hostGame }).click();
+    await bootHome(page, { seed: 7, mode: "host" });
 
     // The invite code (and its QR) appear once ICE gathering completes.
-    const inviteArea = page.locator(".pairing-flow textarea[readonly]").first();
-    await expect(inviteArea).toBeVisible({ timeout: 20_000 });
-    await expect(inviteArea).not.toHaveValue("");
+    expect(await readInvite(page, 20_000)).not.toBe("");
 
     // The QR code starts hidden and is only displayed inside the popup.
     const qr = page.locator(".qr-code");

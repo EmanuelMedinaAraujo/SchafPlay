@@ -17,25 +17,24 @@ export default function LastTrickPopup({ trick, players, contract, language, onC
 
   return (
     <div
-      className="rules-modal-overlay"
-      style={{ zIndex: 70 }}
+      className="rules-modal-overlay last-trick-overlay"
       onClick={(event) => event.target === event.currentTarget && onClose()}
     >
-      <div className="rules-modal-container" style={{ width: "min(400px, 92%)" }}>
-        <div className="rules-modal-header" style={{ paddingBottom: "8px" }}>
-          <h3 style={{ margin: 0 }}>{t.lastTrick}</h3>
+      <div className="rules-modal-container last-trick-container">
+        <div className="rules-modal-header last-trick-header">
+          <h3>{t.lastTrick}</h3>
           <button onClick={onClose} className="rules-modal-close-btn" type="button">
             <XIcon />
           </button>
         </div>
-        <div style={{ padding: "16px 0", display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px", justifyItems: "center" }}>
+        <div className="last-trick-cards">
           {trick.playedCards.map((played) => {
             const player = players.find((p) => p.id === played.playerId);
             const isWinner = played.playerId === trick.winnerId;
             return (
-              <div key={played.card.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+              <div key={played.card.id} className="last-trick-play">
                 <CardFace card={played.card} contract={contract} small />
-                <span style={{ fontSize: "12px", fontWeight: isWinner ? "bold" : "normal", color: isWinner ? "var(--amber)" : "var(--text)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap", maxWidth: "120px" }}>
+                <span className={isWinner ? "last-trick-name winner" : "last-trick-name"}>
                   {player?.name} {isWinner ? "🏆" : ""}
                 </span>
               </div>
@@ -43,7 +42,7 @@ export default function LastTrickPopup({ trick, players, contract, language, onC
           })}
         </div>
         {winner && (
-          <div style={{ textAlign: "center", borderTop: "1px solid var(--line)", paddingTop: "12px", fontSize: "14px" }}>
+          <div className="last-trick-winner">
             {t.winner}: <strong>{winner.name}</strong>
           </div>
         )}

@@ -15,8 +15,10 @@ const PRECACHE = [
   '/manifest.json',
 ];
 
-// Helper to fetch with timeout to prevent hanging on slow/unreachable networks
-function fetchWithTimeout(request, timeoutMs = 1500) {
+// Fetch with a timeout so a navigation never hangs on a slow/unreachable
+// network. A hand-rolled AbortController rather than AbortSignal.timeout(),
+// which iOS < 16 lacks.
+function fetchWithTimeout(request, timeoutMs) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
   return fetch(request, { signal: controller.signal })
@@ -84,25 +86,22 @@ self.addEventListener('fetch', (event) => {
   const isSameOrigin = request.url.startsWith(self.location.origin);
   const isGet = request.method === 'GET';
 
-  if (isSameOrigin && isGet) {
-    event.respondWith(
-      caches.match(request, { ignoreVary: true, ignoreSearch: true }).then((cached) => {
-        if (cached) return cached;
-        return fetch(request).then((response) => {
-          // If response is valid, cache it dynamically
-          if (response && response.status === 200) {
-            const responseToCache = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(request, responseToCache);
-            });
-          }
-          return response;
-        });
-      })
-    );
-    return;
-  }
+  // Anything else (cross-origin, non-GET) is left to the browser.
+  if (!isSameOrigin || !isGet) return;
 
-  // Fallback for other requests (external / non-GET)
-  event.respondWith(fetch(request));
+  event.respondWith(
+    caches.match(request, { ignoreVary: true, ignoreSearch: true }).then((cached) => {
+      if (cached) return cached;
+      return fetch(request).then((response) => {
+        // If response is valid, cache it dynamically
+        if (response && response.status === 200) {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(request, responseToCache);
+          });
+        }
+        return response;
+      });
+    })
+  );
 });

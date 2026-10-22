@@ -1,6 +1,8 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { CardValue, GameState, GameType, Language, PlayerAction, PlayerActionType, StossKind } from "../types";
+import { GameState, Language, PlayerAction, PlayerActionType, StossKind } from "../types";
+import { isCalledAce, stossKindFor } from "../game/rules";
 import { gameLabel, translations } from "../lib/i18n";
+import { setRevealOffset } from "../lib/rotation";
 import BiddingPanel from "./BiddingPanel";
 import PlayerHand from "./PlayerHand";
 import PlayerSeat from "./PlayerSeat";
@@ -15,7 +17,6 @@ interface GameBoardProps {
   language: Language;
   myPlayerId: string;
   onAction: (action: PlayerAction) => void;
-  onReady: () => void;
   onQuit: () => void;
   onDevSkip?: () => void;
   onDevSkipRound?: () => void;
@@ -36,19 +37,7 @@ function useContractChipReveal(decided: boolean) {
     if (!decided || prevDecided) return;
 
     const chip = chipRef.current;
-    const center = document.querySelector(".trick-area");
-    if (!chip || !center) return;
-
-    const chipRect = chip.getBoundingClientRect();
-    const centerRect = center.getBoundingClientRect();
-    let dx = centerRect.left + centerRect.width / 2 - (chipRect.left + chipRect.width / 2);
-    let dy = centerRect.top + centerRect.height / 2 - (chipRect.top + chipRect.height / 2);
-    // Forced landscape rotates the page 90°: map screen-space deltas into it.
-    if (document.documentElement.classList.contains("rotated")) {
-      [dx, dy] = [dy, -dx];
-    }
-    chip.style.setProperty("--reveal-x", `${dx}px`);
-    chip.style.setProperty("--reveal-y", `${dy}px`);
+    if (!chip || !setRevealOffset(chip)) return;
     chip.classList.add("contract-chip-reveal");
     const clear = () => chip.classList.remove("contract-chip-reveal");
     chip.addEventListener("animationend", clear, { once: true });
@@ -63,7 +52,6 @@ export default function GameBoard({
   language,
   myPlayerId,
   onAction,
-  onReady,
   onQuit,
   onDevSkip,
   onDevSkipRound,
@@ -90,27 +78,12 @@ export default function GameBoard({
     onAction({ type: PlayerActionType.STOSS, playerId: myPlayerId });
   }
 
-  const myStossKind: StossKind | null = state.stoss?.find((entry) => entry.playerId === myPlayerId)?.kind ?? null;
+  const myStossKind: StossKind | null = state.stoss.find((entry) => entry.playerId === myPlayerId)?.kind ?? null;
 
   // Decided from OWN knowledge only, never the redacted partner id. Button
   // visibility only — the engine re-validates.
-  const stossOption: StossKind | null = ((): StossKind | null => {
-    const contract = state.currentContract;
-    if (!state.stossEnabled || state.status !== "PLAYING") return null;
-    if (!contract || contract.type === GameType.RAMSCH) return null;
-    if (state.tricks.length !== 0) return null;
-    if ((state.currentTrick?.playedCards.length ?? 0) >= 2) return null;
-    const count = state.stoss?.length ?? 0;
-    if (count >= 2) return null;
-    const iAmDeclarer = contract.declarerId === myPlayerId;
-    const holdsCalledAce =
-      contract.type === GameType.SAUSPIEL &&
-      !!contract.calledSuit &&
-      me.cards.some((card) => card.suit === contract.calledSuit && card.value === CardValue.ACE);
-    if (count === 0) return iAmDeclarer || holdsCalledAce ? null : "stoss";
-    if (state.stoss[state.stoss.length - 1].kind !== "stoss") return null;
-    return iAmDeclarer ? "retour" : null;
-  })();
+  const holdsCalledAce = me.cards.some((card) => isCalledAce(card, state.currentContract));
+  const stossOption = stossKindFor(state, myPlayerId, holdsCalledAce);
 
   const contractLabel = state.currentContract
     ? gameLabel(language, state.currentContract.type, state.currentContract.calledSuit, state.currentContract.isTout)
@@ -144,14 +117,14 @@ export default function GameBoard({
 
       <section className="table">
         <PlayerSeat player={seatAt(1)} position="left" active={activePlayer?.id === seatAt(1).id} contract={state.currentContract} stoss={state.stoss} language={language} />
-        <TrickArea trick={state.currentTrick} players={state.players} contract={state.currentContract} myIdx={myIdx} language={language} collecting={state.collecting} />
+        <TrickArea trick={state.currentTrick} players={state.players} contract={state.currentContract} myIdx={myIdx} collecting={state.collecting} />
         <PlayerSeat player={seatAt(3)} position="right" active={activePlayer?.id === seatAt(3).id} contract={state.currentContract} stoss={state.stoss} language={language} />
       </section>
 
       {state.status === "BIDDING" && <BiddingPanel state={state} language={language} myPlayerId={myPlayerId} onAction={onAction} />}
 
       {state.status === "ROUND_OVER" && (
-        <RoundOverScreen state={state} language={language} myPlayerId={myPlayerId} onReady={onReady} />
+        <RoundOverScreen state={state} language={language} myPlayerId={myPlayerId} onAction={onAction} />
       )}
 
       {state.status === "LIST_OVER" && (

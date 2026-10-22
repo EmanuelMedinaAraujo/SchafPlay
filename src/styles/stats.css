@@ -38,7 +38,9 @@
   padding: 10px 12px;
 }
 
-.stat-tile small {
+/* Small-caps labels: tile captions and the contract table's header row. */
+.stat-tile small,
+.stats-contract-table th {
   color: var(--muted);
   font-size: 11px;
   font-weight: 700;
@@ -57,10 +59,6 @@
 
 .stat-tile.lost strong {
   color: var(--red-2);
-}
-
-.stats-games-panel {
-  padding: 14px 16px;
 }
 
 .stats-game-list {
@@ -143,11 +141,6 @@
   gap: 12px;
 }
 
-.stats-trend-panel,
-.stats-contracts-panel {
-  padding: 14px 16px;
-}
-
 .stats-panel-hint {
   margin: -8px 0 10px;
   font-size: 12px;
@@ -192,14 +185,6 @@
   border-collapse: collapse;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
-}
-
-.stats-contract-table th {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .stats-contract-table th,

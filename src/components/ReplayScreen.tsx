@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, GameType, Language } from "../types";
-import { gameLabel, translations } from "../lib/i18n";
+import { gameLabel, signed, translations } from "../lib/i18n";
 import { GameRecord, RoundRecord } from "../persistence";
 import { isReplayable, replayStep, stepCount } from "../analysis/replay";
 import CardFace from "./CardFace";
@@ -16,11 +16,6 @@ interface ReplayScreenProps {
 
 type Position = "bottom" | "left" | "top" | "right";
 const POSITIONS: Position[] = ["bottom", "left", "top", "right"];
-
-/** "+N" / "N" — the same signed-score formatting used across the app. */
-function signed(score: number): string {
-  return score > 0 ? `+${score}` : String(score);
-}
 
 /**
  * The nearest replayable round at or after `from`; -1 when there is none.
@@ -62,33 +57,28 @@ export default function ReplayScreen({ game, startRoundIndex, language, onBack }
   const atGameEnd = atRoundEnd && !hasNextRound;
 
   /** Jump to a (already resolved, replayable) round's deal or its last card. */
-  const openRound = useCallback(
-    (index: number, atLastStep = false) => {
-      const target = rounds[index];
-      if (!target || !isReplayable(target)) return;
-      setRoundIndex(index);
-      setStep(atLastStep ? stepCount(target) - 1 : 0);
-    },
-    [rounds],
-  );
+  function openRound(index: number, atLastStep = false) {
+    const target = rounds[index];
+    if (!target || !isReplayable(target)) return;
+    setRoundIndex(index);
+    setStep(atLastStep ? stepCount(target) - 1 : 0);
+  }
 
   /** One step forward/back across the whole list, rolling over round borders. */
-  const go = useCallback(
-    (next: number) => {
-      if (next > total - 1) {
-        if (hasNextRound) openRound(nextRound);
-        return;
-      }
-      if (next < 0) {
-        if (hasPrevRound) openRound(prevRound, true);
-        return;
-      }
-      setStep(next);
-    },
-    [hasNextRound, hasPrevRound, nextRound, openRound, prevRound, total],
-  );
+  function go(next: number) {
+    if (next > total - 1) {
+      if (hasNextRound) openRound(nextRound);
+      return;
+    }
+    if (next < 0) {
+      if (hasPrevRound) openRound(prevRound, true);
+      return;
+    }
+    setStep(next);
+  }
 
   // Arrow keys drive playback; Home/End jump to this round's deal and last card.
+  // Re-subscribes every render, so the handler always sees the current step.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "ArrowRight") go(step + 1);
@@ -100,7 +90,7 @@ export default function ReplayScreen({ game, startRoundIndex, language, onBack }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [go, step, total]);
+  });
 
   const contract = round?.contract ?? null;
   const localIdx = game.players.findIndex((player) => player.id === game.localPlayerId);

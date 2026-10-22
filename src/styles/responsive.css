@@ -5,7 +5,6 @@
    layout is identical whether the phone is held in landscape or in portrait
    with the UI rotated — a plain media query would flip when the device
    rotates even though the effective width stays the same. */
-html.narrow .hero-panel,
 html.narrow .home-grid {
   grid-template-columns: 1fr;
 }
@@ -18,10 +17,6 @@ html.narrow .stats-analysis {
   grid-template-columns: minmax(0, 1fr);
 }
 
-html.narrow .hero-table {
-  display: none;
-}
-
 html.narrow .bid-status,
 html.narrow .score-grid {
   grid-template-columns: 1fr 1fr;
@@ -31,11 +26,9 @@ html.narrow .rules-modal-grid {
   grid-template-columns: 1fr 1fr;
 }
 
-html.narrow .table {
-  /* Keep the side columns equal (see seats.css) so the trick stays centered. */
-  grid-template-columns: minmax(100px, 1fr) minmax(140px, 2fr) minmax(100px, 1fr);
-}
-
+/* Keep the side columns equal (see seats.css) so the trick stays centered;
+   the hand row mirrors the table's columns. */
+html.narrow .table,
 html.narrow .player-hand-container {
   grid-template-columns: minmax(100px, 1fr) minmax(140px, 2fr) minmax(100px, 1fr);
 }
@@ -47,16 +40,6 @@ html.narrow .seat {
 
 html.narrow .seat-name {
   font-size: 12px;
-}
-
-/* Full-screen overlays clear the notch and home indicator too. */
-.round-over-overlay,
-.reconnect-overlay,
-.rules-modal-overlay {
-  padding-left: max(18px, env(safe-area-inset-left, 0px));
-  padding-right: max(18px, env(safe-area-inset-right, 0px));
-  padding-top: max(18px, env(safe-area-inset-top, 0px));
-  padding-bottom: max(18px, env(safe-area-inset-bottom, 0px));
 }
 
 /* Touch devices (iPhone 12/12 Pro and friends) */
@@ -181,14 +164,7 @@ html.compact .seat-name strong {
   max-width: 84px;
 }
 
-html.compact .seat-meta {
-  font-size: 11px;
-}
-
 html.compact .player-hand-container {
-  border: none;
-  background: transparent;
-  box-shadow: none;
   padding: 0 12px 8px 12px;
   margin-top: 4px;
   margin-bottom: 6px;
@@ -241,21 +217,12 @@ html.compact .card-face.small {
   height: 72px;
 }
 
-html.compact .trick-slot small {
-  max-width: 64px;
-}
-
 html.compact .slot-left {
   left: 7%;
 }
 
 html.compact .slot-right {
   right: 7%;
-}
-
-html.compact .qr-code {
-  width: 116px;
-  height: 116px;
 }
 
 html.compact .slot-top {

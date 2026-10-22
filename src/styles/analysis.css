@@ -15,9 +15,6 @@
 
 .analysis-replay-button {
   flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   padding: 4px 7px;
   font-size: 11.5px;
 }
@@ -81,8 +78,6 @@
 }
 
 .replay-header .secondary-button {
-  display: inline-flex;
-  align-items: center;
   gap: 4px;
 }
 
@@ -227,10 +222,6 @@
   min-height: 0;
 }
 
-.replay-seat-right .replay-hand {
-  justify-content: end;
-}
-
 /* The right seat reads right-to-left: its heading lines up with its hand. */
 .replay-seat-right .replay-seat-head {
   justify-content: flex-end;
@@ -249,7 +240,7 @@
 }
 
 .replay-seat-right .replay-hand {
-  justify-content: flex-end;
+  justify-content: end;
 }
 
 /* `.card-face` carries a fixed 62x92 (52x76 small) size from cards.css —
@@ -288,10 +279,6 @@
   min-height: 150px;
 }
 
-.replay-trick-slot {
-  position: absolute;
-}
-
 /* The slot classes are namespaced (`replay-slot-*`, not the board's bare
    `slot-*`): trick-area.css owns those global names for the live table and is
    imported after this file, so sharing them let its `top`/`left` win here.
@@ -301,6 +288,7 @@
    vertically. Deriving it from --rc-* keeps the cross in proportion on the
    phone, where the cards are much smaller. */
 .replay-trick-slot {
+  position: absolute;
   width: var(--rc-w);
   left: calc(50% - var(--rc-w) / 2);
   top: calc(50% - var(--rc-h) / 2);
@@ -360,8 +348,6 @@
 
 .replay-controls .primary-button,
 .replay-controls .secondary-button {
-  display: inline-flex;
-  align-items: center;
   gap: 4px;
 }
 
@@ -463,10 +449,6 @@ html.compact .replay-header {
 html.compact .replay-chip {
   padding: 3px 8px;
   font-size: 11px;
-}
-
-html.compact .replay-table {
-  grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
 html.compact .replay-screen {

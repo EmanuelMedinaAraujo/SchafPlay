@@ -27,14 +27,10 @@ export const AVATAR_PRESETS: AvatarPreset[] = [
 
 const PRESET_PREFIX = "preset:";
 
-const DEFAULT_HUMAN_AVATAR = `${import.meta.env.BASE_URL}avatars/default.jpg`;
+const DEFAULT_HUMAN_AVATAR = presetSrc("default");
 
 export function presetValue(id: string): string {
   return `${PRESET_PREFIX}${id}`;
-}
-
-export function isPresetValue(value: string): boolean {
-  return value.startsWith(PRESET_PREFIX);
 }
 
 /** Unknown/empty values fall back by seat kind, never to a broken image. */

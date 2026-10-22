@@ -74,16 +74,8 @@
 
 .settings-row .mode-switch {
   margin-top: 0;
-  grid-template-columns: 1fr 1fr;
   width: min(320px, 60vw);
   padding: 3px;
-}
-
-/* The language switch is a role="tablist", which pairing.css forces to three
-   columns; here it only ever has two options, so pin it back to two. Needs to
-   out-specify that rule (0,3,0), hence the extra .settings-screen qualifier. */
-.settings-screen .settings-row [role="tablist"].mode-switch {
-  grid-template-columns: 1fr 1fr;
 }
 
 .settings-row .mode-switch button {
@@ -136,7 +128,7 @@
   border-radius: 50%;
   overflow: hidden;
   border: 3px solid var(--red-2);
-  background: #0f1e3d;
+  background: var(--navy);
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
 }
 
@@ -162,7 +154,7 @@
   border-radius: 50%;
   overflow: hidden;
   border: 2px solid var(--line);
-  background: #0f1e3d;
+  background: var(--navy);
   cursor: pointer;
   transition: border-color 0.2s ease, transform 0.1s ease;
 }

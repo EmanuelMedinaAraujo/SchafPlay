@@ -11,18 +11,18 @@ export interface E2EEngineOverrides {
   shuffleFn: (deck: Card[]) => Card[];
 }
 
-/** Pacing the E2E suite runs at; mirrored in tests/e2e/helpers/simulate.ts. */
-export const E2E_AI_DELAY_MS = 40;
-export const E2E_TRICK_HOLD_MS = 120;
+/** Pacing the E2E suite runs at (the Node-side simulation runs at 0/0). */
+const E2E_AI_DELAY_MS = 40;
+const E2E_TRICK_HOLD_MS = 120;
 
 export function getE2EOverrides(): E2EEngineOverrides | null {
   if (!import.meta.env.DEV) return null;
-  const raw = new URLSearchParams(window.location.search).get("e2e-seed");
-  if (raw === null) return null;
-  const seed = Number(raw);
+  const params = new URLSearchParams(window.location.search);
+  const rawSeed = params.get("e2e-seed");
+  if (rawSeed === null) return null;
+  const seed = Number(rawSeed);
   if (!Number.isInteger(seed)) return null;
   // `e2e-ai` / `e2e-hold` let a demo run the seeded engine at watchable speed.
-  const params = new URLSearchParams(window.location.search);
   const num = (name: string, fallback: number) => {
     const raw = params.get(name);
     if (raw === null) return fallback;

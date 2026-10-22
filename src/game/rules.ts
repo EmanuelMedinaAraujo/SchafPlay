@@ -3,18 +3,25 @@
  * the UI alike, so their derivations cannot drift.
  */
 
-import { Card, CardValue, Contract, GameDeclaration, GamePriority, GameType, PlayedCard, Suit, Trick } from "./types";
+import { Card, CardValue, Contract, GameDeclaration, GamePriority, GameState, GameType, PlayedCard, StossKind, Suit, Trick } from "./types";
 
-export function isSolo(type: GameType): boolean {
-  return type === GameType.SOLO_ACORNS || type === GameType.SOLO_LEAVES || type === GameType.SOLO_HEARTS || type === GameType.SOLO_BELLS;
+const SOLO_SUIT: Partial<Record<GameType, Suit>> = {
+  [GameType.SOLO_ACORNS]: Suit.ACORNS,
+  [GameType.SOLO_LEAVES]: Suit.LEAVES,
+  [GameType.SOLO_HEARTS]: Suit.HEARTS,
+  [GameType.SOLO_BELLS]: Suit.BELLS,
+};
+
+function getSoloSuit(type: GameType): Suit | null {
+  return SOLO_SUIT[type] ?? null;
 }
 
-export function getSoloSuit(type: GameType): Suit | null {
-  if (type === GameType.SOLO_ACORNS) return Suit.ACORNS;
-  if (type === GameType.SOLO_LEAVES) return Suit.LEAVES;
-  if (type === GameType.SOLO_HEARTS) return Suit.HEARTS;
-  if (type === GameType.SOLO_BELLS) return Suit.BELLS;
-  return null;
+export function isSolo(type: GameType): boolean {
+  return getSoloSuit(type) !== null;
+}
+
+export function soloTypeFor(suit: Suit): GameType {
+  return (Object.keys(SOLO_SUIT) as GameType[]).find((type) => SOLO_SUIT[type] === suit)!;
 }
 
 export function isTrump(card: Card, gameType: GameType): boolean {
@@ -42,13 +49,7 @@ export function getCardRank(card: Card, gameType: GameType): number {
 }
 
 function suitOrder(suit: Suit, high: number): number {
-  const offset = {
-    [Suit.ACORNS]: 0,
-    [Suit.LEAVES]: 1,
-    [Suit.HEARTS]: 2,
-    [Suit.BELLS]: 3,
-  }[suit];
-  return high - offset;
+  return high - SUIT_ORDER[suit];
 }
 
 function plainSuitRank(value: CardValue): number {
@@ -64,7 +65,8 @@ function plainSuitRank(value: CardValue): number {
   }[value];
 }
 
-const HAND_SUIT_ORDER: Record<Suit, number> = {
+/** Acorns > Leaves > Hearts > Bells: Ober/Unter rank and hand sort order. */
+const SUIT_ORDER: Record<Suit, number> = {
   [Suit.ACORNS]: 0,
   [Suit.LEAVES]: 1,
   [Suit.HEARTS]: 2,
@@ -77,7 +79,7 @@ export function sortCardsForHand(cards: Card[], gameType: GameType): Card[] {
     const aTrump = isTrump(a, gameType);
     const bTrump = isTrump(b, gameType);
     if (aTrump !== bTrump) return aTrump ? -1 : 1;
-    if (!aTrump && a.suit !== b.suit) return HAND_SUIT_ORDER[a.suit] - HAND_SUIT_ORDER[b.suit];
+    if (!aTrump && a.suit !== b.suit) return SUIT_ORDER[a.suit] - SUIT_ORDER[b.suit];
     return getCardRank(b, gameType) - getCardRank(a, gameType);
   });
 }
@@ -99,7 +101,7 @@ export function getLegalCards(
   const ledPlaySuit = ledCard ? getPlaySuit(ledCard, gameType) : null;
   const following = ledPlaySuit ? hand.filter((card) => getPlaySuit(card, gameType) === ledPlaySuit) : [];
   // Plain Farbzwang: serve the led suit while you hold it, otherwise play anything.
-  const followSuit = () => (ledPlaySuit && following.length > 0 ? following : hand);
+  const followSuit = () => (following.length > 0 ? following : hand);
 
   // Not a Sauspiel (or no called suit): plain follow-suit rules.
   if (!calledSuit) return followSuit();
@@ -132,7 +134,6 @@ export function getLegalCards(
 }
 
 export function determineTrickWinner(playedCards: PlayedCard[], gameType: GameType): string {
-  const ledPlaySuit = getPlaySuit(playedCards[0].card, gameType);
   let winner = playedCards[0];
 
   for (const played of playedCards.slice(1)) {
@@ -140,9 +141,8 @@ export function determineTrickWinner(playedCards: PlayedCard[], gameType: GameTy
     const playedSuit = getPlaySuit(played.card, gameType);
     const playedBeatsTrump = playedSuit === "TRUMP" && winningSuit !== "TRUMP";
     const playedFollowsAndRanksHigher = playedSuit === winningSuit && getCardRank(played.card, gameType) > getCardRank(winner.card, gameType);
-    const playedBeatsLedSuit = winningSuit !== "TRUMP" && playedSuit === ledPlaySuit && playedFollowsAndRanksHigher;
 
-    if (playedBeatsTrump || playedFollowsAndRanksHigher || playedBeatsLedSuit) {
+    if (playedBeatsTrump || playedFollowsAndRanksHigher) {
       winner = played;
     }
   }
@@ -183,5 +183,32 @@ export function isValidSauspielCall(hand: Card[], suit: Suit): boolean {
 
 /** "Doch passen" (#24): retreat only once a Wenz or Solo stands. */
 export function isRetreatAllowed(highBid: GameDeclaration | null | undefined): boolean {
-  return !!highBid && getGamePriority(highBid.type, Boolean(highBid.isTout)) >= GamePriority.WENZ;
+  return !!highBid && getGamePriority(highBid.type, highBid.isTout) >= GamePriority.WENZ;
+}
+
+/** Sauspiel: whether `card` is the called Ace. */
+export function isCalledAce(card: Card, contract: Contract | null): boolean {
+  return contract?.type === GameType.SAUSPIEL && card.suit === contract.calledSuit && card.value === CardValue.ACE;
+}
+
+/**
+ * The announcement `playerId` may make right now (#57), or null. Retour is
+ * limited to the declarer so a Sauspiel partner is never revealed early.
+ * `isPartner` comes from the caller: the engine knows the partner, the UI only
+ * whether its own hand holds the called Ace.
+ */
+export function stossKindFor(state: GameState, playerId: string, isPartner: boolean): StossKind | null {
+  if (!state.stossEnabled || state.status !== "PLAYING") return null;
+  const contract = state.currentContract;
+  if (!contract || contract.type === GameType.RAMSCH) return null;
+  // Timing window: still in the first trick, before its second card falls.
+  if (state.tricks.length !== 0) return null;
+  if ((state.currentTrick?.playedCards.length ?? 0) >= 2) return null;
+  // Cap the chain at Stoß + Retour.
+  if (state.stoss.length >= 2) return null;
+
+  const isDeclarer = playerId === contract.declarerId;
+  if (state.stoss.length === 0) return isDeclarer || isPartner ? null : "stoss";
+  if (state.stoss[state.stoss.length - 1].kind !== "stoss") return null;
+  return isDeclarer ? "retour" : null;
 }

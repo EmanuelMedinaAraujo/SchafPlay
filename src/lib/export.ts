@@ -1,9 +1,8 @@
-import { Card, CardValue, GameType, Suit } from "../game/types";
-import { CARD_POINTS } from "../game/deck";
-import { sortCardsForHand } from "../game/rules";
+import { reconstructHands } from "../analysis/replay";
+import { CardValue, Suit } from "../game/types";
 import { GameRecord } from "../persistence/GameHistoryStore";
 import { Language } from "../types";
-import { gameLabel, getCardSuitTranslated, getCardValueTranslated } from "./i18n";
+import { gameLabel, getCardSuitTranslated, getCardValueTranslated, translations } from "./i18n";
 
 /**
  * Every fixed label of the text export, per language. Schafkopf terms that are
@@ -92,11 +91,6 @@ function signed(score: number): string {
   return score >= 0 ? `+${score}` : `${score}`;
 }
 
-function cardFromId(cardId: string): Card {
-  const [suit, value] = cardId.split("-") as [Suit, CardValue];
-  return { id: cardId, suit, value, points: CARD_POINTS[value] ?? 0 };
-}
-
 function formatCard(cardId: string, lang: Language): string {
   const parts = cardId.split("-");
   if (parts.length !== 2) return cardId;
@@ -134,8 +128,13 @@ export function formatGamesForExport(games: GameRecord[], lang: Language): strin
     out += `${L.rounds}:\n`;
     for (const r of game.rounds) {
       const contract = r.contract;
+      const ramsch = r.result.ramsch;
       let roundText: string;
-      if (contract) {
+      if (ramsch && contract) {
+        // Ramsch (#11) has no declarer: name the player who pays all (or takes all).
+        const t = translations[lang];
+        roundText = `${gameLabel(lang, contract.type)}: ${playerName(ramsch.playerId)} ${ramsch.isDurchmarsch ? t.ramschDurchmarsch : t.ramschLoses}`;
+      } else if (contract) {
         const contractLabel = gameLabel(lang, contract.type, contract.calledSuit, contract.isTout);
         roundText = `${contractLabel} ${L.by} ${playerName(contract.declarerId)}`;
         if (contract.partnerId) roundText += ` (${L.withPartner} ${playerName(contract.partnerId)})`;
@@ -143,7 +142,6 @@ export function formatGamesForExport(games: GameRecord[], lang: Language): strin
         roundText = L.allPass;
       }
 
-      const winStatus = r.result.declarerWon ? L.declarerWins : L.defendersWin;
       const extrasList: string[] = [];
       if (r.result.isSchneider) extrasList.push("Schneider");
       if (r.result.isSchwarz) extrasList.push("Schwarz");
@@ -152,7 +150,10 @@ export function formatGamesForExport(games: GameRecord[], lang: Language): strin
 
       const scoresList = sortedPlayers.map((p) => `${p.name}: ${signed(r.result.scoreChanges[p.id] ?? 0)}`).join(", ");
 
-      out += `  ${L.round} ${r.roundNumber}: ${roundText} (${r.result.declarerPoints} ${L.points} vs ${r.result.defenderPoints} ${L.points}, ${winStatus})${extrasStr}\n`;
+      const pointsText = ramsch
+        ? `${r.result.declarerPoints} ${L.points}`
+        : `${r.result.declarerPoints} ${L.points} vs ${r.result.defenderPoints} ${L.points}, ${r.result.declarerWon ? L.declarerWins : L.defendersWin}`;
+      out += `  ${L.round} ${r.roundNumber}: ${roundText} (${pointsText})${extrasStr}\n`;
       out += `    ${L.scoreChanges}: ${scoresList}\n`;
 
       if (r.bids && r.bids.length > 0) {
@@ -173,15 +174,9 @@ export function formatGamesForExport(games: GameRecord[], lang: Language): strin
       if (r.tricks.length > 0) {
         // Each player's dealt hand, reconstructed from the cards they played.
         out += `    ${L.dealtCards}:\n`;
-        const initialHands: Record<string, string[]> = Object.fromEntries(game.players.map((p) => [p.id, []]));
-        for (const trick of r.tricks) {
-          for (const play of trick.plays) {
-            initialHands[play.playerId]?.push(play.card);
-          }
-        }
+        const initialHands = reconstructHands(r);
         for (const p of sortedPlayers) {
-          const sortedCards = sortCardsForHand(initialHands[p.id].map(cardFromId), contract?.type ?? GameType.SAUSPIEL);
-          const formattedCards = sortedCards.map((c) => formatCard(c.id, lang)).join(", ");
+          const formattedCards = (initialHands[p.id] ?? []).map((c) => formatCard(c.id, lang)).join(", ");
           out += `      ${p.name} (${humanOrAi(p.isHuman)}): ${formattedCards}\n`;
         }
 

@@ -1,6 +1,7 @@
 import { translations } from "../../src/lib/i18n";
 import { bootHome, de, startSolo } from "./helpers/fixtures";
 import { expect, test } from "./helpers/test";
+import { skipRounds, waitForStoredGames } from "./helpers/ui";
 
 const en = translations.en;
 
@@ -95,12 +96,7 @@ test.describe("settings", () => {
   });
 
   test("player name is enforced in-game and persists on the home screen", async ({ page }) => {
-    await bootHome(page, { name: "Vroni" });
-    await expect(page.locator("#player-name")).toHaveValue("Vroni");
-
-    await page.getByRole("tab", { name: de.soloGame }).click();
-    await page.getByRole("button", { name: de.startGame }).click();
-    await expect(page.locator(".game-screen")).toBeVisible();
+    await startSolo(page, { name: "Vroni" });
     await expect(page.locator(".player-hand-name")).toHaveText("Vroni");
 
     // Quit back to the home screen and reload — the name survives both.
@@ -119,29 +115,19 @@ test.describe("settings", () => {
     const exportBtn = page.locator(".settings-export-btn");
     await expect(exportBtn).toBeVisible();
     await exportBtn.click();
-    
+
     // Should show error when no games are recorded
     await expect(page.locator(".error-message")).toContainText(de.exportNoGames);
 
     // 2. Play a game to record history, then try again to download the file
     // Start solo game with 4 rounds
     await startSolo(page, { seed: 5, rounds: 4, name: "Wastl" });
-    
-    // Fast forward to list-over
-    for (let round = 1; round <= 4; round++) {
-      await page.locator(".dev-round-btn").click();
-      await expect(page.locator(".round-over-overlay h2")).toContainText(de.roundOver);
-      const isLast = round === 4;
-      await page.getByRole("button", { name: isLast ? de.toFinalStandings : de.ready }).click();
-    }
-    await expect(page.locator(".round-over-overlay h2")).toContainText(de.listOver);
+    await skipRounds(page, 4);
 
     // Quit back to home screen
     await page.locator(".round-over-overlay").getByRole("button", { name: de.quit }).click();
     await expect(page.locator(".home-screen")).toBeVisible();
-    
-    // Wait for DB write
-    await page.waitForTimeout(1500);
+    await waitForStoredGames(page, 1);
 
     // Go to Settings
     await page.getByTitle(de.settings).click();

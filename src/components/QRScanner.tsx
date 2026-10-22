@@ -5,17 +5,8 @@ import { translations } from "../lib/i18n";
 import { XIcon } from "./icons";
 
 /** Camera QR scanning via `getUserMedia` + `jsQR`. */
-
-let supportProbe: Promise<boolean> | null = null;
-
-/** Cached for the session. */
-export function detectQrScanSupport(): Promise<boolean> {
-  if (!supportProbe) {
-    supportProbe = Promise.resolve(
-      !!(navigator.mediaDevices?.getUserMedia)
-    );
-  }
-  return supportProbe;
+export function canScanQr(): boolean {
+  return !!navigator.mediaDevices?.getUserMedia;
 }
 
 interface QRScannerProps {
@@ -73,6 +64,9 @@ export default function QRScanner({ language, onResult, onClose }: QRScannerProp
             const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
             const code = jsQR(imageData.data, imageData.width, imageData.height);
             if (!cancelled && code && code.data) {
+              // Stop scanning first, so a second frame can't report again.
+              cancelled = true;
+              if (intervalId) clearInterval(intervalId);
               onResultRef.current(code.data);
             }
           } catch (err) {

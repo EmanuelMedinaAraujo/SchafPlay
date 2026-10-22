@@ -6,6 +6,12 @@ import { translations } from "../lib/i18n";
 import PairingPanel from "./PairingPanel";
 import { UsersIcon, RadioIcon, BotIcon, PlayIcon } from "./icons";
 
+const MODE_TABS = [
+  { mode: "solo", Icon: BotIcon, label: "soloGame" },
+  { mode: "host", Icon: UsersIcon, label: "hostGame" },
+  { mode: "join", Icon: RadioIcon, label: "joinGame" },
+] as const satisfies ReadonlyArray<{ mode: GameMode; Icon: unknown; label: string }>;
+
 interface HomeScreenProps {
   language: Language;
   playerName: string;
@@ -68,36 +74,19 @@ export default function HomeScreen(props: HomeScreenProps) {
           <div>
             <div className="mode-switch" role="tablist">
               {/* Solo leads (#94): it is the default mode and the common case. */}
-              <button
-                className={mode === "solo" ? "active" : ""}
-                onClick={() => setMode("solo")}
-                role="tab"
-                aria-selected={mode === "solo"}
-                type="button"
-              >
-                <BotIcon />
-                {t.soloGame}
-              </button>
-              <button
-                className={mode === "host" ? "active" : ""}
-                onClick={() => setMode("host")}
-                role="tab"
-                aria-selected={mode === "host"}
-                type="button"
-              >
-                <UsersIcon />
-                {t.hostGame}
-              </button>
-              <button
-                className={mode === "join" ? "active" : ""}
-                onClick={() => setMode("join")}
-                role="tab"
-                aria-selected={mode === "join"}
-                type="button"
-              >
-                <RadioIcon />
-                {t.joinGame}
-              </button>
+              {MODE_TABS.map(({ mode: tab, Icon, label }) => (
+                <button
+                  key={tab}
+                  className={mode === tab ? "active" : ""}
+                  onClick={() => setMode(tab)}
+                  role="tab"
+                  aria-selected={mode === tab}
+                  type="button"
+                >
+                  <Icon />
+                  {t[label]}
+                </button>
+              ))}
             </div>
           </div>
         </div>

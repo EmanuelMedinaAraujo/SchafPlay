@@ -3,23 +3,10 @@
    itself never scrolls; the game screen is a flex column sized to the
    viewport and only scrolls internally if the content truly doesn't fit. */
 
-html.in-game,
-html.in-game body {
-  overflow: hidden;
-  height: 100dvh;
-}
-
-html.in-game .app-shell {
-  height: 100dvh;
-  min-height: 0;
-}
-
+/* Page height and overflow come from base.css (html, body); in the rotated
+   frame #root is the scroller, so pin it too. */
 html.rotated.in-game #root {
   overflow: hidden;
-}
-
-html.rotated.in-game .app-shell {
-  height: 100%;
 }
 
 html.in-game .game-screen {

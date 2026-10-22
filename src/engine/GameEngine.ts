@@ -2,7 +2,6 @@ import {
   BidDeclaration,
   BiddingState,
   Card,
-  CardValue,
   Contract,
   GameDeclaration,
   GameState,
@@ -21,8 +20,10 @@ import {
   determineTrickWinner,
   getCallableSuits,
   getLegalCards,
+  isCalledAce,
   isRetreatAllowed,
   isValidSauspielCall,
+  stossKindFor,
 } from "../game/rules";
 import { calculateRoundResult } from "../game/scoring";
 import { redactStateFor } from "./redaction";
@@ -39,8 +40,6 @@ export interface EngineOptions {
   shuffleFn?: (deck: Card[]) => Card[];
   /** Seat p3 is a third AI instead of the remote human. */
   soloMode?: boolean;
-  /** Defaults to an AIController on every non-human seat. */
-  controllers?: Partial<Record<SeatId, PlayerController>>;
   /** Enables devSkipTrick/devSkipRound. */
   devToolsEnabled?: boolean;
   /** House rule #31. */
@@ -50,7 +49,6 @@ export interface EngineOptions {
   /** House rule #57. */
   enableStoss?: boolean;
   hostAvatar?: string;
-  guestAvatar?: string;
 }
 
 const devFallbackAI = new AIController();
@@ -77,30 +75,29 @@ export class GameEngine {
   private devToolsEnabled: boolean;
   private disableLaufende: boolean;
   private enableRamsch: boolean;
-  private enableStoss: boolean;
 
-  constructor(hostName: string, guestName = "Gast", totalRounds = 8, options: EngineOptions = {}) {
+  /** The guest's name and avatar arrive later, via `setGuestName`/`setGuestAvatar`. */
+  constructor(hostName: string, totalRounds = 8, options: EngineOptions = {}) {
     this.aiDelayMs = options.aiDelayMs ?? 900;
     this.trickHoldMs = options.trickHoldMs ?? 1600;
     this.shuffleFn = options.shuffleFn ?? shuffleDeck;
     this.devToolsEnabled = options.devToolsEnabled ?? false;
     this.disableLaufende = options.disableLaufende ?? false;
     this.enableRamsch = options.enableRamsch ?? false;
-    this.enableStoss = options.enableStoss ?? false;
 
     const players: Player[] = [
       makePlayer("p1", hostName || "Host", true, 0, options.hostAvatar || ""),
       makePlayer("p2", "Resi (KI)", false, 1, AI_SEAT_AVATAR.p2),
       options.soloMode
         ? makePlayer("p3", "Zenzi (KI)", false, 2, AI_SEAT_AVATAR.p3)
-        : makePlayer("p3", guestName || "Gast", true, 2, options.guestAvatar || ""),
+        : makePlayer("p3", "Gast", true, 2, ""),
       makePlayer("p4", "Sepp (KI)", false, 3, AI_SEAT_AVATAR.p4),
     ];
 
     // A seat is engine-driven iff it has a controller.
-    this.controllers =
-      options.controllers ??
-      Object.fromEntries(players.filter((player) => !player.isHuman).map((player) => [player.id, new AIController()]));
+    this.controllers = Object.fromEntries(
+      players.filter((player) => !player.isHuman).map((player) => [player.id, new AIController()]),
+    );
 
     this.state = {
       status: "LOBBY",
@@ -119,7 +116,7 @@ export class GameEngine {
       totalRounds,
       logs: [{ key: "log.lobby" }],
       stoss: [],
-      stossEnabled: this.enableStoss,
+      stossEnabled: options.enableStoss ?? false,
     };
   }
 
@@ -147,7 +144,7 @@ export class GameEngine {
   /** Already sanitized by `HostSession` — the wire boundary is the session's job. */
   setGuestAvatar(avatar: string): void {
     this.mutate((state) => {
-      state.players[2].avatar = avatar || "";
+      state.players[2].avatar = avatar;
     });
   }
 
@@ -180,12 +177,12 @@ export class GameEngine {
     if (action.type === PlayerActionType.BID_DECLARE && action.data?.declaration) this.processBidDeclare(action.playerId, action.data.declaration);
     if (action.type === PlayerActionType.BID_RETREAT) this.processBidDeclare(action.playerId, null);
     if (action.type === PlayerActionType.PLAY_CARD && action.data?.cardId) this.processCardPlay(action.playerId, action.data.cardId);
-    if (action.type === PlayerActionType.READY_NEXT) this.setReady(action.playerId, true);
-    if (action.type === PlayerActionType.REMATCH) this.processRematchReady(action.playerId);
+    if (action.type === PlayerActionType.READY_NEXT) this.markReady(action.playerId, "ROUND_OVER");
+    if (action.type === PlayerActionType.REMATCH) this.markReady(action.playerId, "LIST_OVER");
     if (action.type === PlayerActionType.STOSS) this.processStoss(action.playerId);
   }
 
-  processBidWill(playerId: string, wantsToPlay: boolean): void {
+  private processBidWill(playerId: string, wantsToPlay: boolean): void {
     const bidding = this.state.biddingState;
     if (this.state.status !== "BIDDING" || bidding?.phase !== "WILL_PHASE") return;
     if (this.activePlayer().id !== playerId) return;
@@ -200,13 +197,12 @@ export class GameEngine {
         this.enterDeclarePhaseOrRedeal(state);
       } else {
         state.activePlayerIdx = (state.activePlayerIdx + 1) % 4;
-        currentBidding.currentBidderIndex = state.activePlayerIdx;
       }
     });
     this.scheduleProgress();
   }
 
-  processBidDeclare(playerId: string, declaration: GameDeclaration | null): void {
+  private processBidDeclare(playerId: string, declaration: GameDeclaration | null): void {
     const bidding = this.state.biddingState;
     if (this.state.status !== "BIDDING" || bidding?.phase !== "DECLARE_PHASE") return;
     if (this.activePlayer().id !== playerId) return;
@@ -224,6 +220,9 @@ export class GameEngine {
 
     this.mutate((state) => {
       const currentBidding = state.biddingState!;
+      // Seat order among the interested players; a retreat drops this seat, so
+      // the turn passes to whoever now sits at its index.
+      const bidderIndex = currentBidding.interestedPlayerIds.indexOf(playerId);
       if (!declaration) {
         currentBidding.interestedPlayerIds = currentBidding.interestedPlayerIds.filter((id) => id !== playerId);
         currentBidding.declarations.push({ playerId, declaration: null });
@@ -235,25 +234,21 @@ export class GameEngine {
         this.log(state, "log.declare", { name: this.playerName(playerId), ...declarationParams(declaration) });
       }
 
+      // A retreat needs a standing bid, whose bidder never retreats, so
+      // `remaining` is never empty.
       const remaining = currentBidding.interestedPlayerIds;
-      if (remaining.length === 0) {
-        // Everyone who wanted to play retreated without a standing bid.
-        this.handleAllPass(state);
-        return;
-      }
       if (currentBidding.highBid && remaining.length === 1) {
         this.finalizeBidding(state, currentBidding.highBid);
         return;
       }
 
-      const next = this.nextInterestedAfter(playerId, remaining);
+      const next = remaining[(declaration ? bidderIndex + 1 : bidderIndex) % remaining.length];
       state.activePlayerIdx = state.players.findIndex((player) => player.id === next);
-      currentBidding.currentBidderIndex = state.activePlayerIdx;
     });
     this.scheduleProgress();
   }
 
-  processCardPlay(playerId: string, cardId: string): void {
+  private processCardPlay(playerId: string, cardId: string): void {
     if (this.state.status !== "PLAYING" || this.state.collecting) return;
     if (this.activePlayer().id !== playerId) return;
 
@@ -268,10 +263,6 @@ export class GameEngine {
       state.currentTrick.playedCards.push({ playerId, card });
       this.log(state, "log.play", { name: player.name, suit: card.suit, value: card.value });
 
-      if (state.currentContract.type === GameType.SAUSPIEL && state.currentContract.calledSuit === card.suit && card.value === CardValue.ACE) {
-        state.currentContract.partnerId = playerId;
-      }
-
       if (state.currentTrick.playedCards.length === 4) {
         // Keep the finished trick on the table for a moment before collecting.
         state.currentTrick.winnerId = determineTrickWinner(state.currentTrick.playedCards, state.currentContract.type);
@@ -283,7 +274,7 @@ export class GameEngine {
     this.scheduleProgress();
   }
 
-  processStoss(playerId: string): void {
+  private processStoss(playerId: string): void {
     const kind = this.stossKindFor(playerId);
     if (!kind) return;
     this.mutate((state) => {
@@ -294,49 +285,23 @@ export class GameEngine {
     });
   }
 
-  /**
-   * The announcement `playerId` may make right now, or null. Retour is limited
-   * to the declarer so a Sauspiel partner is never revealed early.
-   */
+  /** The engine knows the partner; the UI decides from its own hand instead. */
   private stossKindFor(playerId: string): StossKind | null {
-    const state = this.state;
-    if (!state.stossEnabled) return null;
-    if (state.status !== "PLAYING") return null;
-    const contract = state.currentContract;
-    if (!contract || contract.type === GameType.RAMSCH) return null;
-    // Timing window: still in the first trick, before its second card falls.
-    if (state.tricks.length !== 0) return null;
-    if ((state.currentTrick?.playedCards.length ?? 0) >= 2) return null;
-    // Cap the chain at Stoß + Retour.
-    if (state.stoss.length >= 2) return null;
-
-    const isDeclarer = playerId === contract.declarerId;
-    const isPartner = contract.type === GameType.SAUSPIEL && contract.partnerId === playerId;
-
-    if (state.stoss.length === 0) {
-      return isDeclarer || isPartner ? null : "stoss";
-    }
-    if (state.stoss[state.stoss.length - 1].kind !== "stoss") return null;
-    return isDeclarer ? "retour" : null;
+    const contract = this.state.currentContract;
+    return stossKindFor(this.state, playerId, contract?.type === GameType.SAUSPIEL && contract.partnerId === playerId);
   }
 
   /**
    * The first willing AI defender in play order takes the single Stoß slot.
    * Human seats decide via the UI within the same first-trick window.
+   * Runs inside `mutate`, where `state` is `this.state`.
    */
   private runAiStossPass(state: GameState): void {
-    if (!state.stossEnabled) return;
-    const contract = state.currentContract;
-    if (!contract || contract.type === GameType.RAMSCH) return;
-
     for (let i = 1; i <= 4 && state.stoss.length === 0; i += 1) {
       const player = state.players[(state.dealerIdx + i) % 4];
       const controller = this.controllers[player.id];
-      if (!controller) continue;
-      const isDeclarer = player.id === contract.declarerId;
-      const isPartner = contract.type === GameType.SAUSPIEL && contract.partnerId === player.id;
-      if (isDeclarer || isPartner) continue;
-      if (controller.decideStoss(player, contract, { kind: "stoss" })) {
+      if (!controller || this.stossKindFor(player.id) !== "stoss") continue;
+      if (controller.decideStoss(player, state.currentContract!, { kind: "stoss" })) {
         state.stoss.push({ playerId: player.id, kind: "stoss" });
         this.log(state, "log.stoss", { name: player.name });
       }
@@ -347,30 +312,32 @@ export class GameEngine {
   /** An AI declarer's Retour in answer to a standing Stoß. */
   private maybeAiRetour(state: GameState): void {
     const contract = state.currentContract;
-    if (!contract) return;
-    if (state.stoss.length !== 1 || state.stoss[0].kind !== "stoss") return;
-    const declarer = state.players.find((player) => player.id === contract.declarerId);
+    const declarer = state.players.find((player) => player.id === contract?.declarerId);
     const controller = declarer ? this.controllers[declarer.id] : undefined;
     if (!declarer || !controller) return; // a human declarer answers via the UI
-    if (controller.decideStoss(declarer, contract, { kind: "retour" })) {
+    if (this.stossKindFor(declarer.id) !== "retour") return;
+    if (controller.decideStoss(declarer, contract!, { kind: "retour" })) {
       state.stoss.push({ playerId: declarer.id, kind: "retour" });
       this.log(state, "log.retour", { name: declarer.name });
     }
   }
 
-  setReady(playerId: string, ready: boolean): void {
-    if (this.state.status !== "ROUND_OVER") return;
+  /**
+   * A human's ready click on the round or list summary. Once both humans are
+   * ready the game advances: the next deal, the list summary after the last
+   * round (#27), or a rematch.
+   */
+  private markReady(playerId: string, status: "ROUND_OVER" | "LIST_OVER"): void {
+    if (this.state.status !== status) return;
     if (playerId !== "p1" && playerId !== "p3") return;
     this.mutate((state) => {
-      state.readyState[playerId] = ready;
+      state.readyState[playerId] = true;
       this.log(state, "log.ready", { name: this.playerName(playerId) });
     });
-    if (this.state.readyState.p1 && this.state.readyState.p3) {
-      // After the last round's summary, advance to the list summary instead of
-      // dealing a new round (#27).
-      if (this.state.roundNumber >= this.state.totalRounds) this.finishList();
-      else this.dealCards();
-    }
+    if (!this.state.readyState.p1 || !this.state.readyState.p3) return;
+    if (status === "LIST_OVER") this.rematch();
+    else if (this.state.roundNumber >= this.state.totalRounds) this.finishList();
+    else this.dealCards();
   }
 
   private finishList(): void {
@@ -402,10 +369,6 @@ export class GameEngine {
     this.scheduleProgress();
   }
 
-  isPaused(): boolean {
-    return this.state.paused;
-  }
-
   // --- Internal progression -------------------------------------------------
 
   private scheduleProgress(): void {
@@ -418,16 +381,15 @@ export class GameEngine {
     }
     if (this.state.status !== "BIDDING" && this.state.status !== "PLAYING") return;
 
-    const active = this.activePlayer();
-    if (!active || !this.controllers[active.id]) return;
+    if (!this.controllers[this.activePlayer().id]) return;
     this.defer(() => this.aiStep(), this.aiDelayMs);
   }
 
   private aiStep(): void {
     if (this.state.paused || this.state.collecting) return;
     const player = this.activePlayer();
-    const controller = player ? this.controllers[player.id] : undefined;
-    if (!player || !controller) return;
+    const controller = this.controllers[player.id];
+    if (!controller) return;
 
     if (this.state.status === "BIDDING") {
       const bidding = this.state.biddingState!;
@@ -493,9 +455,7 @@ export class GameEngine {
       willBids: [],
       interestedPlayerIds: [],
       declarations: [],
-      currentBidderIndex: state.activePlayerIdx,
       highBid: null,
-      resolvedContract: null,
     };
   }
 
@@ -508,7 +468,6 @@ export class GameEngine {
     bidding.phase = "DECLARE_PHASE";
     bidding.interestedPlayerIds = orderFromForehand(bidding.interestedPlayerIds, state.dealerIdx, state.players);
     state.activePlayerIdx = state.players.findIndex((player) => player.id === bidding.interestedPlayerIds[0]);
-    bidding.currentBidderIndex = state.activePlayerIdx;
   }
 
   private handleAllPass(state: GameState): void {
@@ -532,12 +491,9 @@ export class GameEngine {
     this.resetBidding(state);
   }
 
-  /** Stores the SAME contract object in both slots — redaction.ts blanks both. */
   private enterPlaying(state: GameState, contract: Contract): void {
     state.currentContract = contract;
     state.status = "PLAYING";
-    state.biddingState!.phase = "RESOLVED";
-    state.biddingState!.resolvedContract = contract;
     state.activePlayerIdx = (state.dealerIdx + 1) % 4;
     state.currentTrick = { id: 1, leaderId: state.players[state.activePlayerIdx].id, playedCards: [] };
   }
@@ -546,9 +502,8 @@ export class GameEngine {
     const declaration = highBid.declaration!;
     const contract: Contract = { ...declaration, declarerId: highBid.playerId };
     if (contract.type === GameType.SAUSPIEL && contract.calledSuit) {
-      contract.partnerId = state.players.find((player) =>
-        player.cards.some((card) => card.suit === contract.calledSuit && card.value === CardValue.ACE),
-      )?.id;
+      // Only the holder can ever play the called Ace, so this is final.
+      contract.partnerId = state.players.find((player) => player.cards.some((card) => isCalledAce(card, contract)))?.id;
     }
     this.enterPlaying(state, contract);
     this.log(state, "log.contract", { name: this.playerName(contract.declarerId), ...declarationParams(declaration) });
@@ -565,7 +520,7 @@ export class GameEngine {
     Object.entries(result.scoreChanges).forEach(([id, change]) => {
       state.scores[id] = (state.scores[id] ?? 0) + change;
     });
-    // Even the last round shows its own summary first (#27); setReady then
+    // Even the last round shows its own summary first (#27); markReady then
     // advances to the list summary.
     state.status = "ROUND_OVER";
     state.currentTrick = null;
@@ -573,19 +528,7 @@ export class GameEngine {
     this.log(state, "log.roundOver", { names: result.winnerIds.map((id) => this.playerName(id)).join(", ") });
   }
 
-  processRematchReady(playerId: string): void {
-    if (this.state.status !== "LIST_OVER") return;
-    if (playerId !== "p1" && playerId !== "p3") return;
-    this.mutate((state) => {
-      state.readyState[playerId] = true;
-      this.log(state, "log.ready", { name: this.playerName(playerId) });
-    });
-    if (this.state.readyState.p1 && this.state.readyState.p3) {
-      this.processRematch();
-    }
-  }
-
-  processRematch(): void {
+  private rematch(): void {
     this.clearTimer();
     this.mutate((state) => {
       state.scores = { p1: 0, p2: 0, p3: 0, p4: 0 };
@@ -597,7 +540,7 @@ export class GameEngine {
   }
 
   devSkipTrick(): void {
-    if (this.devToolsEnabled && this.state.status === "PLAYING" && !this.state.collecting) {
+    if (this.devToolsEnabled && this.state.status === "PLAYING" && !this.state.collecting && !this.state.paused) {
       this.clearTimer();
       while (this.state.status === "PLAYING" && !this.state.collecting) {
         if (!this.playStepFor(this.activePlayer())) break;
@@ -615,7 +558,6 @@ export class GameEngine {
           // Don't wait for the trick-hold timer — resolve the trick right away,
           // otherwise processCardPlay ignores every further play and the loop
           // would only ever finish the current trick.
-          this.clearTimer();
           this.collectTrick();
           continue;
         }
@@ -661,11 +603,6 @@ export class GameEngine {
 
   private playerName(playerId: string): string {
     return this.state.players.find((player) => player.id === playerId)?.name ?? playerId;
-  }
-
-  private nextInterestedAfter(playerId: string, interested: string[]): string {
-    const index = interested.indexOf(playerId);
-    return interested[(index + 1) % interested.length];
   }
 
   private log(state: GameState, key: string, params?: LogEntry["params"]): void {

@@ -1,4 +1,4 @@
-import { Browser, BrowserContext, Locator, Page, expect } from "@playwright/test";
+import { Locator, Page, expect } from "@playwright/test";
 import { translations } from "../../../src/lib/i18n";
 import { GameMode } from "../../../src/lib/settings";
 
@@ -47,19 +47,22 @@ export async function startSolo(page: Page, options: BootOptions = {}): Promise<
   await expect(page.locator(".game-screen")).toBeVisible();
 }
 
+/** A host page's freshly minted invite code, once its textarea appears. */
+export async function readInvite(host: Page, timeout = 15_000): Promise<string> {
+  const inviteArea = host.locator(".pairing-flow textarea[readonly]").first();
+  // Invite code generation gathers ICE candidates (up to ~1.5s by design).
+  await expect(inviteArea).toBeVisible({ timeout });
+  return inviteArea.inputValue();
+}
+
 /**
  * One host↔guest code exchange through whatever PairingPanel is on each page —
  * the home screen and the reconnect overlay render the same flow, so this
  * drives initial pairing and re-pairing alike.
  */
 export async function exchangeCodes(host: Page, guest: Page): Promise<void> {
-  const hostFlow = host.locator(".pairing-flow");
   const guestFlow = guest.locator(".pairing-flow");
-
-  // Invite code generation gathers ICE candidates (up to ~1.5s by design).
-  const inviteArea = hostFlow.locator("textarea[readonly]").first();
-  await expect(inviteArea).toBeVisible({ timeout: 15_000 });
-  const invite = await inviteArea.inputValue();
+  const invite = await readInvite(host);
 
   await guestFlow.getByPlaceholder(de.pasteInviteHint).fill(invite);
   await guestFlow.getByRole("button", { name: de.generateReply }).click();
@@ -74,8 +77,6 @@ export async function exchangeCodes(host: Page, guest: Page): Promise<void> {
 export interface PairedGame {
   host: Page;
   guest: Page;
-  hostContext: BrowserContext;
-  guestContext: BrowserContext;
 }
 
 export interface PairOptions {
@@ -86,22 +87,18 @@ export interface PairOptions {
 }
 
 /**
- * Two isolated browser contexts paired over real WebRTC (loopback host
- * candidates), both sitting at the table. The caller closes the contexts.
+ * Pair two pages from separate browser contexts over real WebRTC (loopback
+ * host candidates) and wait until both sit at the table. Tests normally reach
+ * this through the `pair` fixture, which also owns the contexts; call it
+ * directly to patch a page (`addInitScript`) before it boots.
  */
-export async function pairHostGuest(browser: Browser, options: PairOptions = {}): Promise<PairedGame> {
-  const hostContext = await browser.newContext();
-  const guestContext = await browser.newContext();
-  const host = await hostContext.newPage();
-  const guest = await guestContext.newPage();
-
+export async function pairPages(host: Page, guest: Page, options: PairOptions = {}): Promise<void> {
   await bootHome(host, { seed: options.seed, name: options.hostName, rounds: options.rounds, mode: "host" });
   await bootHome(guest, { name: options.guestName, mode: "join" });
 
   await exchangeCodes(host, guest);
   await expect(host.locator(".game-screen")).toBeVisible({ timeout: 15_000 });
   await expect(guest.locator(".game-screen")).toBeVisible({ timeout: 15_000 });
-  return { host, guest, hostContext, guestContext };
 }
 
 /** The local player's hand cards, in on-screen (sorted) order. */
@@ -112,20 +109,4 @@ export function handCards(page: Page): Locator {
 /** One specific card button in the local player's hand. */
 export function handCard(page: Page, cardId: string): Locator {
   return page.locator(`.player-hand-cards .playing-card[data-card-id="${cardId}"]`);
-}
-
-/** Cards lying on the table in the current trick. */
-export function trickCards(page: Page): Locator {
-  return page.locator(".trick-area .card-face");
-}
-
-/**
- * Wait until it is the local player's turn to play a card (hand unlocked),
- * or — if the round ends first — return false once the summary shows.
- */
-export async function waitMyTurnOrRoundOver(page: Page): Promise<boolean> {
-  const myTurn = page.locator(".player-hand-container.my-turn");
-  const roundOver = page.locator(".round-over-overlay");
-  await expect(myTurn.or(roundOver).first()).toBeVisible({ timeout: 20_000 });
-  return !(await roundOver.isVisible());
 }

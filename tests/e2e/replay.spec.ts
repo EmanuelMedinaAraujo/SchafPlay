@@ -1,5 +1,6 @@
 import { Page } from "@playwright/test";
-import { de, startSolo } from "./helpers/fixtures";
+import { bootHome, de, startSolo } from "./helpers/fixtures";
+import { skipRounds, waitForStoredGames } from "./helpers/ui";
 import { expect, test } from "./helpers/test";
 
 /**
@@ -7,37 +8,6 @@ import { expect, test } from "./helpers/test";
  * first, then drives the replay through the UI. Numbers are read off the DOM
  * rather than hardcoded, so a seed/AI change can't break it.
  */
-
-/**
- * Finished lists in the history store. Deliberately does not open a database
- * that does not exist yet — a versionless `open` would create an empty
- * `schafplay` at version 1 the app could never upgrade into its stores.
- */
-function countStoredGames(): Promise<number> {
-  return new Promise<number>((resolve) => {
-    indexedDB.databases().then((databases) => {
-      if (!databases.some((entry) => entry.name === "schafplay")) return resolve(0);
-      const open = indexedDB.open("schafplay");
-      open.onerror = () => resolve(0);
-      open.onsuccess = () => {
-        const db = open.result;
-        if (!db.objectStoreNames.contains("games")) {
-          db.close();
-          return resolve(0);
-        }
-        const counter = db.transaction("games", "readonly").objectStore("games").count();
-        counter.onsuccess = () => {
-          db.close();
-          resolve(counter.result);
-        };
-        counter.onerror = () => {
-          db.close();
-          resolve(0);
-        };
-      };
-    }, () => resolve(0));
-  });
-}
 
 /**
  * Quits a finished list and opens the analysis screen with the game listed.
@@ -48,29 +18,16 @@ async function openAnalysisAfterList(page: Page): Promise<void> {
   await page.locator(".round-over-overlay").getByRole("button", { name: de.quit }).click();
   await expect(page.locator(".home-screen")).toBeVisible();
 
-  await expect
-    .poll(() => page.evaluate(countStoredGames), { message: "recorded list to reach IndexedDB" })
-    .toBe(1);
+  await waitForStoredGames(page, 1);
 
   await page.getByTitle(de.analysis).click();
   await expect(page.locator(".analysis-screen")).toBeVisible();
   await expect(page.locator(".stats-game-row")).toHaveCount(1);
 }
 
-/** Dev-skips every round of a list and readies up, until list-over shows. */
-async function fastForwardList(page: Page, rounds: number): Promise<void> {
-  for (let round = 1; round <= rounds; round++) {
-    await page.locator(".dev-round-btn").click();
-    await expect(page.locator(".round-over-overlay h2")).toContainText(de.roundOver);
-    const isLast = round === rounds;
-    await page.getByRole("button", { name: isLast ? de.toFinalStandings : de.ready }).click();
-  }
-  await expect(page.locator(".round-over-overlay h2")).toContainText(de.listOver);
-}
-
 test.describe("analysis replay", () => {
   test("empty state before any finished game", async ({ page }) => {
-    await page.goto("/");
+    await bootHome(page);
     await page.getByTitle(de.analysis).click();
     await expect(page.locator(".analysis-screen")).toBeVisible();
     await expect(page.getByText(de.analysisEmpty)).toBeVisible();
@@ -79,7 +36,7 @@ test.describe("analysis replay", () => {
 
   test("a recorded round replays trick by trick with all four hands face-up", async ({ page }) => {
     await startSolo(page, { seed: 5, rounds: 4, name: "Wastl" });
-    await fastForwardList(page, 4);
+    await skipRounds(page, 4);
 
     await openAnalysisAfterList(page);
 
@@ -151,7 +108,7 @@ test.describe("analysis replay", () => {
 
   test("playback runs across round borders through the whole list", async ({ page }) => {
     await startSolo(page, { seed: 5, rounds: 4, name: "Wastl" });
-    await fastForwardList(page, 4);
+    await skipRounds(page, 4);
     await openAnalysisAfterList(page);
     await page.locator(".analysis-play-game").first().click();
     await expect(page.locator(".replay-screen")).toBeVisible();

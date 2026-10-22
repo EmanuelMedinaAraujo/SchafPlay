@@ -1,6 +1,8 @@
 import { GameType } from "../../src/game/types";
-import { de, handCard, pairHostGuest, startSolo } from "./helpers/fixtures";
+import { getPlaySuit } from "../../src/game/rules";
+import { handCard, startSolo } from "./helpers/fixtures";
 import { calledAcePlayIndex, findSeed, simulateMultiplayer } from "./helpers/simulate";
+import { dealtCard } from "./helpers/trace";
 import { clickHandCard, performBids, waitMyTurn } from "./helpers/ui";
 import { expect, test } from "./helpers/test";
 
@@ -20,27 +22,10 @@ test.describe("Sauspiel partner reveal", () => {
         const firstP1 = r.plays.findIndex((p) => p.playerId === "p1");
         if (!(aceIdx >= 5 && firstP1 >= 0 && firstP1 < aceIdx)) return false;
 
-        const calledSuit = r.contract.calledSuit!;
-        const findCard = (cardId: string) => {
-          for (const playerHand of Object.values(r.hands)) {
-            const card = playerHand.find((c) => c.id === cardId);
-            if (card) return card;
-          }
-          return null;
-        };
-
-        const isTrumpCard = (card: any) => {
-          if (card.value === "O" || card.value === "U") return true;
-          return card.suit === "HEARTS";
-        };
-
-        const calledSuitLedBeforeAce = r.plays.slice(0, aceIdx).some((play, idx) => {
-          if (idx % 4 !== 0) return false;
-          const card = findCard(play.cardId);
-          return card && card.suit === calledSuit && !isTrumpCard(card);
-        });
-
-        return !calledSuitLedBeforeAce;
+        // No trick before the Ace's own was led in the called suit.
+        const calledSuit = r.contract.calledSuit;
+        const ledSuit = (play: { cardId: string }) => getPlaySuit(dealtCard(r, play.cardId), GameType.SAUSPIEL);
+        return !r.plays.slice(0, aceIdx).some((play, idx) => idx % 4 === 0 && ledSuit(play) === calledSuit);
       },
       { limit: 800, totalRounds: 8 },
     );
@@ -72,7 +57,7 @@ test.describe("Sauspiel partner reveal", () => {
     await expect(anyPartner).toHaveCount(1);
   });
 
-  test("multiplayer: the guest sees the partner only after the Ace crosses the wire", async ({ browser }) => {
+  test("multiplayer: the guest sees the partner only after the Ace crosses the wire", async ({ pair }) => {
     // A Sauspiel where the guest (p3) is a defender and the called Ace sits with
     // an AI seat (p2/p4) — the real redaction boundary in src/engine/redaction.ts.
     const { seed, trace } = findSeed(
@@ -92,7 +77,7 @@ test.describe("Sauspiel partner reveal", () => {
     const p1Cards = round.turns.filter((t) => t.seat === "p1").map((t) => t.chosenId);
     const p3Cards = round.turns.filter((t) => t.seat === "p3").map((t) => t.chosenId);
 
-    const { host, guest } = await pairHostGuest(browser, { seed, rounds: 8, hostName: "Anna", guestName: "Vroni" });
+    const { host, guest } = await pair({ seed, rounds: 8, hostName: "Anna", guestName: "Vroni" });
 
     // Recorded chronologically across both human seats — replay in that order.
     for (const bid of round.bids) {

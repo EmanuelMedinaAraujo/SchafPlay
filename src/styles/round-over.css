@@ -6,7 +6,9 @@
   z-index: 40;
   display: grid;
   overflow-y: auto;
-  padding: 18px;
+  /* Clear the notch and home indicator too. */
+  padding: max(18px, env(safe-area-inset-top, 0px)) max(18px, env(safe-area-inset-right, 0px))
+    max(18px, env(safe-area-inset-bottom, 0px)) max(18px, env(safe-area-inset-left, 0px));
   background: rgba(5, 5, 8, 0.82);
   backdrop-filter: blur(6px);
 }
@@ -97,3 +99,52 @@
   margin-top: 10px;
 }
 
+
+/* ---------- List over ---------- */
+
+.round-over .list-over-title {
+  justify-content: center;
+}
+
+.round-headline.list-over-headline {
+  text-align: center;
+  font-size: 19px;
+  margin: 12px 0 20px;
+}
+
+.list-over-grid {
+  margin-bottom: 20px;
+}
+
+.list-over-place {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.list-over-total {
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--green);
+}
+
+.list-over-total.negative {
+  color: var(--red-2);
+}
+
+.list-over-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.list-over-actions button {
+  width: 100%;
+}
+
+.list-over-status {
+  text-align: center;
+  margin-top: 8px;
+  font-size: 13px;
+}

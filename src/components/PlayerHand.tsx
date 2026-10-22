@@ -3,6 +3,7 @@ import { Card, Contract, GameType, Language, StossKind, Trick } from "../types";
 import { getLegalCards, sortCardsForHand } from "../game/rules";
 import { translations } from "../lib/i18n";
 import { resolveAvatarSrc } from "../lib/avatars";
+import { toPageDelta } from "../lib/rotation";
 import CardFace from "./CardFace";
 import { UserIcon } from "./icons";
 
@@ -95,12 +96,8 @@ export default function PlayerHand({
   function moveDrag(event: PointerEvent<HTMLButtonElement>) {
     const drag = dragRef.current;
     if (!drag) return;
-    let dx = event.clientX - drag.startX;
-    let dy = event.clientY - drag.startY;
-    // In forced-landscape the pointer moves in screen coordinates
-    if (document.documentElement.classList.contains("rotated")) {
-      [dx, dy] = [dy, -dx];
-    }
+    // The pointer moves in screen coordinates, the card in the (maybe rotated) page.
+    const [dx, dy] = toPageDelta(event.clientX - drag.startX, event.clientY - drag.startY);
     if (Math.abs(dx) + Math.abs(dy) > 8) drag.moved = true;
     drag.el.style.transform = `translate(${dx}px, ${dy}px) rotate(0deg)`;
   }

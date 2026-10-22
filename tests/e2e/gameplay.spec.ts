@@ -1,6 +1,6 @@
 import { de, handCards, startSolo } from "./helpers/fixtures";
 import { alwaysWillPolicy, findSeed } from "./helpers/simulate";
-import { performBids, playCardInTurn } from "./helpers/ui";
+import { performBids, playCardInTurn, readScoreChanges, readStandings, skipRounds } from "./helpers/ui";
 import { expect, test } from "./helpers/test";
 
 /** A seed whose full 4-round game (p1 = always-will, first-legal) completes
@@ -34,8 +34,7 @@ test.describe("gameplay (solo, 4 rounds)", () => {
     await expect(overlay.locator(".round-headline")).toContainText(`${result.declarerPoints}:${result.defenderPoints}`);
 
     // Per-player score changes: the four deltas match the simulation and sum to 0.
-    const changeTexts = await overlay.locator(".score-grid span.pos, .score-grid span.neg").allInnerTexts();
-    const shown = changeTexts.map((t) => parseInt(t.replace("+", ""), 10)).sort((a, b) => a - b);
+    const shown = await readScoreChanges(page);
     const expected = Object.values(result.scoreChanges).sort((a, b) => a - b);
     expect(shown).toEqual(expected);
     expect(shown.reduce((a, b) => a + b, 0)).toBe(0);
@@ -50,33 +49,15 @@ test.describe("gameplay (solo, 4 rounds)", () => {
     // dev-skip races the AI seats' 40ms will-bids, so the trajectory is NOT the
     // simulation's — assert internal consistency against the displayed standings.
     await startSolo(page, { seed: 42, name: "Toni", rounds: 4 });
-
-    for (let round = 1; round <= 4; round += 1) {
-      await expect(page.locator(".game-toolbar")).toContainText(`${round}/4`);
-      await page.getByRole("button", { name: de.devSkipRound }).click();
-      await expect(page.locator(".round-over-overlay")).toBeVisible();
-      await page.getByRole("button", { name: round < 4 ? de.ready : de.toFinalStandings }).click();
-    }
+    await skipRounds(page, 4);
 
     // List summary: the announced winner is the highest displayed standing.
-    const overlay = page.locator(".round-over-overlay");
-    await expect(overlay.locator("h2")).toContainText(de.listOver);
-
-    const rows = overlay.locator(".score-grid > div");
-    await expect(rows).toHaveCount(4);
-    let maxScore = -Infinity;
-    let maxName = "";
-    for (let i = 0; i < 4; i += 1) {
-      const name = await rows.nth(i).locator("strong").innerText();
-      const spans = await rows.nth(i).locator("span").allInnerTexts();
-      const value = parseInt(spans[spans.length - 1].replace("+", ""), 10);
-      if (value > maxScore) {
-        maxScore = value;
-        maxName = name;
-      }
-    }
-    await expect(overlay.locator(".round-headline")).toContainText(maxName);
-    await expect(overlay.locator(".round-headline")).toContainText(String(maxScore));
+    const standings = await readStandings(page);
+    expect(standings).toHaveLength(4);
+    const top = standings.reduce((best, standing) => (standing.score > best.score ? standing : best));
+    const headline = page.locator(".round-over-overlay .round-headline");
+    await expect(headline).toContainText(top.name);
+    await expect(headline).toContainText(String(top.score));
 
     // Rematch resets to round 1 with a fresh deal.
     await page.getByRole("button", { name: de.rematch }).click();

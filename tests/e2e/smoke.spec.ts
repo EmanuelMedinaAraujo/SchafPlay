@@ -1,6 +1,6 @@
 import { createDeck } from "../../src/game/deck";
 import { seededShuffle } from "../../src/lib/seededShuffle";
-import { de, handCards, pairHostGuest, startSolo } from "./helpers/fixtures";
+import { de, handCards, startSolo } from "./helpers/fixtures";
 import { expect, test } from "./helpers/test";
 
 test.describe("smoke", () => {
@@ -22,8 +22,8 @@ test.describe("smoke", () => {
     await expect(page.locator(".bidding-panel")).toContainText(de.willPhaseTitle);
   });
 
-  test("host and guest pair over WebRTC and land at the same table", async ({ browser }) => {
-    const { host, guest } = await pairHostGuest(browser, { seed: 2, hostName: "Anna", guestName: "Vroni" });
+  test("host and guest pair over WebRTC and land at the same table", async ({ pair }) => {
+    const { host, guest } = await pair({ seed: 2, hostName: "Anna", guestName: "Vroni" });
 
     // Host is seat p1, guest seat p3 — each sees the other across the table.
     await expect(host.locator(".seat-top")).toContainText("Vroni");

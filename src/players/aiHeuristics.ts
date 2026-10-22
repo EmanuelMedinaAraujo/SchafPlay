@@ -1,6 +1,6 @@
 /** AI decision heuristics — pure; the engine owns pacing and validation. */
 
-import { Card, CardValue, Contract, Difficulty, GameDeclaration, GameType, Player, StossKind, Suit, Trick, WillBid } from "../game/types";
+import { Card, CardValue, Contract, GameDeclaration, GameType, Player, StossKind, Suit, Trick, WillBid } from "../game/types";
 import {
   canOverrideBid,
   countPoints,
@@ -10,6 +10,7 @@ import {
   getGamePriority,
   getLegalCards,
   isTrump,
+  soloTypeFor,
 } from "../game/rules";
 
 interface HandProfile {
@@ -44,7 +45,7 @@ function isSoloWorthy({ obers, trumpsInNormal }: HandProfile): boolean {
   return obers.length >= 3 && trumpsInNormal.length >= 7;
 }
 
-export function getAIWillBid(player: Player, willBids: WillBid[] = []): boolean {
+export function getAIWillBid(player: Player, willBids: WillBid[]): boolean {
   const someoneElseWantsToPlay = willBids.some((bid) => bid.playerId !== player.id && bid.wantsToPlay);
 
   if (someoneElseWantsToPlay) {
@@ -84,13 +85,8 @@ export function getAIBid(
   if (chosen) return chosen;
 
   // Committed to topping the standing Sauspiel: pick the least-bad higher game.
-  if (!canRetreat) return forcedHigherGame(player);
+  if (!canRetreat) return unters.length >= 2 ? { type: GameType.WENZ } : { type: bestSoloType(hand) };
   return null;
-}
-
-function forcedHigherGame(player: Player): GameDeclaration {
-  const unters = player.cards.filter((card) => card.value === CardValue.UNTER);
-  return unters.length >= 2 ? { type: GameType.WENZ } : { type: bestSoloType(player.cards) };
 }
 
 function bestSoloType(hand: Card[]): GameType {
@@ -98,11 +94,8 @@ function bestSoloType(hand: Card[]): GameType {
     suit,
     count: hand.filter((card) => card.suit === suit && card.value !== CardValue.OBER && card.value !== CardValue.UNTER).length,
   }));
-  const best = counts.sort((a, b) => b.count - a.count)[0].suit;
-  if (best === Suit.ACORNS) return GameType.SOLO_ACORNS;
-  if (best === Suit.LEAVES) return GameType.SOLO_LEAVES;
-  if (best === Suit.BELLS) return GameType.SOLO_BELLS;
-  return GameType.SOLO_HEARTS;
+  // Stable sort: ties go to the earlier suit, Hearts first.
+  return soloTypeFor(counts.sort((a, b) => b.count - a.count)[0].suit);
 }
 
 /**
@@ -123,16 +116,15 @@ export function getAICardPlay(
   player: Player,
   currentTrick: Trick | null,
   contract: Contract | null,
-  difficulty = Difficulty.MEDIUM,
-  tricks: Trick[] = []
+  tricks: Trick[],
 ): Card {
   const legalCards = getLegalCards(player.cards, currentTrick, contract, tricks);
-  if (legalCards.length === 1 || difficulty === Difficulty.EASY) return legalCards[0];
+  if (legalCards.length === 1) return legalCards[0];
   const gameType = contract?.type ?? GameType.SAUSPIEL;
 
   // Ramsch (#11): everyone plays for themselves, so the team logic below
   // does not apply.
-  if (contract?.type === GameType.RAMSCH) {
+  if (gameType === GameType.RAMSCH) {
     return getRamschCardPlay(player.id, currentTrick, legalCards);
   }
 
@@ -200,10 +192,12 @@ function getRamschCardPlay(playerId: string, currentTrick: Trick | null, legal: 
   return lowestValueCard(legal, gameType);
 }
 
-function onSameTeam(a: string, b: string, contract: Contract | null): boolean {
-  if (!contract) return false;
-  const onDeclaringSide = (id: string) => id === contract.declarerId || id === contract.partnerId;
-  return onDeclaringSide(a) === onDeclaringSide(b);
+function isDeclaringSide(id: string, contract: Contract): boolean {
+  return id === contract.declarerId || id === contract.partnerId;
+}
+
+function onSameTeam(a: string, b: string, contract: Contract): boolean {
+  return isDeclaringSide(a, contract) === isDeclaringSide(b, contract);
 }
 
 function highestValueCard(cards: Card[]): Card {
@@ -230,9 +224,7 @@ function lowestValueCard(cards: Card[], gameType: GameType): Card {
 function chooseLead(player: Player, legal: Card[], contract: Contract | null, gameType: GameType): Card {
   const trumps = legal.filter((card) => isTrump(card, gameType));
   const nonTrumps = legal.filter((card) => !isTrump(card, gameType));
-  const onDeclaringSide = Boolean(contract && (player.id === contract.declarerId || player.id === contract.partnerId));
-
-  if (onDeclaringSide && trumps.length > 0) {
+  if (contract && isDeclaringSide(player.id, contract) && trumps.length > 0) {
     return [...trumps].sort((a, b) => getCardRank(b, gameType) - getCardRank(a, gameType))[0];
   }
 

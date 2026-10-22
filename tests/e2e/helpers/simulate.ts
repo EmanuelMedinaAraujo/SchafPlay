@@ -122,7 +122,7 @@ function blankRound(roundNumber: number): RoundTrace {
 
 function simulate(seed: number, options: InternalOptions): Trace {
   const { totalRounds = 8, name = "Toni", policy = defaultPolicy, soloMode } = options;
-  const engine = new GameEngine(name, undefined, totalRounds, {
+  const engine = new GameEngine(name, totalRounds, {
     soloMode,
     aiDelayMs: 0,
     trickHoldMs: 0,

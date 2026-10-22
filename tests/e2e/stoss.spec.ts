@@ -1,9 +1,9 @@
 import { Page } from "@playwright/test";
 import { Contract, GameType } from "../../src/game/types";
 import { getAIStoss } from "../../src/players/aiHeuristics";
-import { de, startSolo } from "./helpers/fixtures";
+import { bootHome, de, startSolo } from "./helpers/fixtures";
 import { findSeed, RoundTrace, Trace } from "./helpers/simulate";
-import { performBids } from "./helpers/ui";
+import { performBids, readScoreChanges, skipRounds } from "./helpers/ui";
 import { expect, test } from "./helpers/test";
 
 /**
@@ -12,7 +12,7 @@ import { expect, test } from "./helpers/test";
  * AI declares a Sauspiel with p1 an eligible defender sitting second in play
  * order (the Stoß window stays open, no race), and nothing auto-doubles.
  */
-function findStossSeed() {
+function searchStossSeed() {
   return findSeed(
     (trace: Trace) => {
       if (trace.length < 3) return false;
@@ -40,26 +40,25 @@ function p1Wills(round: RoundTrace): boolean {
   return round.bids.find((b) => b.seat === "p1" && b.kind === "will")?.will === true;
 }
 
-const { seed, trace } = findStossSeed();
-const round3 = trace[2];
+/** The seed search is costly, so it runs once, on first use inside a test. */
+let stossSeed: { seed: number; trace: Trace } | undefined;
+const findStossSeed = () => (stossSeed ??= searchStossSeed());
 
 /** Dev-skip rounds 1 & 2, then drive round 3's bidding until p1 (a defender)
- * has passed and the AI's Sauspiel contract is in play. */
-async function reachRound3Defender(page: Page): Promise<void> {
+ * has passed and the AI's Sauspiel contract is in play. Returns round 3's trace. */
+async function reachRound3Defender(page: Page): Promise<RoundTrace> {
+  const { seed, trace } = findStossSeed();
+  const round3 = trace[2];
   await startSolo(page, { seed, name: "Toni", rounds: 4 });
-  for (let round = 1; round <= 2; round += 1) {
-    await expect(page.locator(".game-toolbar")).toContainText(`${round}/4`);
-    await page.getByRole("button", { name: de.devSkipRound }).click();
-    await expect(page.locator(".round-over-overlay")).toBeVisible();
-    await page.getByRole("button", { name: de.ready }).click();
-  }
+  await skipRounds(page, 2, 4);
   await expect(page.locator(".game-toolbar")).toContainText("3/4");
   await performBids(page, round3.bids); // p1 passes; the AI seats bid on their own
+  return round3;
 }
 
 test.describe("Stoß (double)", () => {
   test("an eligible defender may Stoß and it doubles the round", async ({ page }) => {
-    await reachRound3Defender(page);
+    const round3 = await reachRound3Defender(page);
 
     // The Stoß button appears beneath the local player's name plate.
     const stossButton = page.locator(".player-hand-col-left .player-hand-stoss");
@@ -81,8 +80,7 @@ test.describe("Stoß (double)", () => {
 
     // Every displayed score change is exactly twice the simulated base and the
     // doubled deltas still sum to zero.
-    const changeTexts = await overlay.locator(".score-grid span.pos, .score-grid span.neg").allInnerTexts();
-    const shown = changeTexts.map((t) => parseInt(t.replace("+", ""), 10)).sort((a, b) => a - b);
+    const shown = await readScoreChanges(page);
     const expected = Object.values(round3.result!.scoreChanges)
       .map((v) => v * 2)
       .sort((a, b) => a - b);
@@ -92,7 +90,7 @@ test.describe("Stoß (double)", () => {
 
   test("disabling the Stoß setting hides the feature", async ({ page }) => {
     // Turn the house rule off in settings (default is on) and confirm it sticks.
-    await page.goto("/");
+    await bootHome(page);
     await page.getByTitle(de.settings).click();
     const group = page.getByRole("group", { name: de.settingsStoss });
     await expect(group.getByRole("button", { name: de.settingsStossPlay })).toHaveAttribute("aria-pressed", "true");

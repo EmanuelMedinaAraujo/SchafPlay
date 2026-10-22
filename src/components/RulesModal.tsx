@@ -1,40 +1,11 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import React from "react";
 import { Language } from "../lib/i18n";
-import { XIcon, BookOpenIcon } from "./icons";
+import { AwardIcon, BookOpenIcon, LayersIcon, ShieldAlertIcon, XIcon } from "./icons";
 
 interface RulesModalProps {
   isOpen: boolean;
   onClose: () => void;
   language: Language;
 }
-
-const LayersIcon = ({ className }: { className?: string }) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-    <polyline points="2 12 12 17 22 12"></polyline>
-    <polyline points="2 17 12 22 22 17"></polyline>
-  </svg>
-);
-
-const AwardIcon = ({ className }: { className?: string }) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <circle cx="12" cy="8" r="7"></circle>
-    <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
-  </svg>
-);
-
-const ShieldAlertIcon = ({ className }: { className?: string }) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-    <line x1="12" y1="8" x2="12" y2="12"></line>
-    <line x1="12" y1="16" x2="12.01" y2="16"></line>
-  </svg>
-);
 
 export default function RulesModal({ isOpen, onClose, language }: RulesModalProps) {
   if (!isOpen) return null;
@@ -71,13 +42,13 @@ export default function RulesModal({ isOpen, onClose, language }: RulesModalProp
             <p className="rules-modal-paragraph">
               {isDe ? (
                 <>
-                  Schafkopf wird mit 32 Karten aus 4 Farben gespielt: <strong>Eichel <span className="inline-block rotate-180">🌰</span></strong>,{" "}
+                  Schafkopf wird mit 32 Karten aus 4 Farben gespielt: <strong>Eichel 🌰</strong>,{" "}
                   <strong>Gras 🍃</strong>, <strong>Herz ❤️</strong> und{" "}
                   <strong>Schellen 🔔</strong>. Jede Farbe enthält 8 Kartenwerte:
                 </>
               ) : (
                 <>
-                  Schafkopf is played with 32 cards of 4 suits: <strong>Acorns (Eichel <span className="inline-block rotate-180">🌰</span>)</strong>,{" "}
+                  Schafkopf is played with 32 cards of 4 suits: <strong>Acorns (Eichel 🌰)</strong>,{" "}
                   <strong>Leaves (Gras 🍃)</strong>, <strong>Hearts (Herz ❤️)</strong>, and{" "}
                   <strong>Bells (Schellen 🔔)</strong>. Each suit contains 8 card values:
                 </>
@@ -139,14 +110,14 @@ export default function RulesModal({ isOpen, onClose, language }: RulesModalProp
                   <strong>{isDe ? "Trümpfe (Höchster bis Niedrigster):" : "Trumps (Highest to Lowest):"}</strong>
                 </p>
                 <p className="rules-modal-hierarchy-text">
-                  <span className="inline-block rotate-180">🌰</span> Ober &rarr; 🍃 Ober &rarr; ❤️ Ober &rarr; 🔔 Ober &rarr; <span className="inline-block rotate-180">🌰</span> Unter &rarr; 🍃 Unter &rarr; ❤️ Unter &rarr; 🔔 Unter &rarr; ❤️ As &rarr; ❤️ 10 &rarr; ❤️ König &rarr; ❤️ 9 &rarr; ❤️ 8 &rarr; ❤️ 7
+                  🌰 Ober &rarr; 🍃 Ober &rarr; ❤️ Ober &rarr; 🔔 Ober &rarr; 🌰 Unter &rarr; 🍃 Unter &rarr; ❤️ Unter &rarr; 🔔 Unter &rarr; ❤️ As &rarr; ❤️ 10 &rarr; ❤️ König &rarr; ❤️ 9 &rarr; ❤️ 8 &rarr; ❤️ 7
                 </p>
               </div>
 
               <div className="rules-modal-hierarchy-item rules-border-amber">
                 <h4 className="rules-modal-hierarchy-title">{isDe ? "Wenz (Nur die Unter sind Trumpf)" : "Wenz (Only Unters are Trump)"}</h4>
                 <p className="rules-modal-hierarchy-text">
-                  <strong>{isDe ? "Trümpfe:" : "Trumps:"}</strong> <span className="inline-block rotate-180">🌰</span> Unter &rarr; 🍃 Unter &rarr; ❤️ Unter &rarr; 🔔 Unter. {isDe ? "Alle anderen Karten (einschließlich der Ober) sind normale Farbkarten." : "All other cards (including Obers) are non-trumps of their respective suits."}
+                  <strong>{isDe ? "Trümpfe:" : "Trumps:"}</strong> 🌰 Unter &rarr; 🍃 Unter &rarr; ❤️ Unter &rarr; 🔔 Unter. {isDe ? "Alle anderen Karten (einschließlich der Ober) sind normale Farbkarten." : "All other cards (including Obers) are non-trumps of their respective suits."}
                 </p>
               </div>
 

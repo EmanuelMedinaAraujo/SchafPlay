@@ -1,6 +1,7 @@
 import { GameState, Language, PlayerAction, PlayerActionType } from "../types";
 import { translations } from "../lib/i18n";
 import { TrophyIcon } from "./icons";
+import { summaryInfo } from "./RoundOverScreen";
 
 interface ListOverScreenProps {
   state: GameState;
@@ -12,12 +13,8 @@ interface ListOverScreenProps {
 
 export default function ListOverScreen({ state, language, myPlayerId, onAction, onQuit }: ListOverScreenProps) {
   const t = translations[language];
-  const sortedPlayers = [...state.players].sort((a, b) => (state.scores[b.id] ?? 0) - (state.scores[a.id] ?? 0));
+  const { otherName, iAmReady, otherReady, sortedByScore: sortedPlayers } = summaryInfo(state, myPlayerId);
   const winner = sortedPlayers[0];
-  const iAmReady = Boolean(state.readyState[myPlayerId]);
-  const otherId = myPlayerId === "p1" ? "p3" : "p1";
-  const otherReady = Boolean(state.readyState[otherId]);
-  const otherName = state.players.find((player) => player.id === otherId)?.name ?? "";
 
   function triggerRematch() {
     onAction({ type: PlayerActionType.REMATCH, playerId: myPlayerId });
@@ -26,27 +23,27 @@ export default function ListOverScreen({ state, language, myPlayerId, onAction, 
   return (
     <div className="round-over-overlay">
       <section className="round-over">
-        <h2 style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--amber)", justifyContent: "center" }}>
+        <h2 className="list-over-title">
           <TrophyIcon size={24} />
           {t.listOver}
         </h2>
 
-        <p className="round-headline" style={{ textAlign: "center", fontSize: "19px", margin: "12px 0 20px" }}>
+        <p className="round-headline list-over-headline">
           🏆 {t.winner}: <strong>{winner.name}</strong> ({state.scores[winner.id] ?? 0} {t.points})
         </p>
 
         <h3>{t.standings}</h3>
-        <div className="score-grid" style={{ marginBottom: "20px" }}>
+        <div className="score-grid list-over-grid">
           {sortedPlayers.map((player, idx) => {
             const total = state.scores[player.id] ?? 0;
             const isListWinner = player.id === winner.id;
             return (
               <div key={player.id} className={isListWinner ? "winner" : ""}>
-                <span style={{ fontSize: "11px", color: "var(--muted)", textTransform: "uppercase", fontWeight: "bold" }}>
-                  Platz {idx + 1}
+                <span className="list-over-place">
+                  {t.place} {idx + 1}
                 </span>
                 <strong>{player.name}</strong>
-                <span style={{ fontSize: "16px", fontWeight: "bold", color: total >= 0 ? "var(--green)" : "var(--red-2)" }}>
+                <span className={total >= 0 ? "list-over-total" : "list-over-total negative"}>
                   {total > 0 ? "+" : ""}{total}
                 </span>
               </div>
@@ -54,21 +51,15 @@ export default function ListOverScreen({ state, language, myPlayerId, onAction, 
           })}
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          <button
-            className="primary-button"
-            onClick={triggerRematch}
-            disabled={iAmReady}
-            type="button"
-            style={{ width: "100%" }}
-          >
+        <div className="list-over-actions">
+          <button className="primary-button" onClick={triggerRematch} disabled={iAmReady} type="button">
             {iAmReady ? `⏳ ${t.readyWaiting}` : t.rematch}
           </button>
-          <button className="secondary-button" onClick={onQuit} type="button" style={{ width: "100%" }}>
+          <button className="secondary-button" onClick={onQuit} type="button">
             {t.quit}
           </button>
         </div>
-        <p className="muted" style={{ textAlign: "center", marginTop: "8px", fontSize: "13px" }}>
+        <p className="muted list-over-status">
           {otherName}: {otherReady ? `✓ ${t.isReady}` : `… ${t.notReady}`}
         </p>
       </section>

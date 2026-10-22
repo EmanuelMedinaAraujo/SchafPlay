@@ -1,8 +1,8 @@
 /**
  * Out-of-band signaling: opaque codes exchanged between the players to
- * establish a Transport. Copy-paste today; deep links, QR scanning or
- * clipboard auto-detect (issue #7) become alternative carriers of the same
- * two codes without touching the Transport or the sessions.
+ * establish a Transport. Copy-paste, QR codes and deep links (#7) are
+ * alternative carriers of the same two codes, so neither the Transport nor the
+ * sessions know which one was used.
  */
 export interface HostSignaling {
   /** Create an offer; resolves to the invite code to hand to the guest. */

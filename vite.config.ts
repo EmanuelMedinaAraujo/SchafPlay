@@ -4,92 +4,76 @@ import {defineConfig} from 'vite';
 import fs from 'fs';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 
+const IMAGE = /\.(png|jpe?g|webp|svg|gif)$/i;
+
+/** Rewrite one marker in the worker; a missing marker fails the build rather
+ * than silently shipping a stale cache name or precache list. */
+function inject(content: string, pattern: RegExp, replacement: string): string {
+  if (!pattern.test(content)) throw new Error(`[sw-version-injector] public/sw.js no longer matches ${pattern}`);
+  return content.replace(pattern, replacement);
+}
+
 export default defineConfig(({ command }) => {
   // GitHub Pages serves the project site under /<repo>/. The base can be
   // overridden with BASE_PATH (e.g. "/" for a custom domain or a root host).
   // Dev always runs at "/" so `npm run dev` is unaffected.
   const base = process.env.BASE_PATH ?? (command === 'build' ? '/SchafPlay/' : '/');
+  // `vite --host` (npm run dev:network) serves the LAN over self-signed HTTPS,
+  // which camera access on other devices requires; basicSsl enables it.
+  const network = process.argv.includes('--host');
 
   return {
     base,
     plugins: [
       react(),
-      (process.argv.includes('--host') || process.argv.includes('-h')) ? basicSsl() : false,
+      network ? basicSsl() : false,
       {
         name: 'sw-version-injector',
+        // closeBundle also fires when the dev server shuts down.
+        apply: 'build',
         closeBundle() {
-          const swPath = path.resolve(__dirname, 'dist/sw.js');
-          if (fs.existsSync(swPath)) {
-            let content = fs.readFileSync(swPath, 'utf8');
-            const version = `schafplay-v-${Date.now()}`;
-            content = content.replace(/const CACHE_NAME = 'schafplay-v1';/, `const CACHE_NAME = '${version}';`);
-            // Bake the deploy base into the worker so precache keys and the
-            // navigation fallback resolve under /<repo>/ on GitHub Pages.
-            content = content.replace(/const BASE = '\/';/, `const BASE = '${base}';`);
-            // Precache every built asset so the PWA is fully usable offline.
-            const assetsDir = path.resolve(__dirname, 'dist/assets');
-            const assets = fs.existsSync(assetsDir)
-              ? fs.readdirSync(assetsDir).map((file) => `${base}assets/${file}`)
-              : [];
-            const cardsDir = path.resolve(__dirname, 'dist/bavarian-cards');
-            const cards = fs.existsSync(cardsDir)
-              ? fs.readdirSync(cardsDir).map((file) => `${base}bavarian-cards/${file}`)
-              : [];
-            // Preset profile-picture files (#14) live in a public/avatars/
-            // subdir, so the root-image sweep below doesn't reach them.
-            const avatarsDir = path.resolve(__dirname, 'dist/avatars');
-            const avatars = fs.existsSync(avatarsDir)
-              ? fs
-                  .readdirSync(avatarsDir)
-                  .filter((file) => /\.(png|jpe?g|webp|svg|gif)$/i.test(file))
-                  .map((file) => `${base}avatars/${file}`)
-              : [];
-            // Precache the static images copied from public/ (avatars, game
-            // background, …). They are referenced by absolute URL at runtime,
-            // so without this they'd only be cached after a first online fetch
-            // and the app would show broken images when opened offline first.
-            const distRoot = path.resolve(__dirname, 'dist');
-            const rootImages = fs.existsSync(distRoot)
-              ? fs
-                  .readdirSync(distRoot)
-                  .filter((file) => /\.(png|jpe?g|webp|svg|gif)$/i.test(file))
-                  .map((file) => `${base}${file}`)
-              : [];
-            const precache = [
-              base,
-              `${base}index.html`,
-              `${base}icon-192.png`,
-              `${base}icon-512.png`,
-              `${base}manifest.json`,
-              ...assets,
-              ...cards,
-              ...avatars,
-              ...rootImages,
-            ];
-            // Drop duplicates (e.g. the icons already listed explicitly).
-            const uniquePrecache = [...new Set(precache)];
-            content = content.replace(/const PRECACHE = \[[^\]]*\];/, `const PRECACHE = ${JSON.stringify(uniquePrecache)};`);
-            fs.writeFileSync(swPath, content, 'utf8');
-            console.log(`[sw-version-injector] Injected cache version ${version}, base ${base} and ${uniquePrecache.length} precache entries`);
-          }
+          const dist = path.resolve(__dirname, 'dist');
+          // A failed build may leave no dist/ — don't mask its real error.
+          if (!fs.existsSync(path.join(dist, 'sw.js'))) return;
+          /** Base-prefixed URLs of the files in a dist/ subdirectory. */
+          const listFiles = (dir: string, filter?: RegExp) =>
+            fs
+              .readdirSync(path.join(dist, dir))
+              .filter((file) => !filter || filter.test(file))
+              .map((file) => `${base}${dir ? `${dir}/` : ''}${file}`);
+
+          // Precache every built asset so the PWA is fully usable offline,
+          // plus the static images copied from public/ (cards, preset
+          // avatars, icons, game background). Those are referenced by
+          // absolute URL at runtime, so without this they would only be
+          // cached after a first online fetch and an app opened offline
+          // first would show broken images.
+          const precache = [
+            base,
+            `${base}index.html`,
+            `${base}manifest.json`,
+            ...listFiles('assets'),
+            ...listFiles('bavarian-cards'),
+            ...listFiles('avatars', IMAGE),
+            ...listFiles('', IMAGE),
+          ];
+
+          const swPath = path.join(dist, 'sw.js');
+          const version = `schafplay-v-${Date.now()}`;
+          let content = fs.readFileSync(swPath, 'utf8');
+          content = inject(content, /const CACHE_NAME = 'schafplay-v1';/, `const CACHE_NAME = '${version}';`);
+          // Bake the deploy base into the worker so precache keys and the
+          // navigation fallback resolve under /<repo>/ on GitHub Pages.
+          content = inject(content, /const BASE = '\/';/, `const BASE = '${base}';`);
+          content = inject(content, /const PRECACHE = \[[^\]]*\];/, `const PRECACHE = ${JSON.stringify(precache)};`);
+          fs.writeFileSync(swPath, content, 'utf8');
+          console.log(`[sw-version-injector] Injected cache version ${version}, base ${base} and ${precache.length} precache entries`);
         }
       }
     ],
-    resolve: {
-      alias: {
-        '@': path.resolve(__dirname, '.'),
-      },
-    },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modify—file watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
-      // Force bind to IPv4 loopback unless --host is specified
-      host: (process.argv.includes('--host') || process.argv.includes('-h')) ? undefined : '127.0.0.1',
-      // Enable HTTPS when --host is specified (required for camera/signaling on other network devices)
-      https: (process.argv.includes('--host') || process.argv.includes('-h')) ? (true as any) : undefined,
+      // Bind to IPv4 loopback unless --host is specified.
+      host: network ? undefined : '127.0.0.1',
       // Allow Tailscale subdomains to access the development server
       allowedHosts: ['.ts.net'],
     },

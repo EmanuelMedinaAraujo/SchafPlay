@@ -45,7 +45,8 @@ export function fileToAvatarDataUrl(file: File): Promise<string> {
 }
 
 function drawSquare(img: HTMLImageElement): string {
-  let best = encodeAt(img, SIZE, QUALITIES[0]);
+  // QUALITIES is non-empty, so the loop always assigns.
+  let best = "";
   for (const quality of QUALITIES) {
     best = encodeAt(img, SIZE, quality);
     if (best.length <= BUDGET) return best;

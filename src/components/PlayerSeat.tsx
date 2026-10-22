@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef } from "react";
 import { Contract, GameType, Language, Player, StossEntry } from "../types";
 import { translations } from "../lib/i18n";
 import { resolveAvatarSrc } from "../lib/avatars";
+import { setRevealOffset } from "../lib/rotation";
 import { UserIcon, BotIcon } from "./icons";
 
 interface PlayerSeatProps {
@@ -44,19 +45,7 @@ function useRoleBadgeReveal(role: Role) {
       return () => badge.removeEventListener("animationend", clear);
     }
 
-    const center = document.querySelector(".trick-area");
-    if (center) {
-      const badgeRect = badge.getBoundingClientRect();
-      const centerRect = center.getBoundingClientRect();
-      let dx = centerRect.left + centerRect.width / 2 - (badgeRect.left + badgeRect.width / 2);
-      let dy = centerRect.top + centerRect.height / 2 - (badgeRect.top + badgeRect.height / 2);
-      // Forced landscape rotates the page 90°: map screen-space deltas into it.
-      if (document.documentElement.classList.contains("rotated")) {
-        [dx, dy] = [dy, -dx];
-      }
-      badge.style.setProperty("--reveal-x", `${dx}px`);
-      badge.style.setProperty("--reveal-y", `${dy}px`);
-    }
+    setRevealOffset(badge);
     badge.style.animationDelay = `${DECLARER_BADGE_DELAY_MS}ms`;
     badge.classList.add("role-badge-declarer-reveal");
     const clear = () => badge.classList.remove("role-badge-declarer-reveal");

@@ -10,11 +10,6 @@
    by App.tsx. Inside the rotated frame, position:fixed descendants attach to
    #root (transform creates the containing block), so overlays keep working. */
 
-html.rotated,
-html.rotated body {
-  overflow: hidden;
-}
-
 html.rotated #root {
   position: fixed;
   top: 0;

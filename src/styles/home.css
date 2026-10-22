@@ -18,3 +18,26 @@
   padding-bottom: max(4px, env(safe-area-inset-bottom, 0px));
 }
 
+
+.home-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.2fr);
+  gap: 16px;
+}
+
+/* List-length picker: label and round buttons share one line. */
+.list-length-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.list-length-row .field-label {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.list-length-row .mode-switch {
+  flex: 1;
+  margin-top: 0;
+}

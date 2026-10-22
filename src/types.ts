@@ -5,7 +5,5 @@
  */
 
 export * from "./game/types";
-export { P2PMessageType } from "./net/protocol";
-export type { P2PMessage } from "./net/protocol";
 
 export type Language = "de" | "en";

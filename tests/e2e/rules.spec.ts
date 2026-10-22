@@ -1,9 +1,9 @@
 import { GameType, Suit } from "../../src/game/types";
 import { getCallableSuits } from "../../src/game/rules";
 import { gameLabel } from "../../src/lib/i18n";
-import { de, handCard, startSolo } from "./helpers/fixtures";
+import { de, handCards, startSolo } from "./helpers/fixtures";
 import { findSeed, RoundTrace } from "./helpers/simulate";
-import { performBids, playCardInTurn, waitMyTurn, clickHandCard } from "./helpers/ui";
+import { expectPlayed, expectRefused, performBids, playCardInTurn, waitMyTurn } from "./helpers/ui";
 import { expect, test } from "./helpers/test";
 
 const DECLARABLE = [Suit.ACORNS, Suit.LEAVES, Suit.BELLS];
@@ -61,16 +61,8 @@ test.describe("rules enforcement (solo)", () => {
     for (let i = 0; i < targetIdx; i += 1) await playCardInTurn(page, p1Turns[i].chosenId);
     await waitMyTurn(page);
 
-    // Illegal card: grays out, stays in hand, never reaches the table.
-    await clickHandCard(page, illegalId);
-    await expect(handCard(page, illegalId)).toHaveClass(/grayed-out/);
-    await expect(handCard(page, illegalId)).toHaveCount(1);
-    await expect(page.locator(`.trick-area [data-card-id="${illegalId}"]`)).toHaveCount(0);
-
-    // Legal card: leaves the hand and lands in the trick.
-    await clickHandCard(page, legalId);
-    await expect(handCard(page, legalId)).toHaveCount(0);
-    await expect(page.locator(`.trick-area [data-card-id="${legalId}"]`)).toBeVisible();
+    await expectRefused(page, illegalId);
+    await expectPlayed(page, legalId);
   });
 
   test("hand stays locked until it is the local player's turn to play", async ({ page }) => {
@@ -80,7 +72,7 @@ test.describe("rules enforcement (solo)", () => {
 
     await startSolo(page, { seed, name: "Toni", rounds: 4 });
     await expect(page.getByRole("button", { name: de.willPlay, exact: true })).toBeVisible();
-    const cards = page.locator(".player-hand-cards .playing-card");
+    const cards = handCards(page);
     await expect(cards).toHaveCount(8);
     await expect(page.locator(".player-hand-container")).not.toHaveClass(/my-turn/);
     await expect(cards.first()).toBeDisabled();

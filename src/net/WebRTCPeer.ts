@@ -1,17 +1,13 @@
 import { P2PMessage, P2PMessageType } from "./protocol";
 import { GuestSignaling, HostSignaling } from "./Signaling";
 import { Transport, TransportState } from "./Transport";
-import { decodeSignal, encodeSignal, SDPBundle } from "./sdpCodec";
-
-/** Factory used by the pairing UI. */
-export function createWebRTCPeer(): WebRTCPeer {
-  return new WebRTCPeer();
-}
+import { decodeSignal, encodeSignal } from "./sdpCodec";
 
 /**
- * One game link over serverless WebRTC. Signaling runs via copy-paste of
- * compressed SDP blobs (no broker, no STUN, LAN-only). All game traffic
- * afterwards is a direct P2P data channel (DTLS-encrypted by the browser).
+ * One game link over serverless WebRTC. Signaling exchanges compressed SDP
+ * codes out of band — pasted, scanned as QR or opened as a link (no broker,
+ * no STUN, LAN-only). All game traffic afterwards is a direct P2P data channel
+ * (DTLS-encrypted by the browser).
  */
 export class WebRTCPeer implements Transport, HostSignaling, GuestSignaling {
   private pc: RTCPeerConnection | null = null;
@@ -26,75 +22,60 @@ export class WebRTCPeer implements Transport, HostSignaling, GuestSignaling {
   /** Host: create an offer, returning the compressed invite code. */
   async host(): Promise<string> {
     this.isHost = true;
-    this.emitState("connecting");
-
-    const pc = new RTCPeerConnection({ iceServers: [] });
-    this.pc = pc;
-    this.watchConnection(pc);
+    const pc = this.newPeerConnection();
 
     // Create the data channel before creating the offer so it's included in SDP.
-    const dc = pc.createDataChannel("game", { ordered: true });
-    this.setupDataChannel(dc);
+    this.setupDataChannel(pc.createDataChannel("game", { ordered: true }));
 
-    const offer = await pc.createOffer();
-    const candidatesPromise = this.gatherCandidates(pc);
-    await pc.setLocalDescription(offer);
-
-    // Gather all ICE candidates (LAN-only, so they arrive quickly).
-    const candidates = await candidatesPromise;
-
-    return encodeSignal({
-      sdp: pc.localDescription!.sdp,
-      type: pc.localDescription!.type,
-      candidates,
-    });
+    return this.localCode(pc, await pc.createOffer());
   }
 
-  /** Host, step 2: the guest's reply code completes the handshake. */
+  /**
+   * Host, step 2: the guest's reply code completes the handshake. A garbage
+   * paste rejects with INVALID_CODE and leaves the connection usable for a retry.
+   */
   async acceptAnswer(replyCode: string): Promise<void> {
     const pc = this.pc;
     if (!pc) throw new Error("Call host() first");
-
-    let bundle: SDPBundle;
-    try {
-      bundle = await decodeSignal(replyCode.trim());
-    } catch {
-      // Garbage paste — the connection is still usable, the user can retry.
-      throw new Error("INVALID_CODE");
-    }
-    await pc.setRemoteDescription({ type: bundle.type, sdp: bundle.sdp });
-    for (const c of bundle.candidates) {
-      await pc.addIceCandidate(c);
-    }
+    await this.applyRemoteCode(pc, replyCode);
   }
 
   /** Guest: answer the host's invite code, returning the reply code. */
   async join(inviteCode: string): Promise<string> {
     this.isHost = false;
-    this.emitState("connecting");
-
-    const pc = new RTCPeerConnection({ iceServers: [] });
-    this.pc = pc;
-    this.watchConnection(pc);
+    const pc = this.newPeerConnection();
 
     // The host's data channel arrives via ondatachannel.
     pc.ondatachannel = (event) => {
       this.setupDataChannel(event.channel);
     };
 
-    const bundle = await decodeSignal(inviteCode.trim());
-    await pc.setRemoteDescription({ type: bundle.type, sdp: bundle.sdp });
+    await this.applyRemoteCode(pc, inviteCode);
+    return this.localCode(pc, await pc.createAnswer());
+  }
 
+  private newPeerConnection(): RTCPeerConnection {
+    this.emitState("connecting");
+    const pc = new RTCPeerConnection({ iceServers: [] });
+    this.pc = pc;
+    this.watchConnection(pc);
+    return pc;
+  }
+
+  /** `decodeSignal` sanitizes the code and rejects garbage with INVALID_CODE. */
+  private async applyRemoteCode(pc: RTCPeerConnection, code: string): Promise<void> {
+    const bundle = await decodeSignal(code);
+    await pc.setRemoteDescription({ type: bundle.type, sdp: bundle.sdp });
     for (const c of bundle.candidates) {
       await pc.addIceCandidate(c);
     }
+  }
 
-    const answer = await pc.createAnswer();
+  /** Set the local offer/answer and encode it with every ICE candidate (LAN-only, so they arrive quickly). */
+  private async localCode(pc: RTCPeerConnection, description: RTCSessionDescriptionInit): Promise<string> {
     const candidatesPromise = this.gatherCandidates(pc);
-    await pc.setLocalDescription(answer);
-
+    await pc.setLocalDescription(description);
     const candidates = await candidatesPromise;
-
     return encodeSignal({
       sdp: pc.localDescription!.sdp,
       type: pc.localDescription!.type,

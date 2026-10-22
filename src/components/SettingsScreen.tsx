@@ -1,6 +1,7 @@
 import { ReactNode, useState } from "react";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
+import { Settings } from "../lib/settings";
 import { checkForUpdate } from "../lib/pwa";
 import { CheckIcon, DownloadIcon, HelpCircleIcon, LoaderIcon, RefreshIcon, SettingsIcon } from "./icons";
 import { gameHistoryStore } from "../persistence";
@@ -8,16 +9,8 @@ import { formatGamesForExport } from "../lib/export";
 import AvatarPicker from "./AvatarPicker";
 
 interface SettingsScreenProps {
-  language: Language;
-  onLanguageChange: (language: Language) => void;
-  avatar: string;
-  onAvatarChange: (avatar: string) => void;
-  disableLaufende: boolean;
-  onDisableLaufendeChange: (disable: boolean) => void;
-  enableRamsch: boolean;
-  onEnableRamschChange: (enable: boolean) => void;
-  enableStoss: boolean;
-  onEnableStossChange: (enable: boolean) => void;
+  settings: Settings;
+  onChange: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
 }
 
 type UpdateStatus = "idle" | "checking" | "uptodate" | "installing" | "unsupported";
@@ -28,10 +21,33 @@ const LANGUAGES: Array<{ code: Language; label: string }> = [
 ];
 
 /**
- * One settings line: label (plus optional help tooltip) on the left, the
- * control on the right. The hint is tap-to-toggle so it works on touch,
- * and doubles as the help button's accessible label.
+ * A help button with its tooltip. Tap-to-toggle so it works on touch; the
+ * hint doubles as the button's accessible label.
  */
+function HelpHint({ hint }: { hint: string }) {
+  const [showHint, setShowHint] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        className="settings-help"
+        aria-label={hint}
+        aria-expanded={showHint}
+        onClick={() => setShowHint((v) => !v)}
+        onBlur={() => setShowHint(false)}
+      >
+        <HelpCircleIcon size={15} />
+      </button>
+      {showHint && (
+        <span role="tooltip" className="settings-tooltip">
+          {hint}
+        </span>
+      )}
+    </>
+  );
+}
+
+/** One settings line: label (plus optional help) on the left, the control on the right. */
 function SettingRow({
   label,
   hint,
@@ -43,30 +59,11 @@ function SettingRow({
   status?: ReactNode;
   children: ReactNode;
 }) {
-  const [showHint, setShowHint] = useState(false);
   return (
     <section className="panel settings-panel settings-row">
       <div className="settings-row-label">
         <h2>{label}</h2>
-        {hint && (
-          <>
-            <button
-              type="button"
-              className="settings-help"
-              aria-label={hint}
-              aria-expanded={showHint}
-              onClick={() => setShowHint((v) => !v)}
-              onBlur={() => setShowHint(false)}
-            >
-              <HelpCircleIcon size={15} />
-            </button>
-            {showHint && (
-              <span role="tooltip" className="settings-tooltip">
-                {hint}
-              </span>
-            )}
-          </>
-        )}
+        {hint && <HelpHint hint={hint} />}
       </div>
       <div className="settings-row-control">{children}</div>
       {status}
@@ -103,22 +100,11 @@ function ToggleRow({
   );
 }
 
-export default function SettingsScreen({
-  language,
-  onLanguageChange,
-  avatar,
-  onAvatarChange,
-  disableLaufende,
-  onDisableLaufendeChange,
-  enableRamsch,
-  onEnableRamschChange,
-  enableStoss,
-  onEnableStossChange,
-}: SettingsScreenProps) {
+export default function SettingsScreen({ settings, onChange }: SettingsScreenProps) {
+  const { language, avatar, disableLaufende, enableRamsch, enableStoss } = settings;
   const t = translations[language];
   const [status, setStatus] = useState<UpdateStatus>("idle");
   const [exportError, setExportError] = useState<string | null>(null);
-  const [showAvatarHint, setShowAvatarHint] = useState(false);
 
   async function onExportGames() {
     setExportError(null);
@@ -184,7 +170,7 @@ export default function SettingsScreen({
             <button
               key={code}
               className={language === code ? "active" : ""}
-              onClick={() => onLanguageChange(code)}
+              onClick={() => onChange("language", code)}
               role="tab"
               aria-selected={language === code}
               type="button"
@@ -199,8 +185,8 @@ export default function SettingsScreen({
         title={t.settingsLaufende}
         hint={t.settingsLaufendeHint}
         options={[
-          { label: t.settingsLaufendeCount, selected: !disableLaufende, onSelect: () => onDisableLaufendeChange(false) },
-          { label: t.settingsLaufendeOff, selected: disableLaufende, onSelect: () => onDisableLaufendeChange(true) },
+          { label: t.settingsLaufendeCount, selected: !disableLaufende, onSelect: () => onChange("disableLaufende", false) },
+          { label: t.settingsLaufendeOff, selected: disableLaufende, onSelect: () => onChange("disableLaufende", true) },
         ]}
       />
 
@@ -208,8 +194,8 @@ export default function SettingsScreen({
         title={t.settingsRamsch}
         hint={t.settingsRamschHint}
         options={[
-          { label: t.settingsRamschOff, selected: !enableRamsch, onSelect: () => onEnableRamschChange(false) },
-          { label: t.settingsRamschPlay, selected: enableRamsch, onSelect: () => onEnableRamschChange(true) },
+          { label: t.settingsRamschOff, selected: !enableRamsch, onSelect: () => onChange("enableRamsch", false) },
+          { label: t.settingsRamschPlay, selected: enableRamsch, onSelect: () => onChange("enableRamsch", true) },
         ]}
       />
 
@@ -217,31 +203,17 @@ export default function SettingsScreen({
         title={t.settingsStoss}
         hint={t.settingsStossHint}
         options={[
-          { label: t.settingsStossPlay, selected: enableStoss, onSelect: () => onEnableStossChange(true) },
-          { label: t.settingsStossOff, selected: !enableStoss, onSelect: () => onEnableStossChange(false) },
+          { label: t.settingsStossPlay, selected: enableStoss, onSelect: () => onChange("enableStoss", true) },
+          { label: t.settingsStossOff, selected: !enableStoss, onSelect: () => onChange("enableStoss", false) },
         ]}
       />
 
       <section className="panel settings-panel settings-avatar">
         <div className="settings-row-label">
           <h2>{t.settingsAvatar}</h2>
-          <button
-            type="button"
-            className="settings-help"
-            aria-label={t.settingsAvatarHint}
-            aria-expanded={showAvatarHint}
-            onClick={() => setShowAvatarHint((v) => !v)}
-            onBlur={() => setShowAvatarHint(false)}
-          >
-            <HelpCircleIcon size={15} />
-          </button>
-          {showAvatarHint && (
-            <span role="tooltip" className="settings-tooltip">
-              {t.settingsAvatarHint}
-            </span>
-          )}
+          <HelpHint hint={t.settingsAvatarHint} />
         </div>
-        <AvatarPicker value={avatar} onChange={onAvatarChange} language={language} />
+        <AvatarPicker value={avatar} onChange={(value) => onChange("avatar", value)} language={language} />
       </section>
 
       <SettingRow

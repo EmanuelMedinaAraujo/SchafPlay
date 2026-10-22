@@ -18,7 +18,7 @@ If the connection drops, the host pauses the game: they exchange fresh codes, an
 - **Everyone passes** → cards are thrown in and redealt, or the deal is played out as a **Ramsch** if that house rule is enabled in Settings
 - **Between rounds** both players must tap "Ready", then the dealer rotates
 
-Optional house rules (Settings, all off by default unless noted): Ramsch on an all-pass, Stoß/Retour doubling, and disabling Laufende.
+House rules (Settings): Stoß/Retour doubling (on by default), Ramsch on an all-pass (off by default), and disabling Laufende (they count by default).
 
 ### Tournament scoring (plus/minus, zero-sum)
 
