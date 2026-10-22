@@ -35,16 +35,6 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 /**
- * The persistence seam. `load` is total — it always returns a full `Settings`,
- * defaulting any missing or unparseable field. `save` degrades silently when
- * storage is unavailable.
- */
-export interface SettingsStore {
-  load(): Settings;
-  save<K extends keyof Settings>(key: K, value: Settings[K]): void;
-}
-
-/**
  * Per-field `localStorage` key plus tolerant parse/serialize. Add a new
  * preference here, never hand-rolled in a component (#37). Keys match the
  * historical `schafplay.*` names so stored preferences keep working.
@@ -101,48 +91,40 @@ const CODECS: { [K in keyof Settings]: FieldCodec<Settings[K]> } = {
 
 const KEYS = Object.keys(CODECS) as Array<keyof Settings>;
 
-/** The default `SettingsStore`, backed by `localStorage`. */
-export class LocalStorageSettingsStore implements SettingsStore {
-  load(): Settings {
-    const result = { ...DEFAULT_SETTINGS };
-    for (const key of KEYS) {
-      try {
-        const raw = localStorage.getItem(CODECS[key].key);
-        if (raw !== null) {
-          // Each codec's parse is typed to its own field; the map ties them
-          // together but TS can't track the per-key correlation in this loop.
-          (result[key] as Settings[typeof key]) = CODECS[key].parse(raw) as Settings[typeof key];
-        }
-      } catch {
-        // Storage unavailable or a single bad value — keep the default.
-      }
-    }
-    return result;
-  }
-
-  save<K extends keyof Settings>(key: K, value: Settings[K]): void {
+/** Total: always a full `Settings`, defaulting any missing or unparseable field. */
+function loadSettings(): Settings {
+  const result = { ...DEFAULT_SETTINGS };
+  for (const key of KEYS) {
     try {
-      localStorage.setItem(CODECS[key].key, CODECS[key].serialize(value));
+      const raw = localStorage.getItem(CODECS[key].key);
+      if (raw !== null) {
+        // Each codec's parse is typed to its own field; the map ties them
+        // together but TS can't track the per-key correlation in this loop.
+        (result[key] as Settings[typeof key]) = CODECS[key].parse(raw) as Settings[typeof key];
+      }
     } catch {
-      // Storage unavailable (private mode, quota) — the change just won't survive.
+      // Storage unavailable or a single bad value — keep the default.
     }
+  }
+  return result;
+}
+
+function saveSetting<K extends keyof Settings>(key: K, value: Settings[K]): void {
+  try {
+    localStorage.setItem(CODECS[key].key, CODECS[key].serialize(value));
+  } catch {
+    // Storage unavailable (private mode, quota) — the change just won't survive.
   }
 }
 
-/** Shared app-wide instance. Swap the argument to `useSettings` in tests. */
-export const settingsStore: SettingsStore = new LocalStorageSettingsStore();
+/** Seeds state synchronously from `localStorage` (no flash) and writes through. */
+export function useSettings() {
+  const [settings, setSettings] = useState<Settings>(loadSettings);
 
-/** Seeds state synchronously from the store (no flash) and writes through. */
-export function useSettings(store: SettingsStore = settingsStore) {
-  const [settings, setSettings] = useState<Settings>(() => store.load());
-
-  const update = useCallback(
-    <K extends keyof Settings>(key: K, value: Settings[K]) => {
-      setSettings((prev) => (prev[key] === value ? prev : { ...prev, [key]: value }));
-      store.save(key, value);
-    },
-    [store],
-  );
+  const update = useCallback(<K extends keyof Settings>(key: K, value: Settings[K]) => {
+    setSettings((prev) => (prev[key] === value ? prev : { ...prev, [key]: value }));
+    saveSetting(key, value);
+  }, []);
 
   return [settings, update] as const;
 }

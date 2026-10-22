@@ -293,8 +293,8 @@ function placeAlignmentPatterns(grid: Grid, version: number): void {
   }
 }
 
-/** Reserve format-info (and version-info for v≥7) areas so data skips them. */
-function reserveInfoAreas(grid: Grid, size: number, version: number): void {
+/** Reserve the format-info areas and the dark module so data skips them. */
+function reserveFormatAreas(grid: Grid, size: number): void {
   for (let i = 0; i < 9; i++) {
     if (grid[8][i] === null) grid[8][i] = false;
     if (grid[i][8] === null) grid[i][8] = false;
@@ -303,15 +303,7 @@ function reserveInfoAreas(grid: Grid, size: number, version: number): void {
     if (grid[8][size - 1 - i] === null) grid[8][size - 1 - i] = false;
     if (grid[size - 1 - i][8] === null) grid[size - 1 - i][8] = false;
   }
-  grid[size - 8][8] = true; // dark module
-  if (version >= 7) {
-    for (let i = 0; i < 18; i++) {
-      const a = Math.floor(i / 3);
-      const b = (i % 3) + size - 11;
-      grid[a][b] = false;
-      grid[b][a] = false;
-    }
-  }
+  grid[size - 8][8] = true; // dark module, always
 }
 
 /** The eight mask predicates (true = invert the data module). */
@@ -384,16 +376,15 @@ function placeFormatInfo(grid: Grid, size: number, mask: number): void {
   const bits = formatBits(mask);
   for (let i = 0; i < 15; i++) {
     const dark = ((bits >> i) & 1) === 1;
-    // Copy around the top-left finder.
+    // First copy down column 8: beside the top-left finder, then the bottom-left.
     if (i < 6) grid[i][8] = dark;
     else if (i < 8) grid[i + 1][8] = dark;
     else grid[size - 15 + i][8] = dark;
-    // Second copy split across the top-right / bottom-left finders.
+    // Second copy along row 8: beside the top-right finder, then the top-left.
     if (i < 8) grid[8][size - 1 - i] = dark;
     else if (i < 9) grid[8][7] = dark;
     else grid[8][14 - i] = dark;
   }
-  grid[size - 8][8] = true; // dark module, always
 }
 
 function placeVersionInfo(grid: Grid, size: number, version: number): void {
@@ -486,7 +477,8 @@ export function encodeQR(text: string): QRMatrix {
   placeFinderPatterns(base, size);
   placeAlignmentPatterns(base, version);
   placeTimingPatterns(base, size);
-  reserveInfoAreas(base, size, version);
+  reserveFormatAreas(base, size);
+  // Before any data, so placement skips these modules (v≥7 only).
   placeVersionInfo(base, size, version);
 
   let best: QRMatrix | null = null;

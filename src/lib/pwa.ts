@@ -24,7 +24,6 @@ function waitUntilInstalled(worker: ServiceWorker): Promise<boolean> {
  * PWAs (notably iOS), so this also watches the worker's own `activated` state.
  */
 function reloadOnActivation(worker: ServiceWorker): void {
-  if (typeof window === "undefined") return;
   let reloaded = false;
   const reload = () => {
     if (reloaded) return;
@@ -48,19 +47,8 @@ export async function checkForUpdate(): Promise<UpdateResult> {
   const registration = await navigator.serviceWorker.getRegistration();
   if (!registration) return "unsupported";
 
-  let updateFound = false;
-  const onUpdateFound = () => {
-    updateFound = true;
-  };
-  registration.addEventListener("updatefound", onUpdateFound);
-  try {
-    await registration.update();
-  } finally {
-    registration.removeEventListener("updatefound", onUpdateFound);
-  }
-
+  await registration.update();
   const candidate = registration.installing || registration.waiting;
-  if (!updateFound && !candidate) return "uptodate";
   if (!candidate) return "uptodate";
 
   const installed = await waitUntilInstalled(candidate);

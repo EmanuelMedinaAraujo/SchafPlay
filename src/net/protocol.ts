@@ -1,10 +1,8 @@
-import { GameState, PlayerAction } from "../game/types";
-
 /**
  * Wire protocol between host and guest. Transport-agnostic: any Transport
  * implementation carries these framed messages.
  *
- * - Host → Guest: GAME_STATE_UPDATE `{ state: RedactedGameState }`
+ * - Host → Guest: GAME_STATE_UPDATE `{ state: GameState }` (redacted for the guest)
  * - Guest → Host: PLAYER_ACTION `{ action: PlayerAction }`
  * - Guest → Host on connect: CONNECTION_ACK `{ name, avatar }` (#14)
  * - Host → Guest: AVATAR_UPDATE `{ avatars }` — the seat→picture map, once per
@@ -25,10 +23,6 @@ export interface P2PMessage<T = unknown> {
   payload?: T;
   timestamp: number;
 }
-
-export type GameStateMessage = P2PMessage<{ state: GameState }>;
-export type PlayerActionMessage = P2PMessage<{ action: PlayerAction }>;
-export type AvatarUpdateMessage = P2PMessage<{ avatars: Record<string, string> }>;
 
 export function createMessage<T>(type: P2PMessageType, payload?: T): P2PMessage<T> {
   return {

@@ -20,19 +20,17 @@ export interface SDPBundle {
 
 // --- low-level deflate + base64url -----------------------------------------
 
+async function pipeBytes(bytes: Uint8Array, transform: CompressionStream | DecompressionStream): Promise<Uint8Array> {
+  const piped = new Blob([bytes as any]).stream().pipeThrough(transform);
+  return new Uint8Array(await new Response(piped).arrayBuffer());
+}
+
 async function deflateToBase64Url(bytes: Uint8Array): Promise<string> {
-  const cs = new CompressionStream("deflate");
-  const compressed = new Blob([bytes as any]).stream().pipeThrough(cs);
-  const buf = await new Response(compressed).arrayBuffer();
-  return bytesToBase64Url(new Uint8Array(buf));
+  return bytesToBase64Url(await pipeBytes(bytes, new CompressionStream("deflate")));
 }
 
 async function inflateFromBase64Url(b64url: string): Promise<Uint8Array> {
-  const raw = base64UrlToBytes(b64url);
-  const ds = new DecompressionStream("deflate");
-  const decompressed = new Blob([raw as any]).stream().pipeThrough(ds);
-  const buf = await new Response(decompressed).arrayBuffer();
-  return new Uint8Array(buf);
+  return pipeBytes(base64UrlToBytes(b64url), new DecompressionStream("deflate"));
 }
 
 function bytesToBase64Url(bytes: Uint8Array): string {
@@ -50,7 +48,7 @@ function base64UrlToBytes(b64url: string): Uint8Array {
 function hexToBytes(hex: string): Uint8Array {
   const clean = hex.replace(/[^0-9a-fA-F]/g, "");
   const out = new Uint8Array(clean.length / 2);
-  for (let i = 0; i < out.length; i++) out[i] = parseInt(clean.substr(i * 2, 2), 16);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
   return out;
 }
 
