@@ -31,7 +31,7 @@
 
 .slot-top {
   left: 50%;
-  top: 95px; /* Pushed down on desktop to prevent overlapping Zenzi's name */
+  top: 95px; /* Pushed down on desktop so it clears the top seat's name plate */
   transform: translateX(-50%) rotate(3deg);
 }
 
@@ -63,10 +63,7 @@
   transform: translateX(-50%);
 }
 
-.slot-left.collecting {
-  transform: translateY(-50%);
-}
-
+.slot-left.collecting,
 .slot-right.collecting {
   transform: translateY(-50%);
 }

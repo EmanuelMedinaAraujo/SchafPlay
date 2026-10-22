@@ -6,7 +6,9 @@
   z-index: 50;
   display: grid;
   place-items: center;
-  padding: 18px;
+  /* Clear the notch and home indicator too. */
+  padding: max(18px, env(safe-area-inset-top, 0px)) max(18px, env(safe-area-inset-right, 0px))
+    max(18px, env(safe-area-inset-bottom, 0px)) max(18px, env(safe-area-inset-left, 0px));
   background: rgba(0, 0, 0, 0.74);
 }
 
@@ -123,3 +125,58 @@ html.rotated .rules-modal-container {
   margin-top: 18px;
 }
 
+
+/* ---------- Last trick popup (reuses the rules modal frame) ---------- */
+
+.rules-modal-overlay.last-trick-overlay {
+  z-index: 70;
+}
+
+.rules-modal-container.last-trick-container {
+  width: min(400px, 92%);
+}
+
+.rules-modal-header.last-trick-header {
+  padding-bottom: 8px;
+}
+
+.last-trick-header h3 {
+  margin: 0;
+}
+
+.last-trick-cards {
+  padding: 16px 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  justify-items: center;
+}
+
+.last-trick-play {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.last-trick-name {
+  font-size: 12px;
+  font-weight: normal;
+  color: var(--text);
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 120px;
+}
+
+.last-trick-name.winner {
+  font-weight: bold;
+  color: var(--amber);
+}
+
+.last-trick-winner {
+  text-align: center;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  font-size: 14px;
+}

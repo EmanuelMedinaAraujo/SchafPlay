@@ -1,9 +1,6 @@
 /* ---------- Player hand ---------- */
 
 .player-hand-container {
-  border: none;
-  background: transparent;
-  box-shadow: none;
   margin-top: 12px;
   margin-bottom: 12px;
   padding: 0 16px 12px 16px;
@@ -28,7 +25,7 @@
    dark-blue name-plate design (.seat-name), so it reads as part of the seat. */
 .player-hand-stoss {
   cursor: pointer;
-  margin-top: 0 !important;
+  margin-top: 0;
   padding: 4px 12px;
   border-color: var(--red-2);
   transition: background 0.16s ease, transform 0.16s ease;
@@ -47,12 +44,12 @@
 .player-hand-stoss.announced {
   cursor: default;
   background: var(--amber);
-  color: #0f1e3d;
+  color: var(--navy);
   border-color: #fbbf24;
 }
 
 .player-hand-stoss.announced strong {
-  color: #0f1e3d;
+  color: var(--navy);
 }
 
 .player-hand-col-right {
@@ -77,7 +74,7 @@
   border-radius: 50%;
   overflow: hidden;
   border: 3px solid var(--line);
-  background: #0f1e3d;
+  background: var(--navy);
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
   transition: border-color 0.3s ease;
 }
@@ -106,24 +103,26 @@ html.compact .player-hand-me {
 }
 
 .player-hand-name {
-  margin-top: 0 !important;
+  margin-top: 0;
   white-space: nowrap;
 }
 
 .player-hand-name.active {
-  border-color: var(--red-2) !important;
+  border-color: var(--red-2);
   animation: avatar-pulse 1.5s ease-in-out infinite;
 }
 
+/* min-height keeps !important: the later pointer:coarse 44px touch-target
+   rule in responsive.css would otherwise win. */
 .last-trick-btn {
   min-height: 32px !important;
-  font-size: 11px !important;
-  padding: 0 12px !important;
-  border: 1px solid var(--red-2) !important;
-  border-radius: 999px !important;
-  background: var(--red) !important;
-  color: var(--text) !important;
-  font-weight: 800 !important;
+  font-size: 11px;
+  padding: 0 12px;
+  border: 1px solid var(--red-2);
+  border-radius: 999px;
+  background: var(--red);
+  color: var(--text);
+  font-weight: 800;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
   cursor: pointer;
   display: inline-flex;
@@ -133,12 +132,12 @@ html.compact .player-hand-me {
 }
 
 .last-trick-btn:hover:not(:disabled) {
-  background: var(--red-2) !important;
-  transform: scale(1.04) !important;
+  background: var(--red-2);
+  transform: scale(1.04);
 }
 
 .last-trick-btn:active:not(:disabled) {
-  transform: scale(0.98) !important;
+  transform: scale(0.98);
 }
 
 .dev-header-btn {
@@ -146,21 +145,21 @@ html.compact .player-hand-me {
   top: 50%;
   transform: translate(-50%, -50%);
   z-index: 10;
-  font-size: 11px !important;
-  min-height: 26px !important;
-  padding: 0 8px !important;
+  font-size: 11px;
+  min-height: 26px !important; /* beats the pointer:coarse 44px rule */
+  padding: 0 8px;
 }
 
 .dev-trick-btn {
   left: calc(50% - 150px);
-  border-color: rgba(245, 158, 11, 0.4) !important;
-  color: var(--amber) !important;
+  border-color: rgba(245, 158, 11, 0.4);
+  color: var(--amber);
 }
 
 .dev-round-btn {
   left: calc(50% + 150px);
-  border-color: rgba(239, 68, 68, 0.4) !important;
-  color: var(--red-2) !important;
+  border-color: rgba(239, 68, 68, 0.4);
+  color: var(--red-2);
 }
 
 /* Cards sit in a straight line and fill the box height. */
@@ -200,7 +199,7 @@ html.compact .player-hand-me {
 @media (hover: hover) {
   button.playing-card:not(:disabled):not(.dragging):hover {
     transform: translateY(-22px) scale(1.08);
-    z-index: 50 !important;
+    z-index: 50;
   }
 }
 
@@ -210,7 +209,7 @@ html.compact .player-hand-me {
 }
 
 .playing-card.grayed-out {
-  opacity: 0.25 !important;
+  opacity: 0.25;
   filter: grayscale(1);
 }
 

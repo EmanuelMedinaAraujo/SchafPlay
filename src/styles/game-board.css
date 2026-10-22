@@ -38,20 +38,23 @@
    is applied, so the 0% keyframe starts exactly on the felt. */
 .contract-chip.contract-chip-reveal {
   z-index: 40;
-  animation: contract-chip-reveal 1900ms cubic-bezier(0.22, 1, 0.36, 1);
+  --reveal-scale: 1.9;
+  animation: reveal-from-center 1900ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@keyframes contract-chip-reveal {
+/* Shared with the declarer badge (seats.css); each sets its own
+   --reveal-scale alongside --reveal-x/y. */
+@keyframes reveal-from-center {
   0% {
-    transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) scale(1.9);
+    transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) scale(var(--reveal-scale));
     opacity: 0;
   }
   6% {
-    transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) scale(1.9);
+    transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) scale(var(--reveal-scale));
     opacity: 1;
   }
   60% {
-    transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) scale(1.9);
+    transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) scale(var(--reveal-scale));
     opacity: 1;
   }
   100% {
@@ -61,7 +64,7 @@
 }
 
 .game-toolbar .icon-button {
-  background: #0f1e3d;
+  background: var(--navy);
   color: #ffffff;
   border-color: var(--line);
 }
