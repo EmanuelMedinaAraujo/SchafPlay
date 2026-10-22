@@ -38,7 +38,7 @@ export default function RoundCardsPopup({ players, tricks, contract, language, o
       onClick={(event) => event.target === event.currentTarget && onClose()}
     >
       <div className="round-cards-panel">
-        <button onClick={onClose} className="round-cards-close" type="button" aria-label={t.dealtCards}>
+        <button onClick={onClose} className="round-cards-close" type="button" aria-label={t.cancel}>
           <XIcon />
         </button>
         <div className="round-cards-rows">

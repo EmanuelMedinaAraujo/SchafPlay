@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { GuestSignaling, HostSignaling } from "../net/Signaling";
 import { Transport, TransportState } from "../net/Transport";
-import { createWebRTCPeer } from "../net/WebRTCPeer";
+import { WebRTCPeer } from "../net/WebRTCPeer";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
 import { CopyIcon, CheckIcon, LoaderIcon, LinkIcon, ShareIcon, QrCodeIcon, ScanIcon, XIcon, PasteIcon } from "./icons";
 import QRCodeView from "./QRCodeView";
-import QRScanner, { detectQrScanSupport } from "./QRScanner";
+import QRScanner, { canScanQr } from "./QRScanner";
 
 type Strings = (typeof translations)[Language];
 
@@ -141,7 +141,7 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState("");
   // QR scanning needs a camera; QR *display* is always available (#7).
-  const [scanSupported, setScanSupported] = useState(false);
+  const scanSupported = canScanQr();
   const [scanning, setScanning] = useState(false);
   const [showingQrModal, setShowingQrModal] = useState(false);
   const peerRef = useRef<(Transport & HostSignaling & GuestSignaling) | null>(null);
@@ -157,19 +157,8 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
     };
   }, []);
 
-  // Feature-detect QR scanning once; the scan buttons stay hidden otherwise.
-  useEffect(() => {
-    let alive = true;
-    detectQrScanSupport().then((ok) => {
-      if (alive) setScanSupported(ok);
-    });
-    return () => {
-      alive = false;
-    };
-  }, []);
-
   async function createHostInvite() {
-    const peer = createWebRTCPeer();
+    const peer = new WebRTCPeer();
     peerRef.current = peer;
     onPeerRef.current(peer);
     try {
@@ -236,7 +225,7 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
     if (!code) return;
     setBusy(true);
     setError("");
-    const peer = createWebRTCPeer();
+    const peer = new WebRTCPeer();
     peerRef.current = peer;
     onPeer(peer);
     try {

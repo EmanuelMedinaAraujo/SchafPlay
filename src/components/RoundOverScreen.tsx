@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { GameState, Language } from "../types";
+import { GameState, Language, PlayerAction, PlayerActionType } from "../types";
 import { gameLabel, translations } from "../lib/i18n";
 import { CheckIcon, TrophyIcon } from "./icons";
 import RoundCardsPopup from "./RoundCardsPopup";
@@ -8,24 +8,30 @@ interface RoundOverScreenProps {
   state: GameState;
   language: Language;
   myPlayerId: string;
-  onReady: () => void;
+  onAction: (action: PlayerAction) => void;
 }
 
-export default function RoundOverScreen({ state, language, myPlayerId, onReady }: RoundOverScreenProps) {
+/** Shared by the round and list summaries: who is ready, and the standings. */
+export function summaryInfo(state: GameState, myPlayerId: string) {
+  const otherId = myPlayerId === "p1" ? "p3" : "p1";
+  return {
+    otherName: state.players.find((player) => player.id === otherId)?.name ?? "",
+    iAmReady: Boolean(state.readyState[myPlayerId]),
+    otherReady: Boolean(state.readyState[otherId]),
+    sortedByScore: [...state.players].sort((a, b) => (state.scores[b.id] ?? 0) - (state.scores[a.id] ?? 0)),
+  };
+}
+
+export default function RoundOverScreen({ state, language, myPlayerId, onAction }: RoundOverScreenProps) {
   const result = state.lastResult;
   const t = translations[language];
   const [cardsOpen, setCardsOpen] = useState(false);
   if (!result) return null;
 
-  const otherId = myPlayerId === "p1" ? "p3" : "p1";
-  const otherName = state.players.find((player) => player.id === otherId)?.name ?? "";
-  const iAmReady = Boolean(state.readyState[myPlayerId]);
-  const otherReady = Boolean(state.readyState[otherId]);
+  const { otherName, iAmReady, otherReady, sortedByScore } = summaryInfo(state, myPlayerId);
   // The last round shows its summary first; readying up then reveals the list
   // summary rather than dealing a new round (#27).
   const isLastRound = state.roundNumber >= state.totalRounds;
-
-  const sortedByScore = [...state.players].sort((a, b) => (state.scores[b.id] ?? 0) - (state.scores[a.id] ?? 0));
 
   // Ramsch (#11) has no declaring side — the headline names the key player
   // (the loser who pays all, or a Durchmarsch winner who takes all) instead.
@@ -87,7 +93,12 @@ export default function RoundOverScreen({ state, language, myPlayerId, onReady }
             {otherName}: {otherReady ? `✓ ${t.isReady}` : `… ${t.notReady}`}
           </p>
         </div>
-        <button className="primary-button" onClick={onReady} disabled={iAmReady} type="button">
+        <button
+          className="primary-button"
+          onClick={() => onAction({ type: PlayerActionType.READY_NEXT, playerId: myPlayerId })}
+          disabled={iAmReady}
+          type="button"
+        >
           {iAmReady ? <CheckIcon size={18} /> : null}
           {iAmReady ? t.readyWaiting : isLastRound ? t.toFinalStandings : t.ready}
         </button>

@@ -7,7 +7,6 @@ import SettingsScreen from "./components/SettingsScreen";
 import StatsScreen from "./components/StatsScreen";
 import AnalysisScreen from "./components/AnalysisScreen";
 import { useGameSession } from "./session/useGameSession";
-import { PlayerActionType } from "./types";
 import { translations } from "./lib/i18n";
 import { useSettings } from "./lib/settings";
 import { BookOpenIcon, BotIcon, ChartColumnIcon, HistoryIcon, HomeIcon, PlugZapIcon, SettingsIcon, WifiIcon } from "./components/icons";
@@ -25,7 +24,7 @@ function readInviteFromHash(): string {
 export default function App() {
   // All persisted device preferences flow through one store (see lib/settings).
   const [settings, updateSetting] = useSettings();
-  const { language, playerName, avatar, totalRounds, disableLaufende, enableRamsch, enableStoss } = settings;
+  const { language, playerName, totalRounds } = settings;
   const [screen, setScreen] = useState<"home" | "game" | "stats" | "analysis" | "settings">("home");
   const [rulesOpen, setRulesOpen] = useState(false);
   // A running replay takes the whole viewport, chrome-free (#85).
@@ -35,15 +34,7 @@ export default function App() {
   // Captured once at startup, before the fragment is scrubbed below.
   const [initialInvite] = useState(readInviteFromHash);
 
-  const session = useGameSession({
-    getPlayerName: () => playerName,
-    getPlayerAvatar: () => avatar,
-    getTotalRounds: () => totalRounds,
-    getDisableLaufende: () => disableLaufende,
-    getEnableRamsch: () => enableRamsch,
-    getEnableStoss: () => enableStoss,
-    onEnterGame: () => setScreen("game"),
-  });
+  const session = useGameSession({ settings, onEnterGame: () => setScreen("game") });
   const { gameState, connectionState, role, myPlayerId } = session;
 
   // Strip the fragment so a reload doesn't re-trigger a stale invite.
@@ -90,10 +81,6 @@ export default function App() {
 
   const t = translations[language];
 
-  function handleReady() {
-    session.dispatch({ type: PlayerActionType.READY_NEXT, playerId: myPlayerId });
-  }
-
   function quitGame() {
     session.quit();
     setScreen("home");
@@ -109,35 +96,29 @@ export default function App() {
           in-game toolbar carries the contract, round and quit controls. */}
       {!inGame && !inReplay && (
       <header className="topbar">
-        <button className="brand" onClick={() => !inGame && setScreen("home")} type="button">
+        <button className="brand" onClick={() => setScreen("home")} type="button">
           <span className="brand-mark">S</span>
           <span>SchafPlay</span>
         </button>
         <div className="topbar-actions">
-          {!inGame && (
-            <>
-              <button className="icon-button" onClick={() => setScreen("home")} title={t.home} type="button">
-                <HomeIcon />
-              </button>
-              <button className="icon-button" onClick={() => setScreen("stats")} title={t.stats} type="button">
-                <ChartColumnIcon />
-              </button>
-              <button className="icon-button" onClick={() => setScreen("analysis")} title={t.analysis} type="button">
-                <HistoryIcon />
-              </button>
-              <button className="icon-button" onClick={() => setScreen("settings")} title={t.settings} type="button">
-                <SettingsIcon />
-              </button>
-            </>
-          )}
+          <button className="icon-button" onClick={() => setScreen("home")} title={t.home} type="button">
+            <HomeIcon />
+          </button>
+          <button className="icon-button" onClick={() => setScreen("stats")} title={t.stats} type="button">
+            <ChartColumnIcon />
+          </button>
+          <button className="icon-button" onClick={() => setScreen("analysis")} title={t.analysis} type="button">
+            <HistoryIcon />
+          </button>
+          <button className="icon-button" onClick={() => setScreen("settings")} title={t.settings} type="button">
+            <SettingsIcon />
+          </button>
           <button className="icon-button" onClick={() => setRulesOpen(true)} title={t.rules} type="button">
             <BookOpenIcon />
           </button>
           <span className={`connection-pill ${role === "solo" ? "solo" : connectionState}`}>
             {role === "solo" ? <BotIcon size={14} /> : connectionState === "connected" ? <WifiIcon /> : <PlugZapIcon />}
-            {role === "solo" && inGame
-              ? t.soloOffline
-              : connectionState === "connected"
+            {connectionState === "connected"
                 ? t.connected
                 : connectionState === "connecting"
                   ? t.connecting
@@ -149,24 +130,23 @@ export default function App() {
       </header>
       )}
 
-      {!inGame && screen === "stats" ? (
-        <StatsScreen language={language} />
-      ) : !inGame && screen === "analysis" ? (
-        <AnalysisScreen language={language} onReplayActiveChange={setReplayActive} />
-      ) : !inGame && screen === "settings" ? (
-        <SettingsScreen
+      {inGame ? (
+        <GameBoard
+          state={gameState}
           language={language}
-          onLanguageChange={(value) => updateSetting("language", value)}
-          avatar={avatar}
-          onAvatarChange={(value) => updateSetting("avatar", value)}
-          disableLaufende={disableLaufende}
-          onDisableLaufendeChange={(value) => updateSetting("disableLaufende", value)}
-          enableRamsch={enableRamsch}
-          onEnableRamschChange={(value) => updateSetting("enableRamsch", value)}
-          enableStoss={enableStoss}
-          onEnableStossChange={(value) => updateSetting("enableStoss", value)}
+          myPlayerId={myPlayerId}
+          onAction={session.dispatch}
+          onQuit={quitGame}
+          onDevSkip={role === "host" || role === "solo" ? session.devSkipTrick : undefined}
+          onDevSkipRound={role === "host" || role === "solo" ? session.devSkipRound : undefined}
         />
-      ) : !inGame ? (
+      ) : screen === "stats" ? (
+        <StatsScreen language={language} />
+      ) : screen === "analysis" ? (
+        <AnalysisScreen language={language} onReplayActiveChange={setReplayActive} />
+      ) : screen === "settings" ? (
+        <SettingsScreen settings={settings} onChange={updateSetting} />
+      ) : (
         <HomeScreen
           language={language}
           playerName={playerName}
@@ -178,17 +158,6 @@ export default function App() {
           onTotalRoundsChange={(value) => updateSetting("totalRounds", value)}
           onSoloStart={session.startSolo}
           initialInvite={initialInvite}
-        />
-      ) : (
-        <GameBoard
-          state={gameState}
-          language={language}
-          myPlayerId={myPlayerId}
-          onAction={session.dispatch}
-          onReady={handleReady}
-          onQuit={quitGame}
-          onDevSkip={role === "host" || role === "solo" ? session.devSkipTrick : undefined}
-          onDevSkipRound={role === "host" || role === "solo" ? session.devSkipRound : undefined}
         />
       )}
 

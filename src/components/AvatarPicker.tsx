@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
-import { AVATAR_PRESETS, isPresetValue, presetValue, resolveAvatarSrc } from "../lib/avatars";
+import { AVATAR_PRESETS, presetValue, resolveAvatarSrc } from "../lib/avatars";
 import { fileToAvatarDataUrl } from "../lib/image";
 import { CheckIcon, ImagePlusIcon } from "./icons";
 
@@ -45,7 +45,7 @@ export default function AvatarPicker({ value, onChange, language }: AvatarPicker
 
       <div className="avatar-picker-choices" role="radiogroup" aria-label={t.avatarChoose}>
         {AVATAR_PRESETS.map((preset) => {
-          const selected = isPresetValue(value) && value === presetValue(preset.id);
+          const selected = value === presetValue(preset.id);
           return (
             <button
               key={preset.id}

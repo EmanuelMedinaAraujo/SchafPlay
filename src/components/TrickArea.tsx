@@ -1,5 +1,6 @@
 import { CSSProperties, useLayoutEffect, useRef } from "react";
-import { Contract, Language, Player, Trick } from "../types";
+import { Contract, Player, Trick } from "../types";
+import { toPageDelta } from "../lib/rotation";
 import CardFace from "./CardFace";
 
 interface TrickAreaProps {
@@ -7,7 +8,6 @@ interface TrickAreaProps {
   players: Player[];
   contract: Contract | null;
   myIdx: number;
-  language: Language;
   collecting: boolean;
 }
 
@@ -45,22 +45,12 @@ export default function TrickArea({ trick, players, contract, myIdx, collecting 
     const targetX = targetRect ? targetRect.left + targetRect.width / 2 : feltX;
     const targetY = targetRect ? targetRect.top + targetRect.height / 2 : feltY;
 
-    // In forced-landscape mode the page is rotated 90°, so screen-space
-    // deltas must be mapped into the rotated local coordinate space.
-    const rotated = document.documentElement.classList.contains("rotated");
-
     felt.querySelectorAll<HTMLElement>(".trick-card").forEach((el) => {
       const rect = el.getBoundingClientRect();
       const cardX = rect.left + rect.width / 2;
       const cardY = rect.top + rect.height / 2;
-      let gatherX = feltX - cardX;
-      let gatherY = feltY - cardY;
-      let flyX = targetX - cardX;
-      let flyY = targetY - cardY;
-      if (rotated) {
-        [gatherX, gatherY] = [gatherY, -gatherX];
-        [flyX, flyY] = [flyY, -flyX];
-      }
+      const [gatherX, gatherY] = toPageDelta(feltX - cardX, feltY - cardY);
+      const [flyX, flyY] = toPageDelta(targetX - cardX, targetY - cardY);
       el.style.setProperty("--gather-x", `${gatherX}px`);
       el.style.setProperty("--gather-y", `${gatherY}px`);
       el.style.setProperty("--fly-x", `${flyX}px`);
