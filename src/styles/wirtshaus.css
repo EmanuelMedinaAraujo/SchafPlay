@@ -689,6 +689,21 @@ html[data-screen] .stat-tile {
   text-align: center;
 }
 
+/* Six mats stay in one row on small phones too (responsive.css would wrap
+   them into two rows of three, which pushes the slips off screen). */
+html.narrow[data-screen] .stat-tiles {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+
+html.narrow[data-screen] .stat-tile {
+  max-width: 96px;
+}
+
+html.narrow[data-screen] .stat-tile strong {
+  font-size: 20px;
+}
+
 html[data-screen] .stat-tile:nth-child(3n + 2) {
   --mat: #1d4f91;
 }
@@ -798,6 +813,17 @@ html[data-screen] .avatar-option {
 html[data-screen] .avatar-option.selected {
   border-color: #1d4f91;
   box-shadow: 0 0 0 2px rgba(29, 79, 145, 0.3);
+}
+
+/* The upload slot is a dashed circle on the slip, not a navy portrait. */
+html[data-screen] .avatar-option.avatar-upload {
+  border: 2px dashed #8a7a5a;
+  background: #fffaf0;
+  color: #6b5a3a;
+}
+
+html[data-screen] .avatar-option.avatar-upload.selected {
+  border-color: #1d4f91;
 }
 
 html[data-screen] .avatar-option-check {
