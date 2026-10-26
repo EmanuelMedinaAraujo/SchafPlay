@@ -1,0 +1,767 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>SchafPlay – Schafkopf intro (manual video source)</title>
+<!--
+  Deterministic animation: every motion is a paused Web Animation, and
+  window.renderAt(seconds) seeks all of them. render.mjs steps through the
+  timeline frame by frame. Open this page directly with ?lang=de|en to scrub:
+  renderAt(12.5) in the console.
+-->
+<style>
+@font-face { font-family: "Fraunces"; src: url("../../src/assets/fonts/fraunces-normal.woff2") format("woff2"); font-weight: 500 900; font-style: normal; }
+@font-face { font-family: "Fraunces"; src: url("../../src/assets/fonts/fraunces-italic.woff2") format("woff2"); font-weight: 500 900; font-style: italic; }
+@font-face { font-family: "Caveat"; src: url("../../src/assets/fonts/caveat-normal.woff2") format("woff2"); font-weight: 500 700; }
+
+:root {
+  --chalk: #f3f0e6;
+  --ink: #22305a;
+  --cream: #f4ead2;
+  --hand: "Caveat", cursive;
+  --serif: "Fraunces", Georgia, serif;
+}
+
+html, body { margin: 0; background: #2a1708; overflow: hidden; }
+
+#stage {
+  position: relative;
+  width: 960px;
+  height: 540px;
+  overflow: hidden;
+  background:
+    repeating-linear-gradient(91deg, transparent 0 22px, rgba(0, 0, 0, 0.1) 22px 24px, rgba(255, 220, 160, 0.03) 24px 41px),
+    repeating-linear-gradient(90deg, #5d3719 0 150px, #3a210c 150px 153px, #67401f 153px 300px, #3a210c 300px 303px),
+    #4a2a12;
+}
+
+/* The pub lamp, and a vignette that keeps the corners quiet. */
+#stage::before {
+  content: "";
+  position: absolute;
+  inset: -20% 5% -20% 5%;
+  background: radial-gradient(ellipse at 50% 42%, rgba(255, 196, 120, 0.34), transparent 62%);
+  pointer-events: none;
+}
+#stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(20, 8, 0, 0.5));
+  pointer-events: none;
+  z-index: 200;
+}
+
+.abs { position: absolute; left: 0; top: 0; }
+
+/* ---------- Cards ---------- */
+.card { position: absolute; left: 0; top: 0; width: 64px; height: 96px; margin: -48px 0 0 -32px; }
+.flipper { position: absolute; inset: 0; }
+.face { position: absolute; inset: 0; border-radius: 8px; box-shadow: 0 5px 10px rgba(0, 0, 0, 0.42); }
+.front { background: #fdfaf3; border: 1px solid #d4d4d8; box-sizing: border-box; overflow: hidden; }
+.front img { width: 100%; height: 100%; display: block; }
+.backf { background: #fdfaf3; border: 1px solid #d4d4d8; box-sizing: border-box; }
+.backf::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 5px;
+  background:
+    repeating-linear-gradient(45deg, rgba(244, 234, 210, 0.22) 0 1.5px, transparent 1.5px 7px),
+    repeating-linear-gradient(-45deg, rgba(244, 234, 210, 0.22) 0 1.5px, transparent 1.5px 7px),
+    #8c231c;
+  box-shadow: inset 0 0 0 1px rgba(244, 234, 210, 0.55);
+}
+.glow .front { box-shadow: 0 0 0 3px #f6d36b, 0 0 22px 4px rgba(246, 211, 107, 0.75); }
+
+/* ---------- Beer mats ---------- */
+.mat {
+  position: absolute; left: 0; top: 0;
+  border-radius: 50%;
+  border: 1px solid #d9c49a;
+  box-sizing: border-box;
+  background: radial-gradient(circle at 35% 30%, #fffaf0, #f1e4c7 70%, #e1cc9f);
+  box-shadow: 0 8px 14px rgba(0, 0, 0, 0.45);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: var(--mat); font-family: var(--serif); font-style: italic; font-weight: 900; line-height: 1;
+}
+.mat::before, .mat::after { content: ""; position: absolute; border-radius: 50%; border: 3px solid var(--mat); }
+.mat::before { inset: 7%; }
+.mat::after { inset: 14%; border-width: 1.5px; }
+.mat .star { font-style: normal; font-size: 0.22em; letter-spacing: 0.12em; font-weight: 700; margin-bottom: 0.25em; }
+
+/* ---------- Paper slip ---------- */
+.paper {
+  position: absolute; left: 0; top: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 18px;
+  background:
+    linear-gradient(90deg, transparent 12px, rgba(200, 40, 40, 0.4) 12px 14px, transparent 14px),
+    #fbf6e9;
+  color: #1d3f7a;
+  font-family: var(--hand); font-weight: 700; white-space: nowrap;
+  border-radius: 3px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5), 0 2px 0 rgba(0, 0, 0, 0.12);
+}
+.paper.gold { background: #f6d36b; color: #4a2c0a; }
+.paper.red { color: #b3261e; }
+
+/* ---------- Enamel sign ---------- */
+.sign {
+  position: absolute; left: 0; top: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 16px 50%, #d8c99c 0 3.5px, transparent 4.5px),
+    radial-gradient(circle at calc(100% - 16px) 50%, #d8c99c 0 3.5px, transparent 4.5px),
+    linear-gradient(#2a5193, #1a3463);
+  color: var(--cream);
+  font-family: var(--serif); font-weight: 800; white-space: nowrap;
+  outline: 3px solid var(--cream); outline-offset: -9px;
+  box-shadow: 0 8px 0 #0f2242, 0 14px 22px rgba(0, 0, 0, 0.45);
+}
+
+/* ---------- Brand mark ---------- */
+.mark {
+  position: absolute; left: 0; top: 0;
+  border-radius: 50%;
+  background: #b3261e;
+  box-shadow: 0 0 0 3px #f4ead2, 0 0 0 5px #b3261e, 0 10px 18px rgba(0, 0, 0, 0.45);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-family: var(--serif); font-style: italic; font-weight: 800;
+}
+
+/* ---------- Chalk slate ---------- */
+.slate, .board {
+  position: absolute;
+  box-sizing: border-box;
+  border: 9px solid #7a4b24;
+  border-radius: 10px;
+  background:
+    radial-gradient(ellipse at 25% 30%, rgba(255, 255, 255, 0.06), transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(255, 255, 255, 0.04), transparent 45%),
+    radial-gradient(ellipse at 30% 20%, #3b423d, #252a27 75%);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45), inset 0 0 28px rgba(0, 0, 0, 0.5), 0 0 0 1px #4a2c12, 0 12px 24px rgba(0, 0, 0, 0.5);
+}
+.slate { left: 40px; top: 412px; width: 880px; height: 116px; }
+.board { left: 60px; top: 20px; width: 840px; height: 380px; }
+
+.cap {
+  position: absolute; inset: 0; padding: 0 30px;
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  font-family: var(--hand); font-weight: 700; font-size: 47px; line-height: 1.02;
+  color: var(--chalk);
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.65);
+  text-wrap: balance;
+  filter: url(#rough);
+}
+.cap .inner { display: block; }
+.w { display: inline-block; }
+.cap b { color: #f6d36b; font-weight: 700; }
+
+.chalk { font-family: var(--hand); font-weight: 700; color: var(--chalk); text-shadow: 0 0 1px rgba(255, 255, 255, 0.65); white-space: nowrap; filter: url(#rough); }
+.chalk.y { color: #f6d36b; }
+.chalk.r { color: #f08a80; }
+.chalk.b { color: #8db8f0; }
+.tx { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.tx > span { position: absolute; left: 0; top: 0; }
+
+.label { font-family: var(--hand); font-weight: 700; color: var(--cream); text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8); white-space: nowrap; }
+
+.avatar { position: absolute; left: 0; top: 0; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 3px #f4ead2, 0 6px 10px rgba(0, 0, 0, 0.5); }
+.avatar img { width: 100%; height: 100%; display: block; object-fit: cover; }
+
+svg.layer { position: absolute; left: 0; top: 0; width: 960px; height: 540px; overflow: visible; pointer-events: none; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <filter id="rough" x="-5%" y="-10%" width="110%" height="120%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="7" result="n" />
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="2.2" xChannelSelector="R" yChannelSelector="G" />
+  </filter>
+</svg>
+<div id="stage"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   Texts
+   ============================================================ */
+const LANG = new URLSearchParams(location.search).get("lang") === "en" ? "en" : "de";
+const TX = {
+  de: {
+    title: "Schafkopf", sub: "kurz erklärt",
+    suits: ["Eichel", "Gras", "Herz", "Schellen"],
+    you: "Du",
+    c1: "32 Karten, 4 Farben, 4 Spieler.",
+    c2: "Ein Spieler ruft eine <b>Sau</b> (ein Ass). Wer sie hat, ist sein geheimer Partner.",
+    sau: "Eichel-Sau", teams: "2 gegen 2",
+    c3: "Trümpfe: alle <b>Ober</b>, alle <b>Unter</b>, dann die <b>Herz</b>-Karten.",
+    ober: "Ober", unter: "Unter", herz: "Herz", highest: "höchster Trumpf", lowest: "niedrigster", count: "14 Trümpfe",
+    c4: "Wer kann, muss die gespielte Farbe <b>bedienen</b>.",
+    led: "Gras", trump: "Trumpf!", plus: "+10 Augen",
+    c5: "Trumpf sticht Farbe – die höchste Karte nimmt den <b>Stich</b>.",
+    c6: "<b>Augen</b> zählen: Ass&nbsp;11, Zehn&nbsp;10, König&nbsp;4, Ober&nbsp;3, Unter&nbsp;2.",
+    zero: "7 · 8 · 9 = 0",
+    c7: "Das Spielerteam braucht <b>61</b> der 120 Augen.",
+    total: "120 Augen", team: "Spielerteam", opp: "Gegner", won: "Gewonnen!",
+    outro: "Viel Spaß!",
+  },
+  en: {
+    title: "Schafkopf", sub: "in a nutshell",
+    suits: ["Acorns", "Leaves", "Hearts", "Bells"],
+    you: "You",
+    c1: "32 cards, 4 suits, 4 players.",
+    c2: "One player calls a <b>Sau</b> (an Ace). Whoever holds it is their secret partner.",
+    sau: "Ace of Acorns", teams: "2 vs 2",
+    c3: "Trumps: all <b>Obers</b>, all <b>Unters</b>, then the <b>Hearts</b>.",
+    ober: "Ober", unter: "Unter", herz: "Hearts", highest: "highest trump", lowest: "lowest", count: "14 trumps",
+    c4: "You must <b>follow suit</b> if you can.",
+    led: "Leaves", trump: "Trump!", plus: "+10 points",
+    c5: "Trump beats a plain suit – the highest card takes the <b>trick</b>.",
+    c6: "Points (<b>Augen</b>): Ace&nbsp;11, Ten&nbsp;10, King&nbsp;4, Ober&nbsp;3, Unter&nbsp;2.",
+    zero: "7 · 8 · 9 = 0",
+    c7: "The playing team needs <b>61</b> of the 120 points.",
+    total: "120 points", team: "Playing team", opp: "Opponents", won: "Won!",
+    outro: "Have fun!",
+  },
+}[LANG];
+
+/* ============================================================
+   Tiny deterministic animation toolkit (paused Web Animations)
+   ============================================================ */
+const stage = document.getElementById("stage");
+const anims = [];
+const tickers = [];
+const EASE = {
+  out: "cubic-bezier(.2,.75,.25,1)",
+  inout: "cubic-bezier(.5,0,.25,1)",
+  back: "cubic-bezier(.3,1.4,.5,1)",
+  lin: "linear",
+};
+const DEF = { x: 0, y: 0, r: 0, s: 1, o: 1 };
+const tf = (a) => `translate(${a.x}px,${a.y}px) rotate(${a.r}deg) scale(${a.s})`;
+
+function place(e, st) {
+  e._s = { ...DEF, ...st };
+  e.style.transform = tf(e._s);
+  e.style.opacity = e._s.o;
+  return e;
+}
+function move(e, t, dur, to, ease = EASE.out) {
+  const a = e._s;
+  const b = { ...a, ...to };
+  const an = e.animate(
+    [{ transform: tf(a), opacity: a.o }, { transform: tf(b), opacity: b.o }],
+    { delay: t * 1000, duration: Math.max(dur, 0.001) * 1000, easing: ease, fill: "forwards" },
+  );
+  an.pause();
+  anims.push(an);
+  e._s = b;
+  return e;
+}
+function raw(e, t, dur, keyframes, ease = EASE.out) {
+  const an = e.animate(keyframes, { delay: t * 1000, duration: Math.max(dur, 0.001) * 1000, easing: ease, fill: "forwards" });
+  an.pause();
+  anims.push(an);
+}
+const show = (e, t, d = 0.4) => move(e, t, d, { o: 1 }, EASE.lin);
+const hide = (e, t, d = 0.35) => move(e, t, d, { o: 0 }, EASE.lin);
+/** Pop in with a little overshoot. */
+function pop(e, t, to = {}, d = 0.5) {
+  const fin = { ...e._s, ...to };
+  place(e, { ...fin, o: 0, s: fin.s * 0.6 });
+  return move(e, t, d, { ...to, o: 1, s: fin.s }, EASE.back);
+}
+function zAt(e, t, z) { raw(e, t, 0.001, [{ zIndex: String(Math.round(z)) }], EASE.lin); }
+function wipe(e, t, dur) {
+  e.style.clipPath = "inset(-12px 100% -12px -12px)";
+  raw(e, t, dur, [{ clipPath: "inset(-12px 100% -12px -12px)" }, { clipPath: "inset(-12px -12px -12px -12px)" }], EASE.lin);
+}
+function tick(fn) { tickers.push(fn); }
+/** Value ramp for counters and bars. */
+function ramp(t0, t1, from, to) {
+  return (t) => from + (to - from) * Math.min(1, Math.max(0, (t - t0) / (t1 - t0))) ** 0.9;
+}
+
+/* ---------- element builders ---------- */
+function div(cls, parent = stage) { const d = document.createElement("div"); d.className = cls; parent.appendChild(d); return d; }
+/** Sized element, positioned by its centre. */
+function box(cls, w, h, parent = stage) {
+  const d = div(cls, parent);
+  d.style.width = w + "px"; d.style.height = h + "px";
+  d.style.margin = `${-h / 2}px 0 0 ${-w / 2}px`;
+  return d;
+}
+/** Text centred on (x,y). Returns the outer (animated) element. */
+function text(html, cls, x, y, size, parent = stage, extra = {}) {
+  const o = div("tx", parent);
+  const s = document.createElement("span");
+  s.className = cls; s.style.fontSize = size + "px"; s.innerHTML = html;
+  s.style.transform = "translate(-50%,-50%)"; s.style.lineHeight = "1";
+  o.appendChild(s);
+  place(o, { x, y, ...extra });
+  o.inner = s;
+  return o;
+}
+function card(id, st, parent = stage) {
+  const c = div("card", parent);
+  const fl = div("flipper", c);
+  const fr = div("face front", fl);
+  const im = document.createElement("img"); im.src = `../../public/bavarian-cards/${id}.svg`; fr.appendChild(im);
+  const bk = div("face backf", fl);
+  c._front = fr; c._back = bk; c._flip = fl; c.cid = id;
+  fr.style.opacity = 0;
+  place(c, st);
+  return c;
+}
+function faceUp(c) { c._front.style.opacity = 1; c._back.style.opacity = 0; }
+/** Flip a card over (back -> face, or the reverse) with a squash. */
+function flip(c, t, dur = 0.5, toFace = true) {
+  raw(c._flip, t, dur, [{ transform: "scaleX(1)" }, { transform: "scaleX(0.02)", offset: 0.5 }, { transform: "scaleX(1)" }], EASE.inout);
+  const [on, off] = toFace ? [c._front, c._back] : [c._back, c._front];
+  raw(on, t, dur, [{ opacity: 0 }, { opacity: 0, offset: 0.5 }, { opacity: 1, offset: 0.5 }, { opacity: 1 }], EASE.lin);
+  raw(off, t, dur, [{ opacity: 1 }, { opacity: 1, offset: 0.5 }, { opacity: 0, offset: 0.5 }, { opacity: 0 }], EASE.lin);
+}
+const MATC = { acorns: "#8a5a14", leaves: "#2e6b34", hearts: "#b3261e", bells: "#1d4f91" };
+function mat(d, color, html, st, parent = stage) {
+  const m = box("mat", d, d, parent);
+  m.style.setProperty("--mat", color);
+  m.style.fontSize = d * 0.26 + "px";
+  m.innerHTML = html;
+  place(m, st);
+  return m;
+}
+function paper(html, h, size, st, cls = "") {
+  const p = div("paper " + cls);
+  p.style.height = h + "px"; p.style.fontSize = size + "px";
+  p.innerHTML = `<span>${html}</span>`;
+  // size to content, then centre on the anchor
+  const w = Math.ceil(p.getBoundingClientRect().width);
+  p.style.margin = `${-h / 2}px 0 0 ${-w / 2}px`;
+  place(p, st);
+  return p;
+}
+function sign(html, w, h, size, st) {
+  const s = box("sign", w, h);
+  s.style.fontSize = size + "px"; s.innerHTML = html;
+  place(s, st);
+  return s;
+}
+function svgLayer(markup) {
+  const wrap = document.createElement("div");
+  wrap.innerHTML = `<svg class="layer" viewBox="0 0 960 540">${markup}</svg>`;
+  const s = wrap.firstChild; stage.appendChild(s); place(s, {}); return s;
+}
+/** Draw a path with the stroke-dashoffset trick. */
+function draw(path, t, dur) {
+  path.setAttribute("pathLength", 1);
+  path.style.strokeDasharray = "1"; path.style.strokeDashoffset = "1";
+  raw(path, t, dur, [{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], EASE.inout);
+}
+const fadeAll = (list, t, d) => list.forEach((e) => hide(e, t, d));
+
+/* ============================================================
+   Deck & seats
+   ============================================================ */
+const SUITS = ["acorns", "leaves", "hearts", "bells"];
+const RANKS = ["7", "8", "9", "10", "u", "o", "k", "a"];
+const YOU = ["acorns-o", "hearts-u", "hearts-k", "hearts-9", "acorns-9", "leaves-8", "bells-k", "bells-7"];
+const used = new Set([...YOU, "acorns-a", "leaves-10", "leaves-9", "hearts-7"]);
+const rest = SUITS.flatMap((s) => RANKS.map((r) => `${s}-${r}`)).filter((id) => !used.has(id));
+const HANDS = {
+  you: YOU,
+  top: ["bells-a", "hearts-8", "bells-8", "acorns-a", "leaves-10", "leaves-k", "acorns-10", "acorns-7"],
+  right: ["leaves-o", "leaves-9", ...rest.splice(0, 6)],
+  left: ["leaves-u", "hearts-7", ...rest.splice(0, 6)],
+};
+// de-duplicate: top list above was hand-picked, make sure nothing repeats
+{
+  const seen = new Set(HANDS.you);
+  const fix = (seat) => HANDS[seat] = HANDS[seat].map((id) => {
+    if (!seen.has(id)) { seen.add(id); return id; }
+    return null;
+  });
+  ["top", "right", "left"].forEach(fix);
+  const all = new Set(SUITS.flatMap((s) => RANKS.map((r) => `${s}-${r}`)));
+  seen.forEach((id) => all.delete(id));
+  const spare = [...all];
+  ["top", "right", "left"].forEach((seat) => { HANDS[seat] = HANDS[seat].map((id) => id ?? spare.shift()); });
+}
+
+const FAN = {
+  you: (i) => { const d = i - 3.5; return { x: 480 + d * 44, y: 344 + d * d * 1.2, r: d * 4, s: 0.9 }; },
+  top: (i) => { const d = i - 3.5; return { x: 480 + d * 17, y: 58 - d * d * 0.5, r: -d * 3.5, s: 0.62 }; },
+  left: (i) => { const d = i - 3.5; return { x: 88 - d * d * 0.5, y: 202 + d * 17, r: 90 + d * 3.5, s: 0.62 }; },
+  right: (i) => { const d = i - 3.5; return { x: 872 + d * d * 0.5, y: 202 + d * 17, r: -90 - d * 3.5, s: 0.62 }; },
+};
+const TRICK = {
+  top: { x: 480, y: 130, r: -3, s: 1 },
+  right: { x: 540, y: 184, r: 5, s: 1 },
+  you: { x: 486, y: 232, r: 2, s: 1 },
+  left: { x: 424, y: 180, r: -6, s: 1 },
+};
+
+/* ---------- timeline anchors ---------- */
+const T = { A: 0, B: 2.8, C: 7.6, D: 14.9, E: 20.7, F: 31.4, G: 37.8, H: 43.3, END: 47.0 };
+
+/* ============================================================
+   Scene A — title card
+   ============================================================ */
+const sceneA = [];
+{
+  const m1 = mat(150, MATC.hearts, `<span class="star">★ Nº 1 ★</span>`, { x: 128, y: 150, r: -12 });
+  const m2 = mat(140, MATC.bells, `<span class="star">★ Nº 2 ★</span>`, { x: 840, y: 164, r: 9 });
+  const m3 = mat(110, MATC.leaves, `<span class="star">★ Nº 3 ★</span>`, { x: 82, y: 400, r: 14 });
+  const mk = box("mark", 70, 70); mk.style.fontSize = "52px"; mk.textContent = "S";
+  const wm = text("SchafPlay", "label", 0, 0, 52); wm.inner.style.fontFamily = "var(--serif)"; wm.inner.style.fontStyle = "italic"; wm.inner.style.fontWeight = "800"; wm.inner.style.color = "var(--cream)";
+  const sg = sign(TX.title.toUpperCase(), 640, 128, 74, { x: 480, y: 188 });
+  sg.style.letterSpacing = "0.14em";
+  const sl = paper(TX.sub, 66, 52, { x: 480, y: 292, r: -2 });
+  // The fan of four Obers and the Herz Ace, as in the app's hand.
+  const ids = ["acorns-o", "leaves-o", "hearts-o", "bells-o", "hearts-a"];
+  const fan = ids.map((id, i) => { const d = i - 2; const c = card(id, { x: 480 + d * 96, y: 500 - Math.abs(d) * -2 + d * d * 8, r: d * 11, s: 1.55 }); faceUp(c); return c; });
+  sceneA.push(m1, m2, m3, mk, wm, sg, sl, ...fan);
+
+  // Assemble
+  [m1, m2, m3].forEach((m, i) => { const f = { ...m._s }; place(m, { ...f, o: 0, y: f.y - 40, s: 1.15 }); move(m, 0.1 + i * 0.12, 0.6, { y: f.y, s: 1, o: 1 }, EASE.back); });
+  place(mk, { x: 330, y: 62, o: 0, s: 0.5 }); move(mk, 0.15, 0.6, { o: 1, s: 1 }, EASE.back);
+  place(wm, { x: 536, y: 62, o: 0 }); move(wm, 0.35, 0.5, { o: 1 });
+  { const f = { ...sg._s }; place(sg, { ...f, y: -80, o: 1 }); move(sg, 0.45, 0.8, { y: f.y }, EASE.back); }
+  { const f = { ...sl._s }; place(sl, { ...f, o: 0, y: f.y + 22 }); move(sl, 1.1, 0.5, { o: 1, y: f.y }, EASE.back); }
+  fan.forEach((c, i) => { const f = { ...c._s }; place(c, { ...f, y: 640, r: f.r + 20 }); move(c, 0.7 + i * 0.1, 0.8, { y: f.y, r: f.r }, EASE.back); });
+  fadeAll(sceneA, T.B - 0.35, 0.35);
+}
+
+/* ============================================================
+   Persistent table: seat tags, 32 cards, the caption slate
+   ============================================================ */
+const tags = {};
+{
+  const mkTag = (key, name, img, x, y) => {
+    const g = div("tx");
+    const av = div("avatar", g); const im = document.createElement("img"); im.src = `../../public/avatars/${img}.jpg`; av.appendChild(im);
+    const nm = document.createElement("span"); nm.className = "label"; nm.textContent = name; nm.style.cssText = "position:absolute;left:30px;top:0;font-size:30px;transform:translateY(-50%)";
+    g.appendChild(nm);
+    place(g, { x, y, o: 0 });
+    tags[key] = g;
+  };
+  mkTag("you", TX.you, "default", 70, 352);
+  mkTag("top", "Liesl", "liesl", 292, 58);
+  mkTag("left", "Sepp", "sepp", 44, 92);
+  mkTag("right", "Resi", "resi", 828, 92);
+}
+
+// Cards in deal order, so a seat's later cards overlap its earlier ones.
+const SEAT_ORDER = ["you", "left", "top", "right"];
+const cards = { you: [], left: [], top: [], right: [] };
+const allCards = [];
+for (let k = 0; k < 32; k++) {
+  const seat = SEAT_ORDER[k % 4], idx = Math.floor(k / 4);
+  const c = card(HANDS[seat][idx], { x: 480, y: 190 - k * 0.5, r: (k % 5) - 2, s: 0.9, o: 0 });
+  c.seat = seat; c.idx = idx;
+  cards[seat].push(c); allCards.push(c);
+}
+
+const slate = div("slate");
+place(slate, { y: 40, o: 0 });
+function caption(t0, t1, html) {
+  const cap = div("cap", slate);
+  const inner = div("inner", cap);
+  // Split into words (plain spaces only, so &nbsp; and punctuation stay glued)
+  // while keeping the <b> emphasis.
+  const tmp = document.createElement("div"); tmp.innerHTML = html;
+  const spans = [];
+  let runs = null;
+  const flush = () => {
+    if (!runs) return;
+    const w = document.createElement("span"); w.className = "w";
+    runs.forEach(([txt, bold]) => { const r = document.createElement("span"); r.textContent = txt; if (bold) r.style.color = "#f6d36b"; w.appendChild(r); });
+    inner.appendChild(w); inner.appendChild(document.createTextNode(" ")); spans.push(w); runs = null;
+  };
+  tmp.childNodes.forEach((n) => {
+    const bold = n.nodeType === 1;
+    for (const ch of n.textContent) {
+      if (ch === " ") { flush(); continue; }
+      if (!runs) runs = [];
+      const last = runs[runs.length - 1];
+      if (last && last[1] === bold) last[0] += ch; else runs.push([ch, bold]);
+    }
+  });
+  flush();
+  spans.forEach((s, i) => { place(s, { y: 10, o: 0 }); move(s, t0 + i * 0.05, 0.32, { y: 0, o: 1 }); move(s, t1 - 0.3, 0.3, { o: 0 }, EASE.lin); });
+}
+
+/* ============================================================
+   Scene B — deal, then the four suits
+   ============================================================ */
+{
+  move(slate, T.B + 0.1, 0.6, { y: 0, o: 1 }, EASE.back);
+  caption(T.B + 0.5, T.C - 0.05, TX.c1);
+
+  // The deck appears, then is dealt round the table.
+  allCards.forEach((c, k) => {
+    const t0 = T.B + 0.1;
+    move(c, t0, 0.25, { o: 1 }, EASE.lin);
+    const f = FAN[c.seat](c.idx);
+    const td = t0 + 0.4 + k * 0.045;
+    move(c, td, 0.55, { x: f.x, y: f.y, r: f.r, s: f.s }, EASE.out);
+  });
+  ["top", "left", "right", "you"].forEach((k, i) => show(tags[k], T.B + 2.05 + i * 0.1, 0.4));
+  // Your own hand turns face up.
+  cards.you.forEach((c, i) => flip(c, T.B + 1.95 + i * 0.07, 0.5));
+
+  // The four suits, each with its Ace on a beer mat.
+  const suitEls = [];
+  SUITS.forEach((s, i) => {
+    const x = 480 + (i - 1.5) * 150;
+    const c = card(`${s}-a`, { x, y: 150, s: 1.15 }); faceUp(c);
+    const m = mat(94, MATC[s], `<span>${TX.suits[i]}</span>`, { x, y: 258 }); m.style.fontSize = (TX.suits[i].length > 6 ? 17 : 21) + "px";
+    pop(c, T.B + 2.6 + i * 0.28, { y: 150 }, 0.5);
+    pop(m, T.B + 2.75 + i * 0.28, { y: 258 }, 0.5);
+    suitEls.push(c, m);
+  });
+  fadeAll(suitEls, T.C - 0.5, 0.4);
+}
+
+/* ============================================================
+   Scene C — the Sau call and the secret partner
+   ============================================================ */
+{
+  caption(T.C + 0.2, T.D - 0.05, TX.c2);
+
+  const ace = card("acorns-a", { x: 480, y: 150, s: 1.5 }); faceUp(ace);
+  const lab = paper(TX.sau, 54, 38, { x: 480, y: 262, r: -2 });
+  pop(ace, T.C + 0.5, { y: 150 }, 0.6);
+  pop(lab, T.C + 0.8, { y: 262 }, 0.5);
+  hide(ace, T.C + 2.5, 0.4); hide(lab, T.C + 2.5, 0.4);
+
+  const spots = { top: [602, 62], left: [186, 202], right: [776, 202] };
+  const qs = {};
+  Object.entries(spots).forEach(([k, [x, y]], i) => {
+    const m = mat(66, "#b3261e", "<span style='font-size:40px'>?</span>", { x, y }); m.style.fontSize = "40px";
+    pop(m, T.C + 2.9 + i * 0.18, {}, 0.5);
+    qs[k] = m;
+  });
+  hide(qs.left, T.C + 5.0, 0.4); hide(qs.right, T.C + 5.0, 0.4);
+  // The partner is revealed: Liesl holds the Ace.
+  const topAce = cards.top[3];
+  zAt(topAce, T.C + 4.5, 40);
+  move(topAce, T.C + 4.6, 0.7, { x: 480, y: 140, r: 0, s: 1.15 }, EASE.out);
+  flip(topAce, T.C + 4.6, 0.6);
+  hide(qs.top, T.C + 4.6, 0.3);
+  const rope = svgLayer(`<path d="M480 226 C462 256 498 274 480 298" fill="none" stroke="#f6d36b" stroke-width="7" stroke-linecap="round" />`);
+  const rp = rope.querySelector("path");
+  rope.style.opacity = 1;
+  draw(rp, T.C + 5.4, 0.6);
+  const sg = sign(TX.teams, 190, 66, 36, { x: 744, y: 258, r: 3 });
+  pop(sg, T.C + 5.9, { r: 3 }, 0.6);
+  // park the Ace back in Liesl's hand and clean up before the trumps
+  const outList = [topAce, rope, sg];
+  hide(topAce, T.D - 0.4, 0.35); hide(rope, T.D - 0.4, 0.35); hide(sg, T.D - 0.4, 0.35);
+  topAce._parked = true;
+}
+
+/* ============================================================
+   Scene D — the trump ladder
+   ============================================================ */
+{
+  caption(T.D + 0.2, T.E - 0.05, TX.c3);
+  const handish = [...allCards, ...Object.values(tags)];
+  // the Ace in Liesl's fan was already hidden; hide everything else too
+  handish.forEach((e) => { if (!e._parked) hide(e, T.D - 0.35, 0.35); });
+
+  const ids = ["acorns-o", "leaves-o", "hearts-o", "bells-o", "acorns-u", "leaves-u", "hearts-u", "bells-u", "hearts-a", "hearts-10", "hearts-k", "hearts-9", "hearts-8", "hearts-7"];
+  const xs = ids.map((_, i) => 480 + (i - 6.5) * 65);
+  const lad = ids.map((id, i) => {
+    const c = card(id, { x: xs[i], y: 190, s: 0.97 }); faceUp(c);
+    const f = { ...c._s };
+    place(c, { ...f, x: 480, y: -90, r: -15 + (i % 3) * 10, s: 1.2, o: 1 });
+    move(c, T.D + 0.35 + i * 0.17, 0.6, { x: f.x, y: f.y, r: 0, s: f.s }, EASE.out);
+    return c;
+  });
+  lad[0].classList.add("glow");
+  lad[0]._front.style.boxShadow = "";
+  const labs = [];
+  const group = (a, b, txt, t) => {
+    const x0 = xs[a] - 31, x1 = xs[b] + 31, xm = (x0 + x1) / 2;
+    const p = paper(txt, 52, 38, { x: xm, y: 296 });
+    const ln = svgLayer(`<path d="M${x0} 252 v10 H${x1} v-10" fill="none" stroke="#f4ead2" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />`);
+    draw(ln.querySelector("path"), t, 0.5);
+    pop(p, t + 0.15, { y: 296 }, 0.5);
+    labs.push(p, ln);
+  };
+  group(0, 3, TX.ober, T.D + 0.35 + 3 * 0.17 + 0.5);
+  group(4, 7, TX.unter, T.D + 0.35 + 7 * 0.17 + 0.5);
+  group(8, 13, TX.herz, T.D + 0.35 + 13 * 0.17 + 0.5);
+  const hi = paper(TX.highest, 46, 32, { x: xs[0] + 78, y: 100, r: -3 }, "gold");
+  const lo = paper(TX.lowest, 46, 32, { x: xs[13] - 40, y: 100, r: 3 });
+  pop(hi, T.D + 1.0, { r: -3 }, 0.5); pop(lo, T.D + 3.1, { r: 3 }, 0.5);
+  const cnt = paper(TX.count, 60, 44, { x: 480, y: 366, r: -1.5 });
+  pop(cnt, T.D + 4.1, { r: -1.5 }, 0.5);
+  labs.push(hi, lo, cnt);
+  fadeAll([...lad, ...labs], T.E - 0.4, 0.35);
+}
+
+/* ============================================================
+   Scene E — a trick: follow suit, trump, take the Augen
+   ============================================================ */
+{
+  const handish = [...allCards, ...Object.values(tags)];
+  handish.forEach((e) => { if (e._parked) { place(e, { ...e._s, o: 0 }); } });
+  // Hands come back (the Ace shown earlier goes back into Liesl's fan face down).
+  const aceTop = cards.top[3];
+  { const f = FAN.top(3); move(aceTop, T.E - 0.5, 0.01, { x: f.x, y: f.y, r: f.r, s: f.s, o: 0 }, EASE.lin); flip(aceTop, T.E - 0.45, 0.01, false); }
+  handish.forEach((e) => show(e, T.E - 0.1, 0.5));
+
+  caption(T.E + 0.4, T.E + 5.0, TX.c4);
+  caption(T.E + 5.0, T.F - 0.05, TX.c5);
+
+  const play = (c, spot, t, face = true) => {
+    zAt(c, t - 0.01, 60 + t);
+    move(c, t, 0.7, { ...TRICK[spot] }, EASE.out);
+    if (face) flip(c, t, 0.55);
+  };
+  const pick = (seat, id) => cards[seat].find((c) => c.cid === id);
+  const cTop = pick("top", "leaves-10");
+  const cRight = pick("right", "leaves-9");
+  const cYou = pick("you", "leaves-8");
+  const cLeft = pick("left", "hearts-7");
+  // Cards from the AI fans start as backs and flip on the way; yours is already face up.
+  play(cTop, "top", T.E + 0.6);
+  const tab = paper(TX.led, 50, 36, { x: 640, y: 106, r: 3 }, "red");
+  pop(tab, T.E + 1.3, { r: 3 }, 0.5);
+  play(cRight, "right", T.E + 1.9);
+  play(cYou, "you", T.E + 3.2, false);
+
+  const check = (x, y, t) => {
+    const b = box("mat", 30, 30);
+    b.style.setProperty("--mat", "#2e6b34"); b.style.background = "#2e6b34"; b.style.border = "2px solid #f4ead2"; b.style.color = "#fff"; b.style.fontSize = "19px"; b.style.fontStyle = "normal";
+    b.innerHTML = "✓"; b.style.setProperty("--x", 0);
+    b.style.cssText += ";";
+    place(b, { x, y }); pop(b, t, {}, 0.4);
+    return b;
+  };
+  const ck1 = check(TRICK.right.x + 36, TRICK.right.y - 50, T.E + 2.5);
+  const ck2 = check(TRICK.you.x + 36, TRICK.you.y + 52, T.E + 3.8);
+
+  // Sepp has no Leaves: he trumps.
+  play(cLeft, "left", T.E + 5.2);
+  cLeft.classList.add("glow");
+  cLeft._front.style.boxShadow = "none";
+  raw(cLeft._front, T.E + 5.8, 0.4, [{ boxShadow: "0 0 0 0 rgba(246,211,107,0), 0 5px 10px rgba(0,0,0,.42)" }, { boxShadow: "0 0 0 3px #f6d36b, 0 0 22px 4px rgba(246,211,107,.75)" }], EASE.out);
+  const tr = paper(TX.trump, 54, 40, { x: 330, y: 118, r: -5 }, "gold");
+  pop(tr, T.E + 6.0, { r: -5 }, 0.5);
+
+  // Sweep the trick to Sepp's pile, face down.
+  const swept = [cTop, cRight, cYou, cLeft];
+  [tab, ck1, ck2, tr].forEach((e) => hide(e, T.E + 7.2, 0.3));
+  swept.forEach((c, i) => {
+    move(c, T.E + 7.4 + i * 0.05, 0.8, { x: 180 + i * 1.5, y: 300 + i * -1.5, r: 90 + i * 6, s: 0.62 }, EASE.inout);
+    flip(c, T.E + 7.4 + i * 0.05, 0.8, false);
+  });
+  const pl = paper(TX.plus, 56, 40, { x: 262, y: 246, r: 2 }, "gold"); pl.style.zIndex = 300;
+  pop(pl, T.E + 8.4, { r: 2 }, 0.5);
+  // Everything leaves before the Augen board
+  const allEls = [...allCards, ...Object.values(tags), pl];
+  fadeAll(allEls, T.F - 0.4, 0.35);
+}
+
+/* ============================================================
+   Scene F — the Augen
+   ============================================================ */
+{
+  caption(T.F + 0.5, T.G - 0.05, TX.c6);
+  const board = div("board"); place(board, { y: -30, o: 0 });
+  move(board, T.F - 0.2, 0.7, { y: 0, o: 1 }, EASE.back);
+  const pts = [["acorns-a", 11], ["acorns-10", 10], ["acorns-k", 4], ["acorns-o", 3], ["acorns-u", 2]];
+  const items = [];
+  pts.forEach(([id, v], i) => {
+    const x = 480 + (i - 2) * 160;
+    const c = card(id, { x, y: 122, s: 1.4 }); faceUp(c);
+    pop(c, T.F + 0.6 + i * 0.7, { y: 122 }, 0.5);
+    const n = text(String(v), "chalk y", x, 246, 96);
+    place(n, { ...n._s, o: 1 }); wipe(n.inner, T.F + 1.0 + i * 0.7, 0.45);
+    items.push(c, n);
+  });
+  const z = text(TX.zero, "chalk", 480, 342, 54);
+  wipe(z.inner, T.F + 4.5, 0.8);
+  items.push(z);
+  fadeAll([board, ...items], T.G - 0.4, 0.35);
+}
+
+/* ============================================================
+   Scene G — 61 of 120
+   ============================================================ */
+{
+  caption(T.G + 0.5, T.H - 0.05, TX.c7);
+  const board = div("board"); place(board, { y: -30, o: 0 });
+  move(board, T.G - 0.2, 0.7, { y: 0, o: 1 }, EASE.back);
+  const head = text(TX.total, "chalk", 480, 76, 66);
+  wipe(head.inner, T.G + 0.4, 0.8);
+
+  const X0 = 140, W = 680, Y = 148;
+  const svg = svgLayer(`
+    <rect x="${X0 - 6}" y="${Y - 30}" width="${W + 12}" height="60" rx="8" fill="none" stroke="#f3f0e6" stroke-width="3" opacity=".85"/>
+    <rect id="barL" x="${X0}" y="${Y - 24}" width="0" height="48" fill="#f08a80" opacity=".92"/>
+    <rect id="barR" x="${X0 + W}" y="${Y - 24}" width="0" height="48" fill="#8db8f0" opacity=".92"/>`);
+  const barL = svg.querySelector("#barL"), barR = svg.querySelector("#barR");
+  place(svg, {}); svg.style.opacity = 0;
+  show(svg, T.G + 0.9, 0.3);
+  const rl = ramp(T.G + 1.3, T.G + 3.5, 0, 61), rr = ramp(T.G + 1.3, T.G + 3.5, 0, 59);
+  const nL = text("0", "chalk r", X0 + 175, 262, 100); const nR = text("0", "chalk b", X0 + W - 175, 262, 100);
+  const lL = text(TX.team, "chalk r", X0 + 175, 204, 44), lR = text(TX.opp, "chalk b", X0 + W - 175, 204, 44);
+  [nL, nR, lL, lR].forEach((e) => place(e, { ...e._s, o: 0 }));
+  show(lL, T.G + 1.1, 0.4); show(lR, T.G + 1.1, 0.4); show(nL, T.G + 1.3, 0.3); show(nR, T.G + 1.3, 0.3);
+  tick((t) => {
+    const l = rl(t), r = rr(t);
+    barL.setAttribute("width", (W * l / 120).toFixed(1));
+    barR.setAttribute("width", (W * r / 120).toFixed(1));
+    barR.setAttribute("x", (X0 + W - W * r / 120).toFixed(1));
+    nL.inner.textContent = Math.round(l); nR.inner.textContent = Math.round(r);
+  });
+  const st = sign(TX.won, 300, 64, 38, { x: 480, y: 346, r: -3 });
+  pop(st, T.G + 3.7, { r: -3 }, 0.6);
+  fadeAll([board, head, svg, nL, nR, lL, lR, st], T.H - 0.4, 0.35);
+}
+
+/* ============================================================
+   Scene H — outro
+   ============================================================ */
+{
+  fadeAll([slate], T.H - 0.4, 0.35);
+  const m1 = mat(150, MATC.hearts, "", { x: 130, y: 160, r: -12 });
+  const m2 = mat(140, MATC.bells, "", { x: 836, y: 176, r: 9 });
+  const m3 = mat(110, MATC.leaves, "", { x: 840, y: 410, r: -14 });
+  const m4 = mat(100, MATC.acorns, "", { x: 120, y: 410, r: 10 });
+  [m1, m2, m3, m4].forEach((m, i) => { const f = m._s; place(m, { ...f, o: 0, s: 0.6 }); move(m, T.H + 0.05 + i * 0.08, 0.6, { o: 1, s: 1 }, EASE.back); });
+  const mk = box("mark", 130, 130); mk.style.fontSize = "100px"; mk.textContent = "S";
+  const wm = text("SchafPlay", "label", 480, 240, 56); wm.inner.style.fontFamily = "var(--serif)"; wm.inner.style.fontStyle = "italic"; wm.inner.style.fontWeight = "800";
+  const sg = sign(TX.outro, 500, 120, 70, { x: 480, y: 340 });
+  sg.style.fontStyle = "italic";
+  place(mk, { x: 480, y: 120 });
+  pop(mk, T.H + 0.2, { y: 120 }, 0.7);
+  place(wm, { ...wm._s, o: 0 }); move(wm, T.H + 0.55, 0.5, { o: 1 });
+  { const f = { ...sg._s }; place(sg, { ...f, y: 620 }); move(sg, T.H + 0.5, 0.8, { y: f.y }, EASE.back); }
+}
+
+/* ============================================================
+   Public API
+   ============================================================ */
+window.DURATION = T.END;
+window.renderAt = (t) => {
+  const ms = t * 1000;
+  for (const a of anims) a.currentTime = ms;
+  for (const fn of tickers) fn(t);
+  void document.body.offsetHeight;
+};
+window.ready = (async () => {
+  await document.fonts.ready;
+  await Promise.all([...document.images].map((i) => (i.complete ? Promise.resolve() : i.decode().catch(() => {}))));
+  window.renderAt(0);
+  return true;
+})();
+</script>
+</body>
+</html>
