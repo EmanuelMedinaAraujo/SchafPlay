@@ -5,9 +5,6 @@
    layout is identical whether the phone is held in landscape or in portrait
    with the UI rotated — a plain media query would flip when the device
    rotates even though the effective width stays the same. */
-html.narrow .home-grid {
-  grid-template-columns: 1fr;
-}
 
 html.narrow .stat-tiles {
   grid-template-columns: repeat(3, 1fr);
@@ -19,10 +16,6 @@ html.narrow .stats-analysis {
 
 html.narrow .bid-status,
 html.narrow .score-grid {
-  grid-template-columns: 1fr 1fr;
-}
-
-html.narrow .rules-modal-grid {
   grid-template-columns: 1fr 1fr;
 }
 

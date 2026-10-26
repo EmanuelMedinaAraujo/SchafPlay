@@ -89,6 +89,12 @@ self.addEventListener('fetch', (event) => {
   // Anything else (cross-origin, non-GET) is left to the browser.
   if (!isSameOrigin || !isGet) return;
 
+  // The manual's intro videos stream with Range requests; a cached full
+  // response would answer those with the whole file, which iOS Safari refuses
+  // to play. Leave them to the browser; offline, the player fails to load
+  // and the manual drops it.
+  if (new URL(request.url).pathname.startsWith(BASE + 'manual/') && request.url.endsWith('.mp4')) return;
+
   event.respondWith(
     caches.match(request, { ignoreVary: true, ignoreSearch: true }).then((cached) => {
       if (cached) return cached;

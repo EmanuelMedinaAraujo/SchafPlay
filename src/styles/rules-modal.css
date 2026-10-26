@@ -1,4 +1,7 @@
-/* ---------- Rules modal ---------- */
+/* ---------- Rules modal ----------
+   The overlay, card, header and close button are shared with the in-game
+   LastTrickPopup, so the Wirtshaus look below is scoped to the manual's own
+   classes and never reaches the game. */
 
 .rules-modal-overlay {
   position: fixed;
@@ -28,85 +31,19 @@ html.rotated .rules-modal-container {
   max-height: calc(100dvw - 36px);
 }
 
-.rules-modal-header,
-.rules-modal-title-container {
+.rules-modal-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-}
-
-.rules-modal-header {
   justify-content: space-between;
+  gap: 10px;
   border-bottom: 1px solid var(--line);
   padding-bottom: 12px;
-}
-
-.rules-modal-title {
-  margin: 0;
-  font-size: 20px;
-}
-
-.rules-modal-icon-red,
-.rules-modal-section-title {
-  color: var(--red-2);
 }
 
 .rules-modal-close-btn {
   background: transparent;
   color: var(--text);
   cursor: pointer;
-}
-
-.rules-modal-content {
-  display: grid;
-  gap: 18px;
-  margin-top: 18px;
-}
-
-.rules-modal-section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 8px;
-}
-
-.rules-modal-paragraph,
-.rules-modal-caption,
-.rules-modal-contract-text,
-.rules-modal-list-item,
-.rules-modal-hierarchy-text {
-  color: #d4d4d8;
-  line-height: 1.55;
-}
-
-.rules-modal-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-
-.rules-modal-grid-item,
-.rules-modal-hierarchy-item {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel-2);
-  padding: 10px;
-}
-
-.rules-modal-grid-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.rules-modal-grid-item-label,
-.rules-modal-hierarchy-subtitle {
-  color: var(--muted);
-}
-
-.rules-modal-hierarchy-list {
-  display: grid;
-  gap: 10px;
 }
 
 .rules-modal-action-btn {
@@ -118,13 +55,6 @@ html.rotated .rules-modal-container {
   font-weight: 800;
   cursor: pointer;
 }
-
-.rules-modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 18px;
-}
-
 
 /* ---------- Last trick popup (reuses the rules modal frame) ---------- */
 
@@ -179,4 +109,970 @@ html.rotated .rules-modal-container {
   border-top: 1px solid var(--line);
   padding-top: 12px;
   font-size: 14px;
+}
+
+/* ---------- Wirtshaus: the pub's menu card ---------- */
+
+.manual-overlay {
+  background: rgba(30, 15, 5, 0.72);
+}
+
+.rules-modal-container.manual {
+  border: 1px solid #d9c49a;
+  border-radius: 4px;
+  background: radial-gradient(ellipse at 50% 0%, #fffdf6, #f6eedb 80%);
+  outline: 2px solid #b3261e;
+  outline-offset: -10px;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.55);
+}
+
+.manual .rules-modal-close-btn {
+  color: #4a3a20;
+}
+
+.manual .rules-modal-action-btn {
+  min-height: 48px;
+  padding: 0 22px;
+  border-radius: 12px;
+  background: linear-gradient(#2a5193, #1a3463);
+  color: var(--wh-cream);
+  font-family: var(--wh-serif);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  outline: 2px solid var(--wh-cream);
+  outline-offset: -6px;
+  box-shadow: 0 5px 0 #0f2242;
+}
+
+/* Ink on paper. */
+.rules-modal-container.manual {
+  --text: #22305a;
+  --muted: #6b5a3a;
+  --line: rgba(70, 60, 40, 0.2);
+  color: var(--text);
+  animation: wh-drop 0.6s cubic-bezier(0.3, 1.3, 0.5, 1);
+}
+
+/* ---------- The manual: chapter list on the left, one page on the right ----------
+   Sized to the effective landscape screen (as short as 375px), so only the
+   page scrolls and the chapter list stays in reach. */
+
+.manual {
+  --mc-w: 46px;
+  --manual-red: #b3261e;
+  --manual-navy: #1d3f7a;
+  --manual-brown: #6b5a3a;
+  --manual-rule: #c9b48a;
+  --manual-paper: #fffaf0;
+  display: grid;
+  grid-template-columns: 176px minmax(0, 1fr);
+  gap: 18px;
+  width: min(920px, 100%);
+  height: calc(100dvh - 36px);
+  max-height: none;
+  overflow: hidden;
+  padding: 22px 22px 14px;
+}
+
+html.rotated .manual {
+  height: calc(100dvw - 36px);
+}
+
+html.compact .manual-overlay {
+  padding-top: max(8px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+}
+
+html.compact .manual {
+  --mc-w: 40px;
+  grid-template-columns: 156px minmax(0, 1fr);
+  gap: 14px;
+  height: calc(100dvh - 16px);
+  padding: 17px 18px 12px;
+}
+
+html.compact.rotated .manual {
+  height: calc(100dvw - 16px);
+}
+
+/* Small phones: a slimmer chapter list leaves the page room for cards. */
+html.narrow .manual {
+  grid-template-columns: 136px minmax(0, 1fr);
+  gap: 12px;
+  padding-right: 14px;
+  padding-left: 14px;
+}
+
+html.narrow .manual-nav {
+  padding-right: 8px;
+}
+
+html.narrow .manual-tab {
+  gap: 6px;
+  padding: 0 7px;
+  font-size: 14px;
+}
+
+/* ----- Chapter list ----- */
+
+.manual-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  padding-right: 12px;
+  border-right: 1px dashed var(--manual-rule);
+}
+
+.manual-brand {
+  margin: 0;
+  color: var(--manual-red);
+  font-family: var(--wh-serif);
+  font-size: 23px;
+  font-style: italic;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.manual-brand span {
+  display: block;
+  color: var(--manual-navy);
+  font-family: var(--wh-hand);
+  font-size: 18px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* Short screens: the overline stays in the heading's accessible name only. */
+html.compact .manual-brand span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.manual-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.manual-tab {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--wh-ink);
+  font-family: var(--wh-serif);
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.manual-tab:hover {
+  background: rgba(29, 63, 122, 0.08);
+}
+
+.manual-tab[aria-selected="true"] {
+  background: var(--manual-navy);
+  color: var(--wh-cream);
+  box-shadow: 0 2px 0 #0f2242;
+}
+
+.manual-tab-number {
+  width: 14px;
+  flex: none;
+  color: var(--manual-red);
+  font-family: var(--wh-hand);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+
+.manual-tab[aria-selected="true"] .manual-tab-number {
+  color: #f1c76b;
+}
+
+.manual :focus-visible {
+  outline: 2px solid var(--manual-red);
+  outline-offset: 2px;
+}
+
+/* ----- The page ----- */
+
+.manual-page {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.manual-page-header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed var(--manual-rule);
+}
+
+.manual-page-header h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  color: var(--manual-navy);
+  font-family: var(--wh-serif);
+  font-size: 23px;
+  font-style: italic;
+  font-weight: 800;
+}
+
+.manual-page-number {
+  color: var(--manual-red);
+  font-family: var(--wh-hand);
+  font-size: 28px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.manual .rules-modal-close-btn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  margin-right: -6px;
+  border-radius: 50%;
+}
+
+.manual .rules-modal-close-btn:hover {
+  background: rgba(70, 60, 40, 0.1);
+}
+
+.manual-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px 8px 0 2px;
+  scrollbar-color: var(--manual-rule) transparent;
+  scrollbar-width: thin;
+}
+
+.manual-body:focus-visible {
+  outline-offset: -2px;
+}
+
+.manual-chapter {
+  color: #2b2b3a;
+  font-size: 15px;
+  line-height: 1.5;
+  animation: manual-page-in 0.28s ease-out;
+}
+
+html.compact .manual-chapter {
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.manual-chapter p {
+  margin: 0 0 10px;
+}
+
+.manual-chapter strong {
+  color: var(--wh-ink);
+  font-weight: 700;
+}
+
+.manual-chapter h4 {
+  margin: 14px 0 6px;
+  color: var(--manual-red);
+  font-family: var(--wh-serif);
+  font-size: 17px;
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.manual-chapter > h4:first-child {
+  margin-top: 0;
+}
+
+.manual-chapter ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.manual-chapter li {
+  margin: 4px 0;
+}
+
+.manual-chapter .manual-small {
+  color: var(--manual-brown);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.manual-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin: 16px 0 6px;
+}
+
+.manual-next {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1.5px solid var(--manual-navy);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--manual-navy);
+  font-family: var(--wh-serif);
+  font-size: 15px;
+  font-style: italic;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.manual-next:hover {
+  background: var(--manual-navy);
+  color: var(--wh-cream);
+}
+
+/* ----- Cards: the real art on a white card ----- */
+
+.manual-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  margin: 0;
+}
+
+.manual-card-face {
+  position: relative;
+  display: block;
+  width: var(--mc-w);
+  aspect-ratio: 2 / 3;
+  padding: 2px;
+  border: 1px solid #d6c7a6;
+  border-radius: calc(var(--mc-w) * 0.12);
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(60, 40, 10, 0.3);
+}
+
+.manual-card-face img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  -webkit-user-drag: none;
+}
+
+.manual-card figcaption {
+  color: var(--manual-brown);
+  font-family: var(--wh-hand);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.manual-card.is-highlight .manual-card-face {
+  box-shadow: 0 0 0 2.5px #e2b33c, 0 6px 10px rgba(0, 0, 0, 0.35);
+  transform: translateY(-4px);
+}
+
+.manual-card.is-dim .manual-card-face {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+
+.manual-card-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 3px;
+  border-radius: 9px;
+  background: var(--manual-navy);
+  color: var(--wh-cream);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.manual-card-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 7px;
+  margin: 4px 0 10px;
+}
+
+.manual-card-row.is-augen .manual-card figcaption {
+  color: var(--manual-red);
+  font-weight: 700;
+}
+
+.manual-card-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.manual-card-group .manual-card-row {
+  margin: 0;
+  gap: 5px;
+}
+
+.manual-card-group-label {
+  color: var(--manual-navy);
+  font-family: var(--wh-hand);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.manual-ladder {
+  --mc-w: 38px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 6px 0 6px;
+  padding-top: 4px;
+}
+
+html.compact .manual-ladder {
+  --mc-w: 35px;
+}
+
+/* ----- Chapter 1 ----- */
+
+.manual-hero {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.manual-hero-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.manual-video {
+  flex: 0 0 46%;
+  margin: 0;
+}
+
+.manual-video video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 3px solid #fff;
+  border-radius: 8px;
+  background: #1b120a;
+  box-shadow: 0 4px 10px rgba(60, 40, 10, 0.35);
+  object-fit: cover;
+}
+
+.manual-video figcaption {
+  margin-top: 4px;
+  color: var(--manual-brown);
+  font-family: var(--wh-hand);
+  font-size: 17px;
+  text-align: center;
+}
+
+.manual-chapter .manual-kicker {
+  margin-top: 0;
+}
+
+.manual-chapter .manual-lead {
+  margin: 0;
+  color: var(--wh-ink);
+  font-family: var(--wh-serif);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+html.compact .manual-chapter .manual-lead {
+  font-size: 15px;
+}
+
+/* Beer mats with the four numbers worth knowing. */
+.manual-facts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.manual-chapter .manual-facts li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 78px;
+  height: 78px;
+  margin: 0;
+  border: 2px solid #d8c393;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fffdf6 0 54%, #f4e7c6 55% 100%);
+  box-shadow: inset 0 0 0 5px #fffaf0, inset 0 0 0 6px rgba(179, 38, 30, 0.45), 0 2px 4px rgba(60, 40, 10, 0.2);
+  text-align: center;
+}
+
+.manual-facts li:nth-child(odd) {
+  transform: rotate(-4deg);
+}
+
+.manual-facts li:nth-child(even) {
+  transform: rotate(3deg);
+}
+
+.manual-facts strong {
+  color: var(--manual-red);
+  font-family: var(--wh-serif);
+  font-size: 25px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.manual-chapter .manual-facts strong {
+  color: var(--manual-red);
+}
+
+.manual-facts span {
+  max-width: 62px;
+  color: var(--wh-ink);
+  font-family: var(--wh-hand);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 0.95;
+}
+
+html.compact .manual-chapter .manual-facts li {
+  width: 70px;
+  height: 70px;
+}
+
+/* ----- Notes, steps, collapsibles ----- */
+
+.manual-note {
+  margin: 10px 0 12px;
+  padding: 8px 12px 9px;
+  border: 1px solid #e5d49a;
+  border-left: 4px solid #d1a83a;
+  border-radius: 4px 8px 8px 4px;
+  background: #fff6d2;
+  box-shadow: 0 1px 2px rgba(60, 40, 10, 0.12);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.manual-note.is-warn {
+  border-color: #ecc0b6;
+  border-left-color: var(--manual-red);
+  background: #fdebe5;
+}
+
+.manual-note-label {
+  display: block;
+  color: var(--manual-navy);
+  font-family: var(--wh-hand);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.manual-note.is-warn .manual-note-label {
+  color: var(--manual-red);
+}
+
+.manual-note-with-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  --mc-w: 38px;
+}
+
+.manual-chapter .manual-steps {
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+  counter-reset: manual-step;
+}
+
+.manual-chapter .manual-steps li {
+  position: relative;
+  margin: 0;
+  padding: 6px 0 7px 38px;
+  border-bottom: 1px solid rgba(29, 63, 122, 0.14);
+  counter-increment: manual-step;
+}
+
+.manual-steps li::before {
+  content: counter(manual-step);
+  position: absolute;
+  top: 6px;
+  left: 2px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1.5px solid var(--manual-red);
+  border-radius: 50%;
+  color: var(--manual-red);
+  font-family: var(--wh-hand);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.manual-steps strong {
+  display: block;
+  font-family: var(--wh-serif);
+  font-size: 16px;
+  font-style: italic;
+}
+
+.manual-more {
+  margin: 10px 0;
+  border: 1.5px solid #d9c49a;
+  border-radius: 10px;
+  background: var(--manual-paper);
+}
+
+.manual-more summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 12px;
+  color: var(--manual-navy);
+  font-family: var(--wh-serif);
+  font-size: 15px;
+  font-weight: 700;
+  list-style: none;
+  cursor: pointer;
+}
+
+.manual-more summary::-webkit-details-marker {
+  display: none;
+}
+
+.manual-more summary::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-right: 2px solid var(--manual-red);
+  border-bottom: 2px solid var(--manual-red);
+  transform: rotate(-45deg);
+  transition: transform 0.2s;
+}
+
+.manual-more[open] summary::before {
+  transform: rotate(45deg);
+}
+
+.manual-more-tag {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(29, 63, 122, 0.1);
+  color: var(--manual-navy);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.manual-more-body {
+  padding: 0 14px 10px;
+}
+
+.manual-more-body > p:last-child,
+.manual-more-body > ul:last-child {
+  margin-bottom: 0;
+}
+
+.manual-more .manual-card-row {
+  margin-left: 4px;
+}
+
+.manual-chapter .manual-subhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 10px;
+  margin-top: 18px;
+}
+
+.manual-subhead span {
+  color: var(--manual-brown);
+  font-family: var(--wh-hand);
+  font-size: 17px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* ----- Chapter 3: game switch ----- */
+
+.manual-segment {
+  display: inline-flex;
+  flex-wrap: wrap;
+  margin: 0 8px 8px 0;
+  border: 1.5px solid var(--manual-navy);
+  border-radius: 10px;
+  overflow: hidden;
+  vertical-align: top;
+}
+
+.manual-segment button {
+  min-height: 40px;
+  padding: 0 14px;
+  background: transparent;
+  color: var(--manual-navy);
+  font-family: var(--wh-serif);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.manual-segment button + button {
+  border-left: 1px solid rgba(29, 63, 122, 0.35);
+}
+
+.manual-segment button[aria-pressed="true"] {
+  background: var(--manual-navy);
+  color: var(--wh-cream);
+}
+
+.manual-segment.is-small button {
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+/* ----- Chapter 4: a trick on the felt ----- */
+
+.manual-trick {
+  margin: 8px 0 12px;
+}
+
+.manual-trick > .manual-card-row {
+  justify-content: center;
+  gap: 14px;
+  margin: 0 0 6px;
+  padding: 12px 12px 8px;
+  border: 3px solid #6b4423;
+  border-radius: 14px;
+  background: radial-gradient(ellipse at center, #2f6b3c, #1c4526);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.manual-trick > .manual-card-row .manual-card figcaption {
+  color: var(--wh-cream);
+}
+
+.manual-trick > .manual-card-row .is-highlight figcaption {
+  color: #f1c76b;
+  font-weight: 700;
+}
+
+.manual-trick > figcaption {
+  color: var(--manual-brown);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* ----- Chapter 5: one card per game ----- */
+
+.manual-games {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.manual-game {
+  display: flex;
+  flex-direction: column;
+  padding: 9px 12px 10px;
+  border: 1.5px solid #d9c49a;
+  border-radius: 10px;
+  background: var(--manual-paper);
+}
+
+.manual-game.is-extra {
+  border-style: dashed;
+}
+
+.manual-game header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.manual-chapter .manual-game h4 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.manual-game-teams {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--manual-navy);
+  color: var(--wh-cream);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.manual-game-cards {
+  --mc-w: 32px;
+  display: flex;
+  margin: 6px 0 6px 4px;
+}
+
+.manual-game-cards .manual-card + .manual-card {
+  margin-left: -11px;
+}
+
+.manual-game-cards .manual-card:nth-child(odd) .manual-card-face {
+  transform: rotate(-5deg);
+}
+
+.manual-game-cards .manual-card:nth-child(even) .manual-card-face {
+  transform: rotate(4deg);
+}
+
+.manual-chapter .manual-game p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+.manual-chapter .manual-game .manual-game-trumps {
+  margin-bottom: 3px;
+  color: var(--manual-navy);
+  font-weight: 600;
+}
+
+.manual-game-trumps span {
+  color: var(--manual-brown);
+  font-weight: 500;
+}
+
+/* ----- Chapter 6: the tariff ----- */
+
+.manual-table {
+  width: 100%;
+  margin: 2px 0 6px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.manual-table th,
+.manual-table td {
+  padding: 5px 8px;
+  border-bottom: 1px dashed var(--manual-rule);
+}
+
+.manual-table thead th {
+  color: var(--manual-brown);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.manual-table thead th:first-child,
+.manual-table tbody th {
+  text-align: left;
+}
+
+.manual-table tbody th {
+  font-weight: 600;
+}
+
+.manual-table td {
+  color: var(--manual-red);
+  font-family: var(--wh-serif);
+  font-size: 16px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/* ----- Chapter 7: glossary ----- */
+
+/* Row-wise, not CSS columns: columns would run the left one down the
+   whole scroll height before the right one starts. */
+.manual-glossary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px 22px;
+  margin: 0;
+}
+
+.manual-glossary dt {
+  color: var(--manual-red);
+  font-family: var(--wh-serif);
+  font-size: 15px;
+  font-style: italic;
+  font-weight: 800;
+}
+
+.manual-glossary dd {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+@keyframes manual-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rules-modal-container.manual,
+  .manual-chapter {
+    animation: none;
+  }
+
+  .manual-tab,
+  .manual-next,
+  .manual-more summary::before {
+    transition: none;
+  }
 }

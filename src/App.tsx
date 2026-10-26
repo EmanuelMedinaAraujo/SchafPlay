@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import GameBoard from "./components/GameBoard";
 import HomeScreen from "./components/HomeScreen";
 import PairingPanel from "./components/PairingPanel";
@@ -6,6 +6,7 @@ import RulesModal from "./components/RulesModal";
 import SettingsScreen from "./components/SettingsScreen";
 import StatsScreen from "./components/StatsScreen";
 import AnalysisScreen from "./components/AnalysisScreen";
+import { OVERLAY_ROOT_ID } from "./components/OverlayPortal";
 import { useGameSession } from "./session/useGameSession";
 import { translations } from "./lib/i18n";
 import { useSettings } from "./lib/settings";
@@ -87,11 +88,28 @@ export default function App() {
   }
 
   const inGame = screen === "game" && gameState;
+  // The Wirtshaus look (styles/wirtshaus.css) dresses every screen except the
+  // game and the replay; html[data-screen] is its switch. A layout effect, so
+  // the switch lands before the first frame of the new screen is painted.
+  const pubScreen = inGame || inReplay ? null : screen;
+
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    if (pubScreen) root.dataset.screen = pubScreen;
+    else delete root.dataset.screen;
+  }, [pubScreen]);
+
   // Stays up through "connecting" — it only closes once the peer is back.
   const needsReconnect = Boolean(inGame && role !== "solo" && connectionState !== "connected");
 
   return (
     <div className="app-shell">
+      {pubScreen && (
+        <div className="pub-backdrop" aria-hidden="true">
+          <span className="pub-lamp" />
+        </div>
+      )}
+
       {/* The header is hidden in-game to free up vertical space (#26); the
           in-game toolbar carries the contract, round and quit controls. */}
       {!inGame && !inReplay && (
@@ -181,6 +199,9 @@ export default function App() {
       )}
 
       <RulesModal isOpen={rulesOpen} onClose={() => setRulesOpen(false)} language={language} />
+
+      {/* Fixed overlays portal here (see OverlayPortal); last, so they stack on top. */}
+      <div id={OVERLAY_ROOT_ID} />
     </div>
   );
 }

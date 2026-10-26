@@ -23,3 +23,6 @@
 @import "./rules-modal.css";
 @import "./round-cards-popup.css";
 @import "./responsive.css";
+/* Last: the Wirtshaus look restyles every screen outside the game and must
+   win ties over the shared rules above. */
+@import "./wirtshaus.css";

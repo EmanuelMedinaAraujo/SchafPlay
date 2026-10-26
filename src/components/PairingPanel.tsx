@@ -7,6 +7,7 @@ import { translations } from "../lib/i18n";
 import { CopyIcon, CheckIcon, LoaderIcon, LinkIcon, ShareIcon, QrCodeIcon, ScanIcon, XIcon, PasteIcon } from "./icons";
 import QRCodeView from "./QRCodeView";
 import QRScanner, { canScanQr } from "./QRScanner";
+import OverlayPortal from "./OverlayPortal";
 
 type Strings = (typeof translations)[Language];
 
@@ -302,17 +303,23 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
         {error && <p className="error-text">{error}</p>}
 
         {scanning && (
-          <QRScanner
-            language={language}
-            onResult={(code) => {
-              setScanning(false);
-              hostAcceptReply(code);
-            }}
-            onClose={() => setScanning(false)}
-          />
+          <OverlayPortal>
+            <QRScanner
+              language={language}
+              onResult={(code) => {
+                setScanning(false);
+                hostAcceptReply(code);
+              }}
+              onClose={() => setScanning(false)}
+            />
+          </OverlayPortal>
         )}
 
-        {showingQrModal && <QrPopup data={inviteCode} label={t.inviteCode} t={t} onClose={() => setShowingQrModal(false)} />}
+        {showingQrModal && (
+          <OverlayPortal>
+            <QrPopup data={inviteCode} label={t.inviteCode} t={t} onClose={() => setShowingQrModal(false)} />
+          </OverlayPortal>
+        )}
       </div>
     );
   }
@@ -358,18 +365,24 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
       {error && <p className="error-text">{error}</p>}
 
       {scanning && (
-        <QRScanner
-          language={language}
-          onResult={(code) => {
-            setScanning(false);
-            setPastedCode(code);
-            guestGenerateReply(code);
-          }}
-          onClose={() => setScanning(false)}
-        />
+        <OverlayPortal>
+          <QRScanner
+            language={language}
+            onResult={(code) => {
+              setScanning(false);
+              setPastedCode(code);
+              guestGenerateReply(code);
+            }}
+            onClose={() => setScanning(false)}
+          />
+        </OverlayPortal>
       )}
 
-      {showingQrModal && <QrPopup data={replyCode} label={t.replyCode} t={t} onClose={() => setShowingQrModal(false)} />}
+      {showingQrModal && (
+        <OverlayPortal>
+          <QrPopup data={replyCode} label={t.replyCode} t={t} onClose={() => setShowingQrModal(false)} />
+        </OverlayPortal>
+      )}
     </div>
   );
 }

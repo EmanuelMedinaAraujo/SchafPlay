@@ -1,0 +1,870 @@
+/* =====================================================================
+   Wirtshaus — every screen outside the game is set in a Bavarian pub:
+   beer mats on the Stammtisch, the chalk slate with the Strichliste (the
+   traditional way to keep Schafkopf score) and an order slip pinned to the
+   table. App sets html[data-screen] everywhere except the game and the
+   replay, so these rules never reach a game. Fonts are bundled (SIL OFL) so
+   the PWA keeps its look offline.
+
+   Motion rule: nothing clickable runs an infinite transform — Playwright
+   waits for a target to stop moving before it clicks. Looping motion lives
+   on decorative, pointer-events:none layers or on children of a still button.
+   ===================================================================== */
+
+@font-face {
+  font-family: "Fraunces";
+  src: url("../assets/fonts/fraunces-normal.woff2") format("woff2");
+  font-weight: 500 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Fraunces";
+  src: url("../assets/fonts/fraunces-italic.woff2") format("woff2");
+  font-weight: 500 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Caveat";
+  src: url("../assets/fonts/caveat-normal.woff2") format("woff2");
+  font-weight: 500 700;
+  font-display: swap;
+}
+
+/* The palette is global: the rules manual (styles/rules-modal.css) reads it too. */
+:root {
+  --wh-chalk: #f3f0e6;
+  --wh-ink: #22305a;
+  --wh-cream: #f4ead2;
+  --wh-hand: "Caveat", "Comic Sans MS", cursive;
+  --wh-serif: "Fraunces", Georgia, serif;
+}
+
+/* ---------- Scenery: oak planks under a warm lamp, behind everything ---------- */
+
+.pub-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(91deg, transparent 0 22px, rgba(0, 0, 0, 0.1) 22px 24px, rgba(255, 220, 160, 0.03) 24px 41px),
+    repeating-linear-gradient(90deg, #5d3719 0 150px, #3a210c 150px 153px, #67401f 153px 300px, #3a210c 300px 303px),
+    #4a2a12;
+}
+
+.pub-lamp {
+  position: absolute;
+  top: -40%;
+  left: 10%;
+  width: 80%;
+  height: 120%;
+  background: radial-gradient(ellipse at center, rgba(255, 196, 120, 0.32), transparent 62%);
+  animation: wh-lamp 9s ease-in-out infinite alternate;
+}
+
+/* The home screen owns the full width and height below the top bar. (Not
+   .home-screen: the stats and settings screens share that class.) */
+.pub-home {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  color: var(--wh-cream);
+}
+
+.pub-home > * {
+  flex: 1 0 auto;
+}
+
+html[data-screen] .topbar {
+  background: transparent;
+  border-bottom-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* The sections of a screen arrive one after another. */
+html[data-screen] :is(.stats-screen, .settings-screen) > * {
+  animation: wh-page-in 0.7s cubic-bezier(0.3, 1.3, 0.5, 1) backwards;
+}
+
+html[data-screen] :is(.stats-screen, .settings-screen) > :nth-child(2) { animation-delay: 70ms; }
+html[data-screen] :is(.stats-screen, .settings-screen) > :nth-child(3) { animation-delay: 140ms; }
+html[data-screen] :is(.stats-screen, .settings-screen) > :nth-child(4) { animation-delay: 210ms; }
+html[data-screen] :is(.stats-screen, .settings-screen) > :nth-child(5) { animation-delay: 280ms; }
+html[data-screen] :is(.stats-screen, .settings-screen) > :nth-child(6) { animation-delay: 350ms; }
+html[data-screen] :is(.stats-screen, .settings-screen) > :nth-child(n + 7) { animation-delay: 420ms; }
+
+/* The QR popup's close button reads var(--panel)/var(--text), which are
+   paper and cream here; on the black scrim it needs to stay visible. */
+html[data-screen] .qr-popup-close {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: #f4f4f5;
+  color: #111;
+}
+
+/* ---------- Home ---------- */
+
+.wh {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 20px;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 4px 0 10px;
+}
+
+.wh-left {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* ---------- Beer mats ---------- */
+
+.wh-mats {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.home-screen .wh-mats .wh-mat-btn {
+  --tilt: -9deg;
+  position: relative;
+  /* The label sizes itself from the mat (cqi), so it fits inside the
+     printed ring at every mat size the breakpoints and flex produce. */
+  container-type: inline-size;
+  width: 112px;
+  height: 112px;
+  padding: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  perspective: 600px;
+  transform: rotate(var(--tilt));
+  transition: transform 0.45s cubic-bezier(0.3, 1.5, 0.5, 1);
+  animation: wh-toss 0.7s cubic-bezier(0.3, 1.3, 0.5, 1) backwards;
+  animation-delay: calc(150ms + var(--i) * 130ms);
+}
+
+.home-screen .wh-mats .wh-mat-host {
+  --tilt: 7deg;
+}
+
+.home-screen .wh-mats .wh-mat-join {
+  --tilt: -4deg;
+}
+
+.home-screen .wh-mats .wh-mat-btn.active {
+  transform: translateY(-6px) scale(1.08);
+}
+
+.wh-mat-solo {
+  --mat: #b3261e;
+}
+
+.wh-mat-host {
+  --mat: #1d4f91;
+}
+
+.wh-mat-join {
+  --mat: #2e6b34;
+}
+
+.wh-mat {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border: 1px solid #d9c49a;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fffaf0, #f1e4c7 70%, #e1cc9f);
+  box-shadow: 0 8px 14px rgba(0, 0, 0, 0.45);
+  filter: brightness(0.82) saturate(0.75);
+  transition: filter 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Printed double ring. */
+.wh-mat::before,
+.wh-mat::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  border: 2.5px solid var(--mat);
+}
+
+.wh-mat::before {
+  inset: 6px;
+}
+
+.wh-mat::after {
+  inset: 11px;
+  border-width: 1px;
+}
+
+.wh-mat-btn.active .wh-mat {
+  filter: none;
+  box-shadow: 0 16px 24px rgba(0, 0, 0, 0.5);
+  animation: wh-flip 0.75s cubic-bezier(0.3, 1.3, 0.5, 1);
+}
+
+.wh-mat-top {
+  color: var(--mat);
+  font-family: var(--wh-serif);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.wh-mat-label {
+  color: var(--mat);
+  font-family: var(--wh-serif);
+  font-size: 19.5cqi; /* "Hosten", the widest, spans ~70% of the mat: inside the inner ring */
+  font-style: italic;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.wh-mat-hint {
+  max-width: 74px;
+  color: #6b4f2a;
+  font-family: var(--wh-serif);
+  font-size: 8.5px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.06em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+/* ---------- Chalk slate ---------- */
+
+.wh-slate {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: auto;
+  padding: 8px 14px 10px;
+  border: 8px solid #7a4b24;
+  border-radius: 10px;
+  background:
+    radial-gradient(ellipse at 25% 30%, rgba(255, 255, 255, 0.06), transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(255, 255, 255, 0.04), transparent 45%),
+    radial-gradient(ellipse at 30% 20%, #3b423d, #252a27 75%);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45), inset 0 0 28px rgba(0, 0, 0, 0.5), 0 0 0 1px #4a2c12, 0 12px 24px rgba(0, 0, 0, 0.45);
+  animation: wh-hang 0.8s cubic-bezier(0.3, 1.4, 0.5, 1) backwards 0.45s;
+}
+
+.wh-slate-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wh-chalk-label {
+  flex-shrink: 0;
+  min-width: 96px;
+  color: rgba(243, 240, 230, 0.7);
+  font-family: var(--wh-hand);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.wh-chalk-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 4px;
+  border: 0;
+  border-bottom: 2px dashed rgba(243, 240, 230, 0.35);
+  border-radius: 0;
+  background: transparent;
+  color: var(--wh-chalk);
+  font-family: var(--wh-hand);
+  font-size: 30px;
+  font-weight: 700;
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.6);
+  outline: none;
+}
+
+.wh-chalk-input:focus {
+  border-bottom-style: solid;
+  border-bottom-color: rgba(243, 240, 230, 0.75);
+}
+
+.wh-tally .home-rounds {
+  display: flex;
+  flex: 1;
+  gap: 6px;
+}
+
+.wh-tally button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 2px 8px;
+  border-radius: 0;
+  background: none;
+  color: var(--wh-chalk);
+  cursor: pointer;
+}
+
+.wh-tally-marks path {
+  fill: none;
+  stroke: rgba(243, 240, 230, 0.9);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  animation: wh-draw 0.18s ease-out backwards;
+  animation-delay: calc(0.8s + var(--k) * 45ms);
+}
+
+.wh-tally-num {
+  font-family: var(--wh-hand);
+  font-size: 17px;
+  font-weight: 700;
+  opacity: 0.55;
+}
+
+/* Yellow chalk circle, drawn around the chosen length. */
+.wh-chalk-ring {
+  position: absolute;
+  inset: -2px -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 4px);
+  fill: none;
+  stroke: #f6d36b;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  opacity: 0; /* a round linecap leaves a dot even when fully offset */
+  vector-effect: non-scaling-stroke;
+  transition: stroke-dashoffset 0.5s ease, opacity 0.1s;
+  pointer-events: none;
+}
+
+.wh-tally button.active .wh-chalk-ring {
+  stroke-dashoffset: 0;
+  opacity: 1;
+}
+
+.wh-tally button.active .wh-tally-num {
+  color: #f6d36b;
+  opacity: 1;
+}
+
+/* ---------- Order slip ---------- */
+
+.wh-note {
+  position: relative;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 16px 18px 16px 40px;
+  border-radius: 3px;
+  background:
+    linear-gradient(90deg, transparent 27px, rgba(200, 40, 40, 0.45) 27px 29px, transparent 29px),
+    repeating-linear-gradient(180deg, transparent 0 23px, rgba(70, 110, 170, 0.22) 23px 24px),
+    #fbf6e9;
+  background-position: 0 0, 0 14px, 0 0;
+  color: var(--wh-ink);
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.5), 0 2px 0 rgba(0, 0, 0, 0.12);
+  transform: rotate(1.2deg);
+  animation: wh-drop 0.7s cubic-bezier(0.3, 1.3, 0.5, 1) backwards 0.25s;
+}
+
+.wh-pin {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ff8a7a, #b3261e 60%, #6d140f);
+  box-shadow: 0 3px 4px rgba(0, 0, 0, 0.45);
+}
+
+.wh-note-title {
+  margin: 0 0 4px;
+  color: #1d3f7a;
+  font-family: var(--wh-hand);
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: underline wavy rgba(179, 38, 30, 0.55) 2px;
+  text-underline-offset: 6px;
+}
+
+.wh-hand {
+  margin: 4px 0 12px;
+  font-family: var(--wh-hand);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+/* An enamel pub sign, riveted. */
+.wh-sign {
+  display: block;
+  width: 100%;
+  min-height: 54px;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 14px 50%, #d8c99c 0 3px, transparent 4px),
+    radial-gradient(circle at calc(100% - 14px) 50%, #d8c99c 0 3px, transparent 4px),
+    linear-gradient(#2a5193, #1a3463);
+  color: var(--wh-cream);
+  font-family: var(--wh-serif);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  outline: 2px solid var(--wh-cream);
+  outline-offset: -7px;
+  box-shadow: 0 6px 0 #0f2242, 0 10px 18px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+
+.home-screen .wh-note .wh-sign:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #0f2242, 0 4px 8px rgba(0, 0, 0, 0.35);
+}
+
+/* ---------- Pairing on the slip ---------- */
+
+.wh-note .pairing-flow {
+  gap: 3px;
+}
+
+.wh-note .pairing-flow .field-label {
+  margin: 0;
+  color: #1d3f7a;
+  font-family: var(--wh-hand);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+/* The codes break anywhere (base rule); the hint text in an empty field
+   should still wrap between words. */
+.wh-note .code-textarea::placeholder {
+  word-break: normal;
+}
+
+.wh-note .code-textarea {
+  border: 1.5px dashed #8a7a5a;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--wh-ink);
+}
+
+.wh-note .pairing-flow .code-row .secondary-button {
+  min-width: 44px;
+  border: 1.5px solid #8a7a5a;
+  border-radius: 8px;
+  background: #fffaf0;
+  color: #4a3a20;
+}
+
+.wh-note .primary-button {
+  min-height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(#2a5193, #1a3463);
+  color: var(--wh-cream);
+  font-family: var(--wh-serif);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  outline: 2px solid var(--wh-cream);
+  outline-offset: -6px;
+  box-shadow: 0 5px 0 #0f2242;
+}
+
+.wh-note .muted {
+  color: #4a3a20;
+}
+
+.wh-note .error-text {
+  color: #b3261e;
+}
+
+/* ---------- Compact / narrow ---------- */
+
+html.compact .home-screen .wh-mats .wh-mat-btn {
+  width: 104px;
+  height: 104px;
+}
+
+html.compact .wh-hand {
+  font-size: 20px;
+}
+
+html.narrow .home-screen .wh-mats .wh-mat-btn {
+  width: 96px;
+  height: 96px;
+}
+
+html.narrow .wh-mat-hint {
+  max-width: 62px;
+  font-size: 7.5px;
+}
+
+html.narrow .wh-tally {
+  flex-wrap: wrap;
+  gap: 0 10px;
+}
+
+html.narrow .wh-tally .wh-chalk-label {
+  flex-basis: 100%;
+}
+
+/* ---------- Top bar ---------- */
+
+html[data-screen] .topbar .brand {
+  color: #f4ead2;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 18px;
+  font-style: italic;
+  font-weight: 800;
+}
+
+html[data-screen] .topbar .brand-mark {
+  border-radius: 50%;
+  background: #b3261e;
+  box-shadow: 0 0 0 2px #f4ead2, 0 0 0 3px #b3261e;
+  font-style: normal;
+}
+
+html[data-screen] .topbar .icon-button,
+html[data-screen] .topbar .connection-pill {
+  border-color: rgba(255, 220, 170, 0.2);
+  background: rgba(40, 22, 8, 0.55);
+  color: #f4ead2;
+}
+
+/* ---------- Keyframes ---------- */
+
+@keyframes wh-lamp {
+  from {
+    transform: translateX(-6%);
+  }
+  to {
+    transform: translateX(6%);
+  }
+}
+
+@keyframes wh-toss {
+  from {
+    opacity: 0;
+    transform: translateY(-80px) rotate(-120deg) scale(1.3);
+  }
+}
+
+@keyframes wh-flip {
+  from {
+    transform: rotateY(180deg);
+  }
+}
+
+@keyframes wh-hang {
+  from {
+    opacity: 0;
+    transform: translateY(30px) rotate(-4deg);
+  }
+}
+
+@keyframes wh-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-40px) rotate(-6deg);
+  }
+}
+
+@keyframes wh-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+/* =====================================================================
+   The other screens (stats, history, settings)
+   Titles chalked on slates, panels as lined order slips, the six figures
+   as beer mats. Paper surfaces redefine
+   the ink tokens locally, so text on them turns dark.
+   ===================================================================== */
+
+html[data-screen] {
+  --bg: #4a2a12;
+  --panel: #fbf6e9;
+  --panel-2: rgba(0, 0, 0, 0.05);
+  --line: rgba(244, 234, 210, 0.25);
+  --text: #f4ead2;
+  --muted: rgba(244, 234, 210, 0.75);
+  --red: #b3261e;
+  --red-2: #b3261e;
+  --green: #2e6b34;
+  --amber: #b07a12;
+  --blue: #1d4f91;
+  --hover: rgba(0, 0, 0, 0.06);
+}
+
+/* Ink on paper. */
+html[data-screen] :is(.stats-screen, .settings-screen) .panel,
+html[data-screen] .settings-tooltip {
+  --text: #22305a;
+  --muted: #6b5a3a;
+  --line: rgba(70, 60, 40, 0.2);
+  color: var(--text);
+}
+
+/* Page titles chalked on a slate. */
+html[data-screen] :is(.stats-screen, .settings-screen) .stats-header h2 {
+  padding: 2px 16px 4px;
+  border: 6px solid #7a4b24;
+  border-radius: 8px;
+  background: radial-gradient(ellipse at 30% 20%, #3b423d, #252a27 75%);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
+  color: var(--wh-chalk);
+  font-family: var(--wh-hand);
+  font-size: 30px;
+  font-weight: 700;
+}
+
+html[data-screen] :is(.stats-screen, .settings-screen) .stats-header + .muted {
+  font-family: var(--wh-hand);
+  font-size: 19px;
+}
+
+html[data-screen] :is(.stats-screen, .settings-screen) .panel {
+  border: 0;
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 23px, rgba(70, 110, 170, 0.16) 23px 24px),
+    #fbf6e9;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.45), 0 2px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* Stats slips lie a little crooked (settings rows stay straight: a tilt
+   would trap their help tooltips under the next row). */
+html[data-screen] .stats-screen .panel:nth-of-type(odd) {
+  transform: rotate(-0.5deg);
+}
+
+html[data-screen] .stats-screen .panel:nth-of-type(even) {
+  transform: rotate(0.6deg);
+}
+
+html[data-screen] :is(.stats-screen, .settings-screen) .panel h2 {
+  color: #1d3f7a;
+  font-family: var(--wh-hand);
+  font-size: 23px;
+  font-weight: 700;
+}
+
+html[data-screen] .stats-screen .panel > h2 {
+  text-decoration: underline wavy rgba(179, 38, 30, 0.5) 1.5px;
+  text-underline-offset: 5px;
+}
+
+/* ---------- The six figures as beer mats ---------- */
+
+html[data-screen] .stat-tiles {
+  justify-items: center;
+}
+
+html[data-screen] .stat-tile {
+  --mat: #b3261e;
+  position: relative;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 108px;
+  aspect-ratio: 1;
+  padding: 8px;
+  border: 1px solid #d9c49a;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fffaf0, #f1e4c7 70%, #e1cc9f);
+  box-shadow: 0 8px 14px rgba(0, 0, 0, 0.45);
+  text-align: center;
+}
+
+/* Six mats stay in one row on small phones too (responsive.css would wrap
+   them into two rows of three, which pushes the slips off screen). */
+html.narrow[data-screen] .stat-tiles {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+
+html.narrow[data-screen] .stat-tile {
+  max-width: 96px;
+}
+
+html.narrow[data-screen] .stat-tile small {
+  max-width: 62px;
+  font-size: 7px;
+}
+
+html.narrow[data-screen] .stat-tile strong {
+  font-size: 20px;
+}
+
+html[data-screen] .stat-tile:nth-child(3n + 2) {
+  --mat: #1d4f91;
+}
+
+html[data-screen] .stat-tile:nth-child(3n) {
+  --mat: #2e6b34;
+}
+
+html[data-screen] .stat-tile:nth-child(odd) {
+  transform: rotate(-6deg);
+}
+
+html[data-screen] .stat-tile:nth-child(even) {
+  transform: rotate(5deg);
+}
+
+html[data-screen] .stat-tile::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 2px solid var(--mat);
+  border-radius: 50%;
+}
+
+html[data-screen] .stat-tile small {
+  max-width: 76px;
+  color: var(--mat);
+  font-family: var(--wh-serif);
+  font-size: 8.5px;
+  line-height: 1.1;
+}
+
+html[data-screen] .stat-tile strong {
+  color: var(--mat);
+  font-family: var(--wh-serif);
+  font-size: 24px;
+  font-style: italic;
+  font-weight: 900;
+}
+
+html[data-screen] .stat-tile.won strong {
+  color: #2e6b34;
+}
+
+html[data-screen] .stat-tile.lost strong {
+  color: #b3261e;
+}
+
+/* ---------- Controls ---------- */
+
+/* Segmented switches are little slates with yellow chalk for the pick. */
+html[data-screen] :is(.stats-screen, .settings-screen) .mode-switch {
+  border: 4px solid #7a4b24;
+  border-radius: 8px;
+  background: radial-gradient(ellipse at 30% 20%, #3b423d, #252a27 75%);
+}
+
+html[data-screen] :is(.stats-screen, .settings-screen) .mode-switch button {
+  border-radius: 4px;
+  color: rgba(243, 240, 230, 0.75);
+  font-family: var(--wh-hand);
+  font-size: 19px;
+  font-weight: 700;
+}
+
+html[data-screen] :is(.stats-screen, .settings-screen) .mode-switch button.active {
+  background: rgba(243, 240, 230, 0.1);
+  color: #f6d36b;
+  box-shadow: inset 0 -2px 0 #f6d36b;
+}
+
+html[data-screen] :is(.stats-screen, .settings-screen) :is(.secondary-button, .text-button) {
+  border: 1.5px solid #8a7a5a;
+  border-radius: 8px;
+  background: #fffaf0;
+  color: #4a3a20;
+  font-family: var(--wh-serif);
+  font-weight: 700;
+}
+
+html[data-screen] .stats-date {
+  font-family: var(--wh-hand);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+html[data-screen] .stats-contract-table th {
+  font-family: var(--wh-serif);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+html[data-screen] .settings-tooltip {
+  border: 1px solid #d9c49a;
+  border-radius: 3px;
+  background: #fffaf0;
+}
+
+html[data-screen] .avatar-picker-preview {
+  border: 3px solid #b3261e;
+}
+
+html[data-screen] .avatar-option {
+  border-color: #d9c49a;
+}
+
+html[data-screen] .avatar-option.selected {
+  border-color: #1d4f91;
+  box-shadow: 0 0 0 2px rgba(29, 79, 145, 0.3);
+}
+
+/* The upload slot is a dashed circle on the slip, not a navy portrait. */
+html[data-screen] .avatar-option.avatar-upload {
+  border: 2px dashed #8a7a5a;
+  background: #fffaf0;
+  color: #6b5a3a;
+}
+
+html[data-screen] .avatar-option.avatar-upload.selected {
+  border-color: #1d4f91;
+}
+
+html[data-screen] .avatar-option-check {
+  background: #1d4f91;
+}
+
+@keyframes wh-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(-26px) rotate(-3deg);
+  }
+}
+
+/* ---------- Reduced motion: keep the looks, drop the movement ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-screen] *,
+  html[data-screen] *::before,
+  html[data-screen] *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
