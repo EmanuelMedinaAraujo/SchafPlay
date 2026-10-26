@@ -138,6 +138,9 @@ html[data-screen] .qr-popup-close {
 .home-screen .wh-mats .wh-mat-btn {
   --tilt: -9deg;
   position: relative;
+  /* The label sizes itself from the mat (cqi), so it fits inside the
+     printed ring at every mat size the breakpoints and flex produce. */
+  container-type: inline-size;
   width: 112px;
   height: 112px;
   padding: 0;
@@ -226,7 +229,7 @@ html[data-screen] .qr-popup-close {
 .wh-mat-label {
   color: var(--mat);
   font-family: var(--wh-serif);
-  font-size: 23px;
+  font-size: 19.5cqi; /* "Hosten", the widest, spans ~70% of the mat: inside the inner ring */
   font-style: italic;
   font-weight: 900;
   line-height: 1;
@@ -514,10 +517,6 @@ html.compact .wh-hand {
 html.narrow .home-screen .wh-mats .wh-mat-btn {
   width: 96px;
   height: 96px;
-}
-
-html.narrow .wh-mat-label {
-  font-size: 19px;
 }
 
 html.narrow .wh-mat-hint {
