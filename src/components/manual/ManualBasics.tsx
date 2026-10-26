@@ -5,7 +5,6 @@ import ManualCard, { CardCode, CardGroup, ManualSuit, SUITS, suitName } from "./
 import { ChapterProps, Note } from "./parts";
 
 const BASE = import.meta.env.BASE_URL;
-const POSTER = `${BASE}manual/intro-poster.jpg`;
 
 /**
  * The intro video, shown only once its poster loads: a missing or broken
@@ -13,24 +12,25 @@ const POSTER = `${BASE}manual/intro-poster.jpg`;
  */
 function IntroVideo({ language }: ChapterProps) {
   const [status, setStatus] = useState<"probing" | "ok" | "failed">("probing");
+  const poster = `${BASE}manual/intro-poster-${language}.jpg`;
 
   useEffect(() => {
     const probe = new Image();
     probe.onload = () => setStatus((current) => (current === "probing" ? "ok" : current));
     probe.onerror = () => setStatus("failed");
-    probe.src = POSTER;
+    probe.src = poster;
     return () => {
       probe.onload = null;
       probe.onerror = null;
     };
-  }, []);
+  }, [poster]);
 
   if (status !== "ok") return null;
   const fail = () => setStatus("failed");
 
   return (
     <figure className="manual-video">
-      <video key={language} controls playsInline preload="none" poster={POSTER} onError={fail}>
+      <video key={language} controls playsInline preload="none" poster={poster} onError={fail}>
         <source src={`${BASE}manual/intro-${language}.mp4`} type="video/mp4" onError={fail} />
       </video>
       <figcaption>{language === "de" ? "Schafkopf in 47 Sekunden" : "Schafkopf in 47 seconds"}</figcaption>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import GameBoard from "./components/GameBoard";
 import HomeScreen from "./components/HomeScreen";
 import PairingPanel from "./components/PairingPanel";
@@ -89,10 +89,11 @@ export default function App() {
 
   const inGame = screen === "game" && gameState;
   // The Wirtshaus look (styles/wirtshaus.css) dresses every screen except the
-  // game and the replay; html[data-screen] is its switch.
+  // game and the replay; html[data-screen] is its switch. A layout effect, so
+  // the switch lands before the first frame of the new screen is painted.
   const pubScreen = inGame || inReplay ? null : screen;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = document.documentElement;
     if (pubScreen) root.dataset.screen = pubScreen;
     else delete root.dataset.screen;

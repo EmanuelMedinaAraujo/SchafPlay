@@ -34,7 +34,7 @@
   font-display: swap;
 }
 
-/* The palette is global: the rules manual uses it in the game as well. */
+/* The palette is global: the rules manual (styles/rules-modal.css) reads it too. */
 :root {
   --wh-chalk: #f3f0e6;
   --wh-ink: #22305a;
@@ -457,6 +457,12 @@ html[data-screen] .qr-popup-close {
   line-height: 1.1;
 }
 
+/* The codes break anywhere (base rule); the hint text in an empty field
+   should still wrap between words. */
+.wh-note .code-textarea::placeholder {
+  word-break: normal;
+}
+
 .wh-note .code-textarea {
   border: 1.5px dashed #8a7a5a;
   border-radius: 6px;
@@ -508,6 +514,11 @@ html.compact .wh-hand {
 html.narrow .home-screen .wh-mats .wh-mat-btn {
   width: 96px;
   height: 96px;
+}
+
+html.narrow .wh-mat-hint {
+  max-width: 62px;
+  font-size: 7.5px;
 }
 
 html.narrow .wh-tally {
@@ -700,6 +711,11 @@ html.narrow[data-screen] .stat-tile {
   max-width: 96px;
 }
 
+html.narrow[data-screen] .stat-tile small {
+  max-width: 62px;
+  font-size: 7px;
+}
+
 html.narrow[data-screen] .stat-tile strong {
   font-size: 20px;
 }
@@ -844,6 +860,7 @@ html[data-screen] .avatar-option-check {
   html[data-screen] *::before,
   html[data-screen] *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }

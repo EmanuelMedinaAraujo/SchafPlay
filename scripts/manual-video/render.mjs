@@ -2,8 +2,9 @@
 /**
  * Renders the manual's intro videos by seeking index.html frame by frame.
  *
- *   node scripts/manual-video/render.mjs            # both languages + poster
- *   node scripts/manual-video/render.mjs de         # one language
+ *   node scripts/manual-video/render.mjs                # both languages + posters
+ *   node scripts/manual-video/render.mjs de             # one language
+ *   node scripts/manual-video/render.mjs --poster-only  # just the poster frames
  *   node scripts/manual-video/render.mjs --frames-only
  *
  * Needs only what the repo already has: Playwright (chromium) and ffmpeg.
@@ -28,6 +29,7 @@ const args = process.argv.slice(2);
 const langs = args.filter((a) => a === "de" || a === "en");
 const targets = langs.length ? langs : ["de", "en"];
 const framesOnly = args.includes("--frames-only");
+const posterOnly = args.includes("--poster-only");
 
 const MIME = { ".html": "text/html", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".jpg": "image/jpeg", ".png": "image/png", ".js": "text/javascript" };
 const server = createServer(async (req, res) => {
@@ -63,17 +65,27 @@ for (const lang of targets) {
   const page = await browser.newPage({ viewport: { width: 960, height: 540 }, deviceScaleFactor: 1 });
   await page.goto(`${base}?lang=${lang}`);
   await page.evaluate(() => window.ready);
+  // One poster per language: the title card carries the localized subtitle.
+  if (!args.includes("--no-poster")) {
+    await page.evaluate((t) => window.renderAt(t), POSTER_AT);
+    await settle(page);
+    const png = join(work, `poster-${lang}.png`);
+    await page.screenshot({ path: png });
+    if (!framesOnly) {
+      await run("ffmpeg", ["-y", "-loglevel", "error", "-i", png, "-q:v", process.env.POSTER_Q ?? "6", "-pix_fmt", "yuvj420p", join(out, `intro-poster-${lang}.jpg`)]);
+      console.log(`wrote public/manual/intro-poster-${lang}.jpg`);
+    }
+  }
+  if (posterOnly) {
+    await page.close();
+    continue;
+  }
   const duration = await page.evaluate(() => window.DURATION);
   const frames = Math.round(duration * FPS);
   for (let i = 0; i < frames; i++) {
     await page.evaluate((t) => window.renderAt(t), i / FPS);
     await settle(page);
     await page.screenshot({ path: join(dir, `f${String(i).padStart(5, "0")}.png`) });
-  }
-  if (lang === targets[0] && !args.includes("--no-poster")) {
-    await page.evaluate((t) => window.renderAt(t), POSTER_AT);
-    await settle(page);
-    await page.screenshot({ path: join(work, "poster.png") });
   }
   await page.close();
   console.log(`${lang}: ${frames} frames in ${dir}`);
@@ -85,11 +97,6 @@ for (const lang of targets) {
     join(out, `intro-${lang}.mp4`),
   ]);
   console.log(`wrote public/manual/intro-${lang}.mp4`);
-}
-
-if (!framesOnly && !args.includes("--no-poster")) {
-  await run("ffmpeg", ["-y", "-loglevel", "error", "-i", join(work, "poster.png"), "-q:v", process.env.POSTER_Q ?? "6", "-pix_fmt", "yuvj420p", join(out, "intro-poster.jpg")]);
-  console.log("wrote public/manual/intro-poster.jpg");
 }
 
 await browser.close();

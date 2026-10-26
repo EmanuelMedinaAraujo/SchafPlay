@@ -101,8 +101,8 @@ export function ScoringChapter({ language }: ChapterProps) {
       <More title={de ? "Laufende" : "Matadors (Laufende)"}>
         <p>
           {de
-            ? "Laufende sind die höchsten Trümpfe ohne Lücke, beginnend beim Eichel-Ober. Gezählt wird, was die Spielerseite beim Geben zusammen auf der Hand hatte:"
-            : "Matadors are the highest trumps without a gap, starting with the Acorns Ober. What counts is what the declaring side held together when the cards were dealt:"}
+            ? "Laufende sind die höchsten Trümpfe ohne Lücke, beginnend beim höchsten: dem Eichel-Ober, im Wenz dem Eichel-Unter. Gezählt wird, was die Spielerseite beim Geben zusammen auf der Hand hatte:"
+            : "Matadors are the highest trumps without a gap, starting from the top: the Acorns Ober, or the Acorns Unter in a Wenz. What counts is what the declaring side held together when the cards were dealt:"}
         </p>
         <div className="manual-card-row">
           <ManualCard code="acorns-o" language={language} caption="1" />
@@ -266,7 +266,7 @@ const GLOSSARY: Array<[string, string, string]> = [
   ["Gesucht", "Die Ruffarbe wird zum ersten Mal ausgespielt – die gerufene Sau muss fallen.", "The called suit is led for the first time – the called Sau must be played."],
   ["I dad spuin!", "„Ich würde spielen“ – in der Ansage melden, dass man ein Spiel machen will.", "“I'd play!” – saying in the bidding that you want to play a game."],
   ["Jungfrau", "Im Ramsch keinen Stich machen. Verdoppelt die Zahlung.", "Taking no trick in a Ramsch. Doubles the payment."],
-  ["Laufende", "Die höchsten Trümpfe ohne Lücke ab dem Eichel-Ober. Bringen Zusatzpunkte.", "Matadors: the top trumps without a gap from the Acorns Ober. Worth extra points."],
+  ["Laufende", "Die höchsten Trümpfe ohne Lücke ab dem Eichel-Ober (im Wenz ab dem Eichel-Unter). Bringen Zusatzpunkte.", "Matadors: the top trumps without a gap from the Acorns Ober (in a Wenz from the Acorns Unter). Worth extra points."],
   ["Liste", "Eine Partie aus 4, 8 oder 12 Runden mit gemeinsamem Punktestand.", "A session of 4, 8 or 12 rounds with one running score."],
   ["Ober", "Die höchsten Trümpfe (außer im Wenz). 3 Augen.", "The highest trumps (except in a Wenz). 3 Augen."],
   ["Ramsch", "Hausregel, wenn alle weiter sagen: jeder gegen jeden, die meisten Augen verlieren.", "House rule when everyone passes: everyone for themselves, most Augen loses."],

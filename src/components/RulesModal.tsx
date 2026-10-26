@@ -29,8 +29,27 @@ const CHAPTERS: Chapter[] = [
   { id: "glossary", title: { de: "Wörterbuch", en: "Glossary" }, Body: GlossaryChapter },
 ];
 
-/** Reopening the manual (e.g. mid-game) returns to the chapter last read. */
+/** Reopening the manual returns to the chapter last read. */
 let lastChapter = 0;
+
+const FOCUSABLE = 'button:not(:disabled), [href], summary, video[controls], input, [tabindex]:not([tabindex="-1"])';
+
+/** Tab and Shift+Tab wrap around inside the dialog instead of escaping to the page behind. */
+function keepFocusInside(dialog: HTMLElement, event: globalThis.KeyboardEvent) {
+  const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.getClientRects().length > 0);
+  if (focusable.length === 0) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const active = document.activeElement;
+  const outside = !dialog.contains(active);
+  if (event.shiftKey && (active === first || outside)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && (active === last || outside)) {
+    event.preventDefault();
+    first.focus();
+  }
+}
 
 export default function RulesModal({ isOpen, onClose, language }: RulesModalProps) {
   if (!isOpen) return null;
@@ -42,6 +61,7 @@ function Manual({ onClose, language }: Omit<RulesModalProps, "isOpen">) {
   const [active, setActive] = useState(lastChapter);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const select = (index: number, focus = false) => {
     lastChapter = index;
@@ -49,9 +69,12 @@ function Manual({ onClose, language }: Omit<RulesModalProps, "isOpen">) {
     if (focus) tabRefs.current[index]?.focus();
   };
 
-  // Move focus into the dialog so arrow keys and screen readers start on the chapter list.
+  // Move focus into the dialog so arrow keys and screen readers start on the
+  // chapter list, and hand it back to whatever opened the manual on close.
   useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     tabRefs.current[lastChapter]?.focus({ preventScroll: true });
+    return () => opener?.focus({ preventScroll: true });
   }, []);
 
   // A new chapter starts at its top.
@@ -60,7 +83,10 @@ function Manual({ onClose, language }: Omit<RulesModalProps, "isOpen">) {
   }, [active]);
 
   useEffect(() => {
-    const onKey = (event: globalThis.KeyboardEvent) => event.key === "Escape" && onClose();
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+      else if (event.key === "Tab" && dialogRef.current) keepFocusInside(dialogRef.current, event);
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
@@ -82,7 +108,7 @@ function Manual({ onClose, language }: Omit<RulesModalProps, "isOpen">) {
       className="rules-modal-overlay manual-overlay"
       onClick={(event) => event.target === event.currentTarget && onClose()}
     >
-      <div className="rules-modal-container manual" role="dialog" aria-modal="true" aria-labelledby="manual-title">
+      <div ref={dialogRef} className="rules-modal-container manual" role="dialog" aria-modal="true" aria-labelledby="manual-title">
         <nav className="manual-nav">
           <h2 id="manual-title" className="manual-brand">
             <span>{de ? "Die Regeln" : "The rules"}</span>
