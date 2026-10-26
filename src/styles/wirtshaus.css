@@ -516,6 +516,10 @@ html.narrow .home-screen .wh-mats .wh-mat-btn {
   height: 96px;
 }
 
+html.narrow .wh-mat-label {
+  font-size: 19px;
+}
+
 html.narrow .wh-mat-hint {
   max-width: 62px;
   font-size: 7.5px;

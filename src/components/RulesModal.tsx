@@ -36,7 +36,11 @@ const FOCUSABLE = 'button:not(:disabled), [href], summary, video[controls], inpu
 
 /** Tab and Shift+Tab wrap around inside the dialog instead of escaping to the page behind. */
 function keepFocusInside(dialog: HTMLElement, event: globalThis.KeyboardEvent) {
-  const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.getClientRects().length > 0);
+  // Only what Tab can actually reach: visible, and not parked at tabindex=-1
+  // (the inactive chapter tabs, which the arrow keys move between).
+  const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+    (el) => el.tabIndex >= 0 && el.getClientRects().length > 0,
+  );
   if (focusable.length === 0) return;
   const first = focusable[0];
   const last = focusable[focusable.length - 1];

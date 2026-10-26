@@ -91,7 +91,8 @@ self.addEventListener('fetch', (event) => {
 
   // The manual's intro videos stream with Range requests; a cached full
   // response would answer those with the whole file, which iOS Safari refuses
-  // to play. Leave them to the browser (the manual hides them offline).
+  // to play. Leave them to the browser; offline, the player fails to load
+  // and the manual drops it.
   if (new URL(request.url).pathname.startsWith(BASE + 'manual/') && request.url.endsWith('.mp4')) return;
 
   event.respondWith(
