@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS.md
 
 SchafPlay: Bavarian Schafkopf for two humans as an offline-first PWA. Seats 1 & 3 are humans over serverless WebRTC (base64 SDP codes, no backend); seats 2 & 4 are AI, and solo mode fills seat 3 with a third.
 
