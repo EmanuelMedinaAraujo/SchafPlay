@@ -10,3 +10,8 @@ coverage/
 # Playwright
 test-results/
 playwright-report/
+
+# Local AI-tooling config (not part of the project)
+/AGENTS.md
+/.agents/
+/.claude/
