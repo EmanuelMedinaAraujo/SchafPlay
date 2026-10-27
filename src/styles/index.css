@@ -1,6 +1,7 @@
 /* Entry stylesheet: imports are ordered to exactly match the original
    src/index.css cascade — do not reorder without checking for
-   specificity-tie rules that depend on source order (see AGENTS.md). */
+   specificity-tie rules that depend on source order (e.g. the analysis
+   replay's card sizing and `replay-slot-*` names in analysis.css). */
 @import "./tokens.css";
 @import "./base.css";
 @import "./app-shell.css";
