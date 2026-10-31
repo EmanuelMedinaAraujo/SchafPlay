@@ -4,9 +4,14 @@ name: Deploy to GitHub Pages
 # In the repository settings, set Pages → "Build and deployment" → Source
 # to "GitHub Actions" once (configure-pages below also enables it).
 #
-# Deploys only on published releases (tagged versions), not on every push to
-# main — keep main green without redeploying on each merge.
+# Deploys every push to main once its E2E run has passed, so a broken main never
+# goes live. Installed PWAs still update only via "Check for update" in Settings.
+# Releases and manual dispatch remain as ways to redeploy on demand.
 on:
+  workflow_run:
+    workflows: [E2E Tests]
+    types: [completed]
+    branches: [main]
   release:
     types: [published]
   workflow_dispatch:
@@ -16,16 +21,23 @@ permissions:
   pages: write
   id-token: write
 
-# Allow one concurrent deployment; a newer release cancels an in-progress one.
+# Allow one concurrent deployment; a newer one cancels an in-progress one.
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
   build:
+    # `branches` above also matches a pull request from a branch named main.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # A workflow_run event's own ref is main's latest commit, not the one E2E tested.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - uses: actions/setup-node@v6
         with:
