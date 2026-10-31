@@ -18,7 +18,7 @@ const QUALITIES = [0.82, 0.7, 0.6, 0.5];
 /** Leave a little headroom under the peer's hard cap. */
 const BUDGET = MAX_AVATAR_LENGTH - 1024;
 
-export class ImageLoadError extends Error {}
+class ImageLoadError extends Error {}
 
 export function fileToAvatarDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {

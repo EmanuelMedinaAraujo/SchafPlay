@@ -1,9 +1,10 @@
+import { shuffleDeck } from "../game/deck";
 import { Card } from "../game/types";
 
 /**
- * Deterministic PRNG (mulberry32) + Fisher-Yates shuffle, used by the E2E
+ * Deterministic PRNG (mulberry32) driving the deck shuffle, used by the E2E
  * test hooks (`lib/e2e.ts`) instead of the Math.random shuffle in
- * `game/deck.ts`. Kept in its own dependency-free module so the Playwright
+ * `game/deck.ts`. Kept in its own framework-free module so the Playwright
  * helpers can import the *identical* implementation to precompute deals in
  * Node — this file must stay free of `import.meta` and other Vite-only APIs.
  *
@@ -13,14 +14,7 @@ import { Card } from "../game/types";
  */
 export function seededShuffle(seed: number): (deck: Card[]) => Card[] {
   const rand = mulberry32(seed);
-  return (deck: Card[]) => {
-    const shuffled = [...deck];
-    for (let i = shuffled.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(rand() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  };
+  return (deck: Card[]) => shuffleDeck(deck, rand);
 }
 
 function mulberry32(seed: number): () => number {

@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import jsQR from "jsqr";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
 import { XIcon } from "./icons";
 
-/** Camera QR scanning via `getUserMedia` + `jsQR`. */
+/** Camera QR scanning via `getUserMedia` + `jsQR`; the decoder loads with the first scan. */
 export function canScanQr(): boolean {
   return !!navigator.mediaDevices?.getUserMedia;
 }
@@ -31,6 +30,7 @@ export default function QRScanner({ language, onResult, onClose }: QRScannerProp
     let cancelled = false;
     let stream: MediaStream | null = null;
     let intervalId: ReturnType<typeof setInterval> | null = null;
+    const stopStream = () => stream?.getTracks().forEach((track) => track.stop());
 
     (async () => {
       try {
@@ -43,11 +43,18 @@ export default function QRScanner({ language, onResult, onClose }: QRScannerProp
           },
           audio: false,
         });
-        if (cancelled) return;
+        // A large dependency only this overlay uses; the service worker precaches the chunk.
+        const { default: jsQR } = await import("jsqr");
+        // Closed while waiting: the cleanup below ran before there was a stream to stop.
+        if (cancelled) {
+          stopStream();
+          return;
+        }
         const video = videoRef.current;
         if (!video) return;
         video.srcObject = stream;
         await video.play();
+        if (cancelled) return;
 
         const canvas = document.createElement("canvas");
         const context = canvas.getContext("2d");
@@ -84,7 +91,7 @@ export default function QRScanner({ language, onResult, onClose }: QRScannerProp
     return () => {
       cancelled = true;
       if (intervalId) clearInterval(intervalId);
-      stream?.getTracks().forEach((track) => track.stop());
+      stopStream();
       if (videoRef.current) videoRef.current.srcObject = null;
     };
   }, []);

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Language } from "../types";
-import { gameLabel, signed, translations } from "../lib/i18n";
+import { declarationLabel, signed, translations } from "../lib/i18n";
 import { GameRecord, RoundRecord } from "../persistence";
 import { isReplayable } from "../analysis/replay";
 import { BotIcon, PlayIcon, UsersIcon } from "./icons";
@@ -101,7 +101,7 @@ function RoundRow({
   const contract = round.contract;
   const declarer = contract ? game.players.find((player) => player.id === contract.declarerId) : undefined;
   const change = round.result.scoreChanges[game.localPlayerId] ?? 0;
-  const label = contract ? gameLabel(language, contract.type, contract.calledSuit, contract.isTout) : "—";
+  const label = contract ? declarationLabel(language, contract) : "—";
   const extras = [round.result.isSchwarz ? t.schwarz : round.result.isSchneider ? t.schneider : null]
     .filter(Boolean)
     .join(" · ");

@@ -9,7 +9,7 @@ import { Card, GameType, PlayedCard } from "../game/types";
 import { RoundRecord } from "../persistence/GameHistoryStore";
 
 /** A trick as far as it has been revealed at the current step. */
-export interface ReplayTrick {
+interface ReplayTrick {
   /** Index into `round.tricks`. */
   index: number;
   leaderId: string;
@@ -55,7 +55,7 @@ export function reconstructHands(round: RoundRecord): Record<string, Card[]> {
 }
 
 /** Total plays in the round — the number of steps after the initial one. */
-export function playCount(round: RoundRecord): number {
+function playCount(round: RoundRecord): number {
   return round.tricks.reduce((sum, trick) => sum + trick.plays.length, 0);
 }
 

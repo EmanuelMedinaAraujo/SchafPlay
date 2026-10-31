@@ -37,26 +37,17 @@ export function redactStateFor(state: GameState, viewerId: string): GameState {
   return redacted;
 }
 
+/** Revealed by the called Ace falling, or by the partner playing into a called-suit lead. */
 function isPartnerRevealed(state: GameState): boolean {
   const contract = state.currentContract;
   if (!contract || contract.type !== GameType.SAUSPIEL || !contract.calledSuit || !contract.partnerId) return true;
 
-  const allTricks = [...state.tricks];
-  if (state.currentTrick) allTricks.push(state.currentTrick);
-
-  for (const trick of allTricks) {
-    if (trick.playedCards.length === 0) continue;
-    const ledPlaySuit = getPlaySuit(trick.playedCards[0].card, contract.type);
-    const isCalledSuitLed = ledPlaySuit === contract.calledSuit;
-
-    for (const played of trick.playedCards) {
-      if (played.playerId === contract.partnerId && isCalledAce(played.card, contract)) {
-        return true;
-      }
-      if (isCalledSuitLed && played.playerId === contract.partnerId) {
-        return true;
-      }
-    }
-  }
-  return false;
+  const tricks = state.currentTrick ? [...state.tricks, state.currentTrick] : state.tricks;
+  return tricks.some((trick) => {
+    if (trick.playedCards.length === 0) return false;
+    const calledSuitLed = getPlaySuit(trick.playedCards[0].card, contract.type) === contract.calledSuit;
+    return trick.playedCards.some(
+      (played) => played.playerId === contract.partnerId && (calledSuitLed || isCalledAce(played.card, contract)),
+    );
+  });
 }

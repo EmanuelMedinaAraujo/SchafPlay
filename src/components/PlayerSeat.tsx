@@ -2,16 +2,16 @@ import { useLayoutEffect, useRef } from "react";
 import { Contract, GameType, Language, Player, StossEntry } from "../types";
 import { translations } from "../lib/i18n";
 import { resolveAvatarSrc } from "../lib/avatars";
-import { setRevealOffset } from "../lib/rotation";
+import { playAnimationClass, setRevealOffset } from "../lib/rotation";
 import { UserIcon, BotIcon } from "./icons";
 
 interface PlayerSeatProps {
   player: Player;
-  position: "top" | "left" | "right" | "bottom";
+  position: "top" | "left" | "right";
   active: boolean;
   contract: Contract | null;
   /** Stoß/Retour announcements this round; a badge shows on the announcer's seat. */
-  stoss?: StossEntry[];
+  stoss: StossEntry[];
   language: Language;
 }
 
@@ -38,19 +38,11 @@ function useRoleBadgeReveal(role: Role) {
     const badge = badgeRef.current;
     if (!badge) return;
 
-    if (role !== "declarer") {
-      badge.classList.add("role-badge-reveal-now");
-      const clear = () => badge.classList.remove("role-badge-reveal-now");
-      badge.addEventListener("animationend", clear, { once: true });
-      return () => badge.removeEventListener("animationend", clear);
-    }
+    if (role !== "declarer") return playAnimationClass(badge, "role-badge-reveal-now");
 
     setRevealOffset(badge);
     badge.style.animationDelay = `${DECLARER_BADGE_DELAY_MS}ms`;
-    badge.classList.add("role-badge-declarer-reveal");
-    const clear = () => badge.classList.remove("role-badge-declarer-reveal");
-    badge.addEventListener("animationend", clear, { once: true });
-    return () => badge.removeEventListener("animationend", clear);
+    return playAnimationClass(badge, "role-badge-declarer-reveal");
   }, [role]);
 
   return badgeRef;
@@ -59,7 +51,7 @@ function useRoleBadgeReveal(role: Role) {
 /** One box per player; it pulses on their turn, doubling as the turn indicator. */
 export default function PlayerSeat({ player, position, active, contract, stoss, language }: PlayerSeatProps) {
   const t = translations[language];
-  const stossEntry = stoss?.find((entry) => entry.playerId === player.id);
+  const stossEntry = stoss.find((entry) => entry.playerId === player.id);
   const isDeclarer = contract?.declarerId === player.id;
   // partnerId is redacted by the host until the called Ace has been played.
   const isPartner = contract?.type === GameType.SAUSPIEL && contract.partnerId === player.id;

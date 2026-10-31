@@ -5,10 +5,10 @@
  */
 
 import type { ReactNode } from "react";
-import { Language } from "../../lib/i18n";
+import { Language } from "../../types";
 
 export type ManualSuit = "acorns" | "leaves" | "hearts" | "bells";
-export type ManualRank = "7" | "8" | "9" | "10" | "u" | "o" | "k" | "a";
+type ManualRank = "7" | "8" | "9" | "10" | "u" | "o" | "k" | "a";
 
 /** "acorns-o" style shorthand, matching the art file names. */
 export type CardCode = `${ManualSuit}-${ManualRank}`;
@@ -29,7 +29,7 @@ export function suitName(suit: ManualSuit, language: Language): string {
   return SUIT_NAMES[language][suit];
 }
 
-export function cardName(code: CardCode, language: Language): string {
+function cardName(code: CardCode, language: Language): string {
   const [suit, rank] = code.split("-") as [ManualSuit, ManualRank];
   return language === "de" ? `${SUIT_NAMES.de[suit]}-${RANK_NAMES.de[rank]}` : `${SUIT_NAMES.en[suit]} ${RANK_NAMES.en[rank]}`;
 }

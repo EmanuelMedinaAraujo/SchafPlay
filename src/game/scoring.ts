@@ -2,7 +2,7 @@
 
 import { Card, CardValue, Contract, GameType, Player, RamschResult, RoundResult, Trick } from "./types";
 import { SUITS } from "./deck";
-import { isSolo } from "./rules";
+import { isOberOrUnter, isSolo } from "./rules";
 
 /**
  * Tournament tariff (#21), zero-sum per round. Rufspiel values are per PLAYER;
@@ -15,18 +15,16 @@ export const TARIFF = {
   ramsch: { base: 1, durchmarsch: 3 },
   minLaufende: 3,
   minLaufendeWenz: 2,
-  maxLaufende: 8,
-  maxLaufendeWenz: 4,
 } as const;
 
 /** House-rule toggles, passed in so scoring stays pure. */
 export interface ScoringOptions {
   /** #31: Laufende pay nothing. */
-  disableLaufende?: boolean;
-  /** Ramsch tiebreak only (#11). Defaults to seat 4. */
-  dealerIdx?: number;
+  disableLaufende: boolean;
+  /** Ramsch tiebreak only (#11). */
+  dealerIdx: number;
   /** 1 = none, 2 = one Stoß, 4 = Stoß + Retour. Never applies to Ramsch. */
-  stossMultiplier?: number;
+  stossMultiplier: number;
 }
 
 export function calculateRoundResult(
@@ -34,10 +32,10 @@ export function calculateRoundResult(
   contract: Contract,
   tricks: Trick[],
   initialHands: Record<string, Card[]>,
-  options: ScoringOptions = {},
+  options: ScoringOptions,
 ): RoundResult {
   if (contract.type === GameType.RAMSCH) {
-    return calculateRamschResult(players, contract, tricks, options.dealerIdx ?? 3);
+    return calculateRamschResult(players, contract, tricks, options.dealerIdx);
   }
   const declarerTeam = [contract.declarerId, contract.partnerId].filter(Boolean) as string[];
   const defenderTeam: string[] = players.map((player) => player.id).filter((id) => !declarerTeam.includes(id));
@@ -53,10 +51,8 @@ export function calculateRoundResult(
   const teamCards = declarerTeam.flatMap((id) => initialHands[id] ?? []);
   const laufende = options.disableLaufende ? 0 : countLaufende(teamCards, contract.type);
   const scoreChanges = scoreTournament(players, contract, declarerTeam, declarerWon, isSchneider, isSchwarz, laufende, initialHands);
-  const stossMultiplier = options.stossMultiplier && options.stossMultiplier > 1 ? options.stossMultiplier : 1;
-  if (stossMultiplier > 1) {
-    for (const id of Object.keys(scoreChanges)) scoreChanges[id] *= stossMultiplier;
-  }
+  const { stossMultiplier } = options;
+  for (const id of Object.keys(scoreChanges)) scoreChanges[id] *= stossMultiplier;
   return {
     contract,
     declarerPoints,
@@ -82,26 +78,21 @@ function scoreTournament(
   initialHands: Record<string, Card[]>,
 ): Record<string, number> {
   const soloLike = contract.type === GameType.WENZ || isSolo(contract.type);
-  const tout = Boolean(contract.isTout);
+  const tier = (tariff: { base: number; schneider: number; schwarz: number }) =>
+    isSchwarz ? tariff.schwarz : isSchneider ? tariff.schneider : tariff.base;
 
   let perUnit: number;
   if (soloLike) {
     // "Sie": the soloist was dealt all four Obers and all four Unters.
     const declarerHand = initialHands[contract.declarerId] ?? [];
-    const isSie =
-      isSolo(contract.type) &&
-      declarerHand.filter((card) => card.value === CardValue.OBER || card.value === CardValue.UNTER).length === 8;
+    const isSie = isSolo(contract.type) && declarerHand.filter(isOberOrUnter).length === 8;
     if (isSie) {
       perUnit = TARIFF.solo.sie;
-    } else if (tout) {
-      perUnit = TARIFF.solo.tout + laufende * TARIFF.solo.perLaufendem;
     } else {
-      const base = isSchwarz ? TARIFF.solo.schwarz : isSchneider ? TARIFF.solo.schneider : TARIFF.solo.base;
-      perUnit = base + laufende * TARIFF.solo.perLaufendem;
+      perUnit = (contract.isTout ? TARIFF.solo.tout : tier(TARIFF.solo)) + laufende * TARIFF.solo.perLaufendem;
     }
   } else {
-    const base = isSchwarz ? TARIFF.rufspiel.schwarz : isSchneider ? TARIFF.rufspiel.schneider : TARIFF.rufspiel.base;
-    perUnit = base + laufende * TARIFF.rufspiel.perLaufendem;
+    perUnit = tier(TARIFF.rufspiel) + laufende * TARIFF.rufspiel.perLaufendem;
   }
 
   const changes: Record<string, number> = {};
@@ -179,7 +170,7 @@ function calculateRamschResult(players: Player[], contract: Contract, tricks: Tr
  * Laufende (matadors): the unbroken run of top trumps from the highest down,
  * held by ("mit") or missing from ("ohne") the declaring party's dealt cards.
  */
-export function countLaufende(teamCards: Card[], gameType: GameType): number {
+function countLaufende(teamCards: Card[], gameType: GameType): number {
   const values = gameType === GameType.WENZ ? [CardValue.UNTER] : [CardValue.OBER, CardValue.UNTER];
   const topTrumps = values.flatMap((value) => SUITS.map((suit) => `${suit}-${value}`));
   const teamIds = new Set(teamCards.map((card) => card.id));
@@ -192,7 +183,5 @@ export function countLaufende(teamCards: Card[], gameType: GameType): number {
   }
 
   const min = gameType === GameType.WENZ ? TARIFF.minLaufendeWenz : TARIFF.minLaufende;
-  const max = gameType === GameType.WENZ ? TARIFF.maxLaufendeWenz : TARIFF.maxLaufende;
-  const capped = Math.min(run, max);
-  return capped >= min ? capped : 0;
+  return run >= min ? run : 0;
 }

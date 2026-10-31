@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { GameState, Language, PlayerAction, PlayerActionType } from "../types";
-import { gameLabel, translations } from "../lib/i18n";
+import { declarationLabel, gameLabel, signed, translations } from "../lib/i18n";
 import { CheckIcon, TrophyIcon } from "./icons";
 import RoundCardsPopup from "./RoundCardsPopup";
 
@@ -49,7 +49,7 @@ export default function RoundOverScreen({ state, language, myPlayerId, onAction 
     ? `${t.game}: ${gameLabel(language, result.contract.type)}${
         ramsch.jungfrauIds.length > 0 ? ` · ${ramsch.jungfrauIds.length}× ${t.jungfrau}` : ""
       }`
-    : `${t.game}: ${gameLabel(language, result.contract.type, result.contract.calledSuit, result.contract.isTout)}${
+    : `${t.game}: ${declarationLabel(language, result.contract)}${
         result.isSchwarz ? ` · ${t.schwarz}` : result.isSchneider ? ` · ${t.schneider}` : ""
       }${result.laufende > 0 ? ` · ${result.laufende} ${t.laufende}` : ""}${stossSuffix}`;
 
@@ -76,10 +76,7 @@ export default function RoundOverScreen({ state, language, myPlayerId, onAction 
                   {change >= 0 ? "+" : ""}
                   {change}
                 </span>
-                <small>
-                  Σ {total > 0 ? "+" : ""}
-                  {total}
-                </small>
+                <small>Σ {signed(total)}</small>
               </div>
             );
           })}

@@ -24,3 +24,11 @@ export function setRevealOffset(el: HTMLElement): boolean {
   el.style.setProperty("--reveal-y", `${dy}px`);
   return true;
 }
+
+/** Runs a one-shot CSS animation class on `el`; returns the effect cleanup. */
+export function playAnimationClass(el: HTMLElement, className: string): () => void {
+  el.classList.add(className);
+  const clear = () => el.classList.remove(className);
+  el.addEventListener("animationend", clear, { once: true });
+  return () => el.removeEventListener("animationend", clear);
+}

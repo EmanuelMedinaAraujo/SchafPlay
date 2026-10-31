@@ -1,5 +1,5 @@
 import { KeyboardEvent, ReactNode, useEffect, useRef, useState } from "react";
-import { Language } from "../lib/i18n";
+import { Language } from "../types";
 import { XIcon } from "./icons";
 import { CardsChapter, OverviewChapter, TrumpsChapter } from "./manual/ManualBasics";
 import { GamesChapter, RoundChapter } from "./manual/ManualRound";

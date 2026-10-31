@@ -1,8 +1,8 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { GameState, Language, PlayerAction, PlayerActionType, StossKind } from "../types";
 import { isCalledAce, stossKindFor } from "../game/rules";
-import { gameLabel, translations } from "../lib/i18n";
-import { setRevealOffset } from "../lib/rotation";
+import { declarationLabel, translations } from "../lib/i18n";
+import { playAnimationClass, setRevealOffset } from "../lib/rotation";
 import BiddingPanel from "./BiddingPanel";
 import PlayerHand from "./PlayerHand";
 import PlayerSeat from "./PlayerSeat";
@@ -38,10 +38,7 @@ function useContractChipReveal(decided: boolean) {
 
     const chip = chipRef.current;
     if (!chip || !setRevealOffset(chip)) return;
-    chip.classList.add("contract-chip-reveal");
-    const clear = () => chip.classList.remove("contract-chip-reveal");
-    chip.addEventListener("animationend", clear, { once: true });
-    return () => chip.removeEventListener("animationend", clear);
+    return playAnimationClass(chip, "contract-chip-reveal");
   }, [decided]);
 
   return chipRef;
@@ -85,14 +82,26 @@ export default function GameBoard({
   const holdsCalledAce = me.cards.some((card) => isCalledAce(card, state.currentContract));
   const stossOption = stossKindFor(state, myPlayerId, holdsCalledAce);
 
-  const contractLabel = state.currentContract
-    ? gameLabel(language, state.currentContract.type, state.currentContract.calledSuit, state.currentContract.isTout)
-    : t.bidding;
+  const contractLabel = state.currentContract ? declarationLabel(language, state.currentContract) : t.bidding;
 
-  const lastCompletedTrick = state.tricks.length > 0 ? state.tricks[state.tricks.length - 1] : null;
+  const lastCompletedTrick = state.tricks.at(-1);
+
+  const renderSeat = (offset: number, position: "top" | "left" | "right") => {
+    const player = seatAt(offset);
+    return (
+      <PlayerSeat
+        player={player}
+        position={position}
+        active={activePlayer?.id === player.id}
+        contract={state.currentContract}
+        stoss={state.stoss}
+        language={language}
+      />
+    );
+  };
 
   return (
-    <main className="game-screen" style={{ backgroundImage: `url(${import.meta.env.BASE_URL}game_background.png)` }}>
+    <main className="game-screen" style={{ backgroundImage: `url(${import.meta.env.BASE_URL}game_background.jpg)` }}>
       <div className="game-toolbar">
         <span ref={contractChipRef} className="contract-chip">{contractLabel}</span>
         <span className="round-chip">
@@ -103,7 +112,7 @@ export default function GameBoard({
             ⚡ {t.devSkip}
           </button>
         )}
-        <PlayerSeat player={seatAt(2)} position="top" active={activePlayer?.id === seatAt(2).id} contract={state.currentContract} stoss={state.stoss} language={language} />
+        {renderSeat(2, "top")}
         {import.meta.env.DEV && (state.status === "PLAYING" || state.status === "BIDDING") && onDevSkipRound && (
           <button className="text-button dev-header-btn dev-round-btn" onClick={onDevSkipRound} type="button">
             ⚡ {t.devSkipRound}
@@ -116,9 +125,9 @@ export default function GameBoard({
       </div>
 
       <section className="table">
-        <PlayerSeat player={seatAt(1)} position="left" active={activePlayer?.id === seatAt(1).id} contract={state.currentContract} stoss={state.stoss} language={language} />
+        {renderSeat(1, "left")}
         <TrickArea trick={state.currentTrick} players={state.players} contract={state.currentContract} myIdx={myIdx} collecting={state.collecting} />
-        <PlayerSeat player={seatAt(3)} position="right" active={activePlayer?.id === seatAt(3).id} contract={state.currentContract} stoss={state.stoss} language={language} />
+        {renderSeat(3, "right")}
       </section>
 
       {state.status === "BIDDING" && <BiddingPanel state={state} language={language} myPlayerId={myPlayerId} onAction={onAction} />}

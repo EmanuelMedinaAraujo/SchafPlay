@@ -1,5 +1,6 @@
 import { GameEngine } from "../engine/GameEngine";
-import { PlayerAction, SeatId } from "../game/types";
+import { redactStateFor } from "../engine/redaction";
+import { GameState, PlayerAction, SeatId } from "../game/types";
 import { ListRecorder } from "../persistence";
 import { createMessage, P2PMessageType } from "../net/protocol";
 import { Transport } from "../net/Transport";
@@ -47,7 +48,7 @@ export class HostSession implements GameSession {
           engine.dealCards();
         } else {
           engine.resume();
-          this.broadcastState();
+          this.broadcastState(engine.getState());
         }
       }
       if (state === "disconnected" || state === "failed") {
@@ -91,13 +92,13 @@ export class HostSession implements GameSession {
     const engine = new GameEngine(settings.playerName, settings.totalRounds, engineOptions(settings));
     this.engine = engine;
     this.recorder = new ListRecorder("multiplayer", "host", "p1");
-    engine.onStateChange(() => {
+    engine.onStateChange((snapshot) => {
       // The host's own view is redacted too — it records and renders exactly
       // what a player at seat p1 may see.
-      const redacted = engine.getRedactedState("p1");
+      const redacted = redactStateFor(snapshot, "p1");
       this.recorder?.observe(redacted);
       this.deps.events.onGameState(redacted);
-      this.broadcastState();
+      this.broadcastState(snapshot);
     });
     // After the listener above, so the seat it fills in is broadcast like any other change.
     if (this.pendingGuestIdentity) {
@@ -106,13 +107,12 @@ export class HostSession implements GameSession {
     }
   }
 
-  /** Send each remote human seat its own redacted view of the current state. */
-  private broadcastState(): void {
-    const engine = this.engine;
+  /** Send each remote human seat its own redacted view of `snapshot`. */
+  private broadcastState(snapshot: GameState): void {
     const transport = this.transport;
-    if (!engine || !transport) return;
+    if (!transport) return;
     for (const seat of REMOTE_HUMAN_SEATS) {
-      const state = engine.getRedactedState(seat);
+      const state = redactStateFor(snapshot, seat);
       try {
         // Once per peer instead of in every snapshot (see session/avatarSync.ts).
         // Sent before the state it belongs to; the channel is ordered.

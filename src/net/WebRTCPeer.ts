@@ -3,6 +3,11 @@ import { GuestSignaling, HostSignaling } from "./Signaling";
 import { Transport, TransportState } from "./Transport";
 import { decodeSignal, encodeSignal } from "./sdpCodec";
 
+const HEARTBEAT_INTERVAL_MS = 5000;
+const HEARTBEAT_TIMEOUT_MS = 15000;
+/** Candidate gathering is LAN-only and fast; this is only a safety net. */
+const ICE_GATHERING_TIMEOUT_MS = 1500;
+
 /**
  * One game link over serverless WebRTC. Signaling exchanges compressed SDP
  * codes out of band — pasted, scanned as QR or opened as a link (no broker,
@@ -124,16 +129,8 @@ export class WebRTCPeer implements Transport, HostSignaling, GuestSignaling {
   private gatherCandidates(pc: RTCPeerConnection): Promise<RTCIceCandidateInit[]> {
     return new Promise((resolve) => {
       const candidates: RTCIceCandidateInit[] = [];
-      let resolved = false;
-
-      const done = () => {
-        if (resolved) return;
-        resolved = true;
-        resolve(candidates);
-      };
-
-      // Safety timeout of 1.5s (candidate gathering is LAN-only and fast)
-      const timeoutId = setTimeout(done, 1500);
+      const done = () => resolve(candidates);
+      const timeoutId = setTimeout(done, ICE_GATHERING_TIMEOUT_MS);
 
       pc.onicecandidate = (event) => {
         if (event.candidate) {
@@ -178,7 +175,7 @@ export class WebRTCPeer implements Transport, HostSignaling, GuestSignaling {
           this.stopHeartbeat();
           this.emitState("disconnected");
         }
-      }, 5000);
+      }, HEARTBEAT_INTERVAL_MS);
     }
   }
 
@@ -187,7 +184,7 @@ export class WebRTCPeer implements Transport, HostSignaling, GuestSignaling {
     this.heartbeatTimeoutId = setTimeout(() => {
       this.stopHeartbeat();
       if (!this.closed) this.emitState("disconnected");
-    }, 15000);
+    }, HEARTBEAT_TIMEOUT_MS);
   }
 
   private stopHeartbeat() {

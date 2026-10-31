@@ -149,7 +149,6 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
   const onPeerRef = useRef(onPeer);
   onPeerRef.current = onPeer;
 
-  // Clean up unconnected peer on unmount
   useEffect(() => {
     return () => {
       if (peerRef.current && !peerRef.current.isConnected()) {
@@ -170,11 +169,9 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
     }
   }
 
-  // Host: create offer on mount.
   useEffect(() => {
     if (mode !== "host") return;
     createHostInvite();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
   // A failed handshake can never recover — the offer is consumed. Start over.
@@ -193,7 +190,6 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
       setReplyCode("");
       setError(t.failed);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionState, mode]);
 
   async function hostAcceptReply(codeArg?: string) {
@@ -248,8 +244,35 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
     if (!code) return;
     autoSubmittedRef.current = true;
     guestGenerateReply(code);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
+
+  const connectedNote = connectionState === "connected" && (
+    <p className="muted" style={{ color: "var(--green)" }}>✓ {t.connected}</p>
+  );
+
+  /** The scanner and QR popup both flows share; only what they act on differs. */
+  const overlays = (onScanned: (code: string) => void, qrData: string, qrLabel: string) => (
+    <>
+      {scanning && (
+        <OverlayPortal>
+          <QRScanner
+            language={language}
+            onResult={(code) => {
+              setScanning(false);
+              onScanned(code);
+            }}
+            onClose={() => setScanning(false)}
+          />
+        </OverlayPortal>
+      )}
+
+      {showingQrModal && (
+        <OverlayPortal>
+          <QrPopup data={qrData} label={qrLabel} t={t} onClose={() => setShowingQrModal(false)} />
+        </OverlayPortal>
+      )}
+    </>
+  );
 
   if (mode === "host") {
     return (
@@ -288,9 +311,7 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
               </>
             )}
 
-            {connectionState === "connected" && (
-              <p className="muted" style={{ color: "var(--green)" }}>✓ {t.connected}</p>
-            )}
+            {connectedNote}
 
             {accepted && connectionState === "connecting" && (
               <p className="muted pulse-soft">
@@ -302,24 +323,7 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
 
         {error && <p className="error-text">{error}</p>}
 
-        {scanning && (
-          <OverlayPortal>
-            <QRScanner
-              language={language}
-              onResult={(code) => {
-                setScanning(false);
-                hostAcceptReply(code);
-              }}
-              onClose={() => setScanning(false)}
-            />
-          </OverlayPortal>
-        )}
-
-        {showingQrModal && (
-          <OverlayPortal>
-            <QrPopup data={inviteCode} label={t.inviteCode} t={t} onClose={() => setShowingQrModal(false)} />
-          </OverlayPortal>
-        )}
+        {overlays(hostAcceptReply, inviteCode, t.inviteCode)}
       </div>
     );
   }
@@ -357,31 +361,18 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
         </>
       )}
 
-      {connectionState === "connected" && (
-        <p className="muted" style={{ color: "var(--green)" }}>✓ {t.connected}</p>
-      )}
+      {connectedNote}
 
       {busy && <p className="muted pulse-soft">{t.connecting}</p>}
       {error && <p className="error-text">{error}</p>}
 
-      {scanning && (
-        <OverlayPortal>
-          <QRScanner
-            language={language}
-            onResult={(code) => {
-              setScanning(false);
-              setPastedCode(code);
-              guestGenerateReply(code);
-            }}
-            onClose={() => setScanning(false)}
-          />
-        </OverlayPortal>
-      )}
-
-      {showingQrModal && (
-        <OverlayPortal>
-          <QrPopup data={replyCode} label={t.replyCode} t={t} onClose={() => setShowingQrModal(false)} />
-        </OverlayPortal>
+      {overlays(
+        (code) => {
+          setPastedCode(code);
+          guestGenerateReply(code);
+        },
+        replyCode,
+        t.replyCode,
       )}
     </div>
   );

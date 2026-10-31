@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Card, GameType, Language } from "../types";
-import { gameLabel, signed, translations } from "../lib/i18n";
+import { GameType, Language } from "../types";
+import { declarationLabel, signed, translations } from "../lib/i18n";
+import { TablePosition, tablePosition } from "../lib/seating";
 import { GameRecord, RoundRecord } from "../persistence";
 import { isReplayable, replayStep, stepCount } from "../analysis/replay";
 import CardFace from "./CardFace";
@@ -13,9 +14,6 @@ interface ReplayScreenProps {
   language: Language;
   onBack: () => void;
 }
-
-type Position = "bottom" | "left" | "top" | "right";
-const POSITIONS: Position[] = ["bottom", "left", "top", "right"];
 
 /**
  * The nearest replayable round at or after `from`; -1 when there is none.
@@ -96,12 +94,12 @@ export default function ReplayScreen({ game, startRoundIndex, language, onBack }
   const localIdx = game.players.findIndex((player) => player.id === game.localPlayerId);
   const seats = game.players.map((player, index) => ({
     player,
-    position: POSITIONS[((index - Math.max(0, localIdx)) % 4 + 4) % 4],
+    position: tablePosition(index, Math.max(0, localIdx)),
   }));
-  const positionOf = (playerId: string): Position =>
+  const positionOf = (playerId: string): TablePosition =>
     seats.find((seat) => seat.player.id === playerId)?.position ?? "bottom";
 
-  const label = contract ? gameLabel(language, contract.type, contract.calledSuit, contract.isTout) : "—";
+  const label = contract ? declarationLabel(language, contract) : "—";
   const declarer = contract ? game.players.find((player) => player.id === contract.declarerId) : undefined;
 
   const backButton = (
@@ -176,7 +174,7 @@ export default function ReplayScreen({ game, startRoundIndex, language, onBack }
               )}
             </div>
             <div className="replay-hand">
-              {(view.hands[player.id] ?? []).map((card: Card) => (
+              {(view.hands[player.id] ?? []).map((card) => (
                 <span key={card.id} className="replay-hand-card" data-card-id={card.id}>
                   <CardFace card={card} contract={contract} small />
                 </span>

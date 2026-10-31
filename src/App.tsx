@@ -82,6 +82,21 @@ export default function App() {
 
   const t = translations[language];
 
+  const navButtons = [
+    { title: t.home, Icon: HomeIcon, onClick: () => setScreen("home") },
+    { title: t.stats, Icon: ChartColumnIcon, onClick: () => setScreen("stats") },
+    { title: t.analysis, Icon: HistoryIcon, onClick: () => setScreen("analysis") },
+    { title: t.settings, Icon: SettingsIcon, onClick: () => setScreen("settings") },
+    { title: t.rules, Icon: BookOpenIcon, onClick: () => setRulesOpen(true) },
+  ];
+  const connectionLabel = {
+    connected: t.connected,
+    connecting: t.connecting,
+    idle: "—",
+    disconnected: t.disconnected,
+    failed: t.disconnected,
+  }[connectionState];
+
   function quitGame() {
     session.quit();
     setScreen("home");
@@ -119,30 +134,14 @@ export default function App() {
           <span>SchafPlay</span>
         </button>
         <div className="topbar-actions">
-          <button className="icon-button" onClick={() => setScreen("home")} title={t.home} type="button">
-            <HomeIcon />
-          </button>
-          <button className="icon-button" onClick={() => setScreen("stats")} title={t.stats} type="button">
-            <ChartColumnIcon />
-          </button>
-          <button className="icon-button" onClick={() => setScreen("analysis")} title={t.analysis} type="button">
-            <HistoryIcon />
-          </button>
-          <button className="icon-button" onClick={() => setScreen("settings")} title={t.settings} type="button">
-            <SettingsIcon />
-          </button>
-          <button className="icon-button" onClick={() => setRulesOpen(true)} title={t.rules} type="button">
-            <BookOpenIcon />
-          </button>
+          {navButtons.map(({ title, Icon, onClick }) => (
+            <button key={title} className="icon-button" onClick={onClick} title={title} type="button">
+              <Icon />
+            </button>
+          ))}
           <span className={`connection-pill ${role === "solo" ? "solo" : connectionState}`}>
             {role === "solo" ? <BotIcon size={14} /> : connectionState === "connected" ? <WifiIcon /> : <PlugZapIcon />}
-            {connectionState === "connected"
-                ? t.connected
-                : connectionState === "connecting"
-                  ? t.connecting
-                  : connectionState === "idle"
-                    ? "—"
-                    : t.disconnected}
+            {connectionLabel}
           </span>
         </div>
       </header>

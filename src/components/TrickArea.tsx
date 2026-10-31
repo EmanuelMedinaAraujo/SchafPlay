@@ -1,6 +1,7 @@
 import { CSSProperties, useLayoutEffect, useRef } from "react";
 import { Contract, Player, Trick } from "../types";
 import { toPageDelta } from "../lib/rotation";
+import { TablePosition, tablePosition } from "../lib/seating";
 import CardFace from "./CardFace";
 
 interface TrickAreaProps {
@@ -12,7 +13,7 @@ interface TrickAreaProps {
 }
 
 /** Where the winner's name lives on screen, per table position. */
-const FLY_TARGETS: Record<string, string> = {
+const FLY_TARGETS: Record<TablePosition, string> = {
   bottom: ".player-hand-container",
   left: ".seat-left .seat-name",
   top: ".seat-top .seat-name",
@@ -22,11 +23,8 @@ const FLY_TARGETS: Record<string, string> = {
 export default function TrickArea({ trick, players, contract, myIdx, collecting }: TrickAreaProps) {
   const feltRef = useRef<HTMLDivElement>(null);
 
-  const positionOf = (playerId: string) => {
-    const idx = players.findIndex((player) => player.id === playerId);
-    const offset = ((idx - myIdx) % 4 + 4) % 4;
-    return ["bottom", "left", "top", "right"][offset];
-  };
+  const positionOf = (playerId: string) =>
+    tablePosition(players.findIndex((player) => player.id === playerId), myIdx);
 
   const winnerPos = collecting && trick?.winnerId ? positionOf(trick.winnerId) : null;
 

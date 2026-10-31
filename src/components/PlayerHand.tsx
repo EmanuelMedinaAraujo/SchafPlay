@@ -20,12 +20,12 @@ interface PlayerHandProps {
   language: Language;
   onPlay: (cardId: string) => void;
   onLastTrick: () => void;
-  tricks?: Trick[];
+  tricks: Trick[];
   /** The announcement the local player may make now ("stoss"/"retour"), or null. */
-  stossOption?: StossKind | null;
+  stossOption: StossKind | null;
   /** The announcement the local player already made this round, if any. */
-  myStossKind?: StossKind | null;
-  onStoss?: () => void;
+  myStossKind: StossKind | null;
+  onStoss: () => void;
 }
 
 interface DragState {
@@ -60,7 +60,6 @@ export default function PlayerHand({
   const dragRef = useRef<DragState | null>(null);
   const [showIllegal, setShowIllegal] = useState(false);
 
-  // Clear gray-out when state changes
   useEffect(() => {
     setShowIllegal(false);
   }, [hand.length, disabled]);
@@ -87,7 +86,7 @@ export default function PlayerHand({
     try {
       el.setPointerCapture(event.pointerId);
     } catch {
-      // No active pointer with that id
+      // The pointer is already gone; the drag still works without capture.
     }
     dragRef.current = { id: cardId, el, pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, moved: false };
     el.classList.add("dragging");
@@ -111,7 +110,7 @@ export default function PlayerHand({
     try {
       drag.el.releasePointerCapture(drag.pointerId);
     } catch {
-      // Already released or invalid pointer ID
+      // Already released.
     }
     if (cancelled) return;
     const felt = document.querySelector(".trick-area");
@@ -144,7 +143,7 @@ export default function PlayerHand({
           <div className="seat-name player-hand-stoss announced">
             <strong>{myStossKind === "retour" ? t.retour : t.stoss}</strong>
           </div>
-        ) : stossOption && onStoss ? (
+        ) : stossOption ? (
           <button className="seat-name player-hand-stoss" onClick={onStoss} type="button">
             <strong>{stossOption === "retour" ? t.retour : t.stoss}</strong>
           </button>

@@ -24,7 +24,7 @@ export interface Settings {
   enableStoss: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = {
+const DEFAULT_SETTINGS: Settings = {
   language: "de",
   playerName: "Bazi",
   avatar: "",

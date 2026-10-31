@@ -9,6 +9,7 @@ import {
   getCardRank,
   getGamePriority,
   getLegalCards,
+  isOberOrUnter,
   isTrump,
   soloTypeFor,
 } from "../game/rules";
@@ -92,7 +93,7 @@ export function getAIBid(
 function bestSoloType(hand: Card[]): GameType {
   const counts = [Suit.HEARTS, Suit.ACORNS, Suit.LEAVES, Suit.BELLS].map((suit) => ({
     suit,
-    count: hand.filter((card) => card.suit === suit && card.value !== CardValue.OBER && card.value !== CardValue.UNTER).length,
+    count: hand.filter((card) => card.suit === suit && !isOberOrUnter(card)).length,
   }));
   // Stable sort: ties go to the earlier suit, Hearts first.
   return soloTypeFor(counts.sort((a, b) => b.count - a.count)[0].suit);
@@ -156,7 +157,7 @@ export function getAICardPlay(
       return (
         trumpWinners.find((card) => card.value === CardValue.ACE) ??
         trumpWinners.find((card) => card.value === CardValue.TEN) ??
-        [...trumpWinners].sort((a, b) => getCardRank(a, gameType) - getCardRank(b, gameType))[0]
+        lowestRankCard(trumpWinners, gameType)
       );
     }
   }
@@ -167,9 +168,7 @@ export function getAICardPlay(
   }
 
   const worthTaking = trickPoints >= 10 || (isLastToPlay && trickPoints >= 4);
-  if (winners.length > 0 && worthTaking) {
-    return [...winners].sort((a, b) => getCardRank(a, gameType) - getCardRank(b, gameType))[0];
-  }
+  if (winners.length > 0 && worthTaking) return lowestRankCard(winners, gameType);
   return lowestValueCard(legalCards, gameType);
 }
 
@@ -200,6 +199,14 @@ function onSameTeam(a: string, b: string, contract: Contract): boolean {
   return isDeclaringSide(a, contract) === isDeclaringSide(b, contract);
 }
 
+function lowestRankCard(cards: Card[], gameType: GameType): Card {
+  return [...cards].sort((a, b) => getCardRank(a, gameType) - getCardRank(b, gameType))[0];
+}
+
+function highestRankCard(cards: Card[], gameType: GameType): Card {
+  return [...cards].sort((a, b) => getCardRank(b, gameType) - getCardRank(a, gameType))[0];
+}
+
 function highestValueCard(cards: Card[]): Card {
   return [...cards].sort((a, b) => b.points - a.points)[0];
 }
@@ -209,8 +216,7 @@ function highestValueCard(cards: Card[]): Card {
  * is worth more as a future trump trick than its 2–3 points here.
  */
 function schmierCard(cards: Card[], gameType: GameType): Card {
-  const keepBack = (card: Card) => card.value === CardValue.OBER || card.value === CardValue.UNTER;
-  const schmierable = cards.filter((card) => !keepBack(card));
+  const schmierable = cards.filter((card) => !isOberOrUnter(card));
   if (schmierable.length > 0) return highestValueCard(schmierable);
   return lowestValueCard(cards, gameType);
 }
@@ -224,14 +230,10 @@ function lowestValueCard(cards: Card[], gameType: GameType): Card {
 function chooseLead(player: Player, legal: Card[], contract: Contract | null, gameType: GameType): Card {
   const trumps = legal.filter((card) => isTrump(card, gameType));
   const nonTrumps = legal.filter((card) => !isTrump(card, gameType));
-  if (contract && isDeclaringSide(player.id, contract) && trumps.length > 0) {
-    return [...trumps].sort((a, b) => getCardRank(b, gameType) - getCardRank(a, gameType))[0];
-  }
+  if (contract && isDeclaringSide(player.id, contract) && trumps.length > 0) return highestRankCard(trumps, gameType);
 
   const aces = nonTrumps.filter((card) => card.value === CardValue.ACE);
-  if (aces.length > 0) {
-    return [...aces].sort((a, b) => getCardRank(b, gameType) - getCardRank(a, gameType))[0];
-  }
+  if (aces.length > 0) return highestRankCard(aces, gameType);
 
   const withoutTens = nonTrumps.filter((card) => card.value !== CardValue.TEN);
   if (withoutTens.length > 0) return lowestValueCard(withoutTens, gameType);

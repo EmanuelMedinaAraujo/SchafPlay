@@ -1,4 +1,5 @@
 import { GameEngine } from "../engine/GameEngine";
+import { redactStateFor } from "../engine/redaction";
 import { PlayerAction } from "../game/types";
 import { ListRecorder } from "../persistence";
 import { engineOptions, GameSession, SessionDeps } from "./GameSession";
@@ -18,7 +19,7 @@ export class SoloSession implements GameSession {
     this.engine = new GameEngine(settings.playerName, settings.totalRounds, { ...engineOptions(settings), soloMode: true });
     this.engine.onStateChange((state) => {
       this.recorder?.observe(state);
-      deps.events.onGameState(this.engine.getRedactedState("p1"));
+      deps.events.onGameState(redactStateFor(state, "p1"));
     });
   }
 

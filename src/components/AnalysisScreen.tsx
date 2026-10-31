@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
-import { GameRecord, gameHistoryStore } from "../persistence";
+import { GameRecord, useStoredGames } from "../persistence";
 import GameHistoryItem, { VISIBLE_GAMES } from "./GameHistoryItem";
 import ReplayScreen from "./ReplayScreen";
 import { HistoryIcon } from "./icons";
@@ -21,17 +21,8 @@ interface Selection {
 /** Analysis view (#85): a row per recorded list, expanding into its rounds. */
 export default function AnalysisScreen({ language, onReplayActiveChange }: AnalysisScreenProps) {
   const t = translations[language];
-  const [games, setGames] = useState<GameRecord[]>([]);
+  const games = useStoredGames();
   const [selection, setSelection] = useState<Selection | null>(null);
-
-  // History can't change while this screen is mounted; one read is enough.
-  useEffect(() => {
-    let active = true;
-    gameHistoryStore.loadGames().then((value) => active && setGames(value));
-    return () => {
-      active = false;
-    };
-  }, []);
 
   // The replay runs chrome-free; hand the chrome back on unmount too.
   useEffect(() => {

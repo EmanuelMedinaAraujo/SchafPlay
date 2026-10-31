@@ -45,14 +45,7 @@ export enum GamePriority {
 }
 
 export type SeatId = "p1" | "p2" | "p3" | "p4";
-export type BiddingPhase = "WILL_PHASE" | "DECLARE_PHASE";
 export type GameStatus = "LOBBY" | "BIDDING" | "PLAYING" | "ROUND_OVER" | "LIST_OVER";
-
-/** Structured log entry rendered client-side in the viewer's language. */
-export interface LogEntry {
-  key: string;
-  params?: Record<string, string | number>;
-}
 
 export interface GameDeclaration {
   type: GameType;
@@ -100,14 +93,12 @@ export interface Trick {
 }
 
 export interface BiddingState {
-  phase: BiddingPhase;
+  phase: "WILL_PHASE" | "DECLARE_PHASE";
   willBids: WillBid[];
   interestedPlayerIds: string[];
   declarations: BidDeclaration[];
   highBid: BidDeclaration | null;
 }
-
-export type ReadyState = Record<string, boolean>;
 
 /**
  * A "Stoß" (Kontra) doubles the round; a "Retour" doubles it again. Chain
@@ -159,11 +150,10 @@ export interface GameState {
   /** True while the host paused the game (peer disconnected). */
   paused: boolean;
   biddingState: BiddingState | null;
-  readyState: ReadyState;
+  readyState: Record<string, boolean>;
   scores: Record<string, number>;
   roundNumber: number;
   totalRounds: number;
-  logs: LogEntry[];
   lastResult?: RoundResult;
   /** In order, max 2. Reset every round. */
   stoss: StossEntry[];

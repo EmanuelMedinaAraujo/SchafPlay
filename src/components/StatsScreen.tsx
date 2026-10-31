@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import { GameType, Language } from "../types";
 import { signed, translations } from "../lib/i18n";
-import { GameRecord, RoundRecord, StatsMode, StatsTotals, gameHistoryStore } from "../persistence";
+import { Contract } from "../game/types";
+import { StatsMode, StatsTotals, emptyTotals, gameHistoryStore, useStoredGames } from "../persistence";
 import GameHistoryItem, { VISIBLE_GAMES } from "./GameHistoryItem";
 import { BotIcon, ChartColumnIcon, UsersIcon } from "./icons";
-
-const EMPTY_TOTALS: StatsTotals = { played: 0, won: 0, soloPlayed: 0, soloWon: 0, mpPlayed: 0, mpWon: 0 };
 
 interface StatsScreenProps {
   language: Language;
@@ -27,26 +26,36 @@ interface ContractStats {
   points: number;
 }
 
-function contractFamily(round: RoundRecord): ContractFamily | null {
-  const contract = round.contract;
-  if (!contract) return null;
+function contractFamily(contract: Contract): ContractFamily {
   if (contract.isTout) return "TOUT";
   if (contract.type === GameType.SAUSPIEL) return "SAUSPIEL";
   if (contract.type === GameType.WENZ) return "WENZ";
   return "SOLO";
 }
 
+/** "75%", or a dash when there is nothing to divide by. */
+function winRate(won: number, played: number): string {
+  return played > 0 ? `${Math.round((won / played) * 100)}%` : "—";
+}
+
+function StatTile({ label, tone = "", children }: { label: string; tone?: string; children: ReactNode }) {
+  return (
+    <div className={`stat-tile ${tone}`}>
+      <small>{label}</small>
+      <strong>{children}</strong>
+    </div>
+  );
+}
+
 export default function StatsScreen({ language }: StatsScreenProps) {
   const t = translations[language];
   const [filter, setFilter] = useState<Filter>("all");
-  const [totals, setTotals] = useState<StatsTotals>(EMPTY_TOTALS);
-  const [games, setGames] = useState<GameRecord[]>([]);
+  const [totals, setTotals] = useState<StatsTotals>(emptyTotals);
+  const games = useStoredGames();
 
-  // Stats can't change while this screen is mounted; one read is enough.
   useEffect(() => {
     let active = true;
     gameHistoryStore.loadTotals().then((value) => active && setTotals(value));
-    gameHistoryStore.loadGames().then((value) => active && setGames(value));
     return () => {
       active = false;
     };
@@ -55,7 +64,6 @@ export default function StatsScreen({ language }: StatsScreenProps) {
   const played = filter === "all" ? totals.played : filter === "solo" ? totals.soloPlayed : totals.mpPlayed;
   const won = filter === "all" ? totals.won : filter === "solo" ? totals.soloWon : totals.mpWon;
   const lost = Math.max(0, played - won);
-  const winRate = played > 0 ? `${Math.round((won / played) * 100)}%` : "—";
 
   // Every derived figure below reads from this; the visible list is capped separately.
   const filtered = useMemo(() => games.filter((game) => filter === "all" || game.mode === filter), [games, filter]);
@@ -78,8 +86,7 @@ export default function StatsScreen({ language }: StatsScreenProps) {
     for (const game of filtered) {
       for (const round of game.rounds) {
         if (round.contract?.declarerId !== game.localPlayerId) continue;
-        const family = contractFamily(round);
-        if (!family) continue;
+        const family = contractFamily(round.contract);
         stats[family].played += 1;
         if (round.result.declarerWon) stats[family].won += 1;
         stats[family].points += round.result.declarerPoints;
@@ -135,30 +142,14 @@ export default function StatsScreen({ language }: StatsScreenProps) {
       </div>
 
       <div className="stat-tiles">
-        <div className="stat-tile">
-          <small>{t.statsPlayed}</small>
-          <strong>{played}</strong>
-        </div>
-        <div className="stat-tile won">
-          <small>{t.statsWon}</small>
-          <strong>{won}</strong>
-        </div>
-        <div className="stat-tile lost">
-          <small>{t.statsLost}</small>
-          <strong>{lost}</strong>
-        </div>
-        <div className="stat-tile">
-          <small>{t.statsWinRate}</small>
-          <strong>{winRate}</strong>
-        </div>
-        <div className="stat-tile">
-          <small>{t.rounds}</small>
-          <strong>{roundsPlayed}</strong>
-        </div>
-        <div className={`stat-tile ${pointsBalance > 0 ? "won" : pointsBalance < 0 ? "lost" : ""}`}>
-          <small>{t.statsPointsBalance}</small>
-          <strong>{signed(pointsBalance)}</strong>
-        </div>
+        <StatTile label={t.statsPlayed}>{played}</StatTile>
+        <StatTile label={t.statsWon} tone="won">{won}</StatTile>
+        <StatTile label={t.statsLost} tone="lost">{lost}</StatTile>
+        <StatTile label={t.statsWinRate}>{winRate(won, played)}</StatTile>
+        <StatTile label={t.rounds}>{roundsPlayed}</StatTile>
+        <StatTile label={t.statsPointsBalance} tone={pointsBalance > 0 ? "won" : pointsBalance < 0 ? "lost" : ""}>
+          {signed(pointsBalance)}
+        </StatTile>
       </div>
 
       {filtered.length > 0 && (
@@ -195,7 +186,7 @@ export default function StatsScreen({ language }: StatsScreenProps) {
                         <td>{familyLabel(family)}</td>
                         <td>{stats.played}</td>
                         <td>{stats.won}</td>
-                        <td>{stats.played > 0 ? `${Math.round((stats.won / stats.played) * 100)}%` : "—"}</td>
+                        <td>{winRate(stats.won, stats.played)}</td>
                         <td>{stats.played > 0 ? Math.round(stats.points / stats.played) : "—"}</td>
                       </tr>
                     );

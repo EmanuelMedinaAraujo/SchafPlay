@@ -1,6 +1,4 @@
-import { CardValue, GameType, Language, LogEntry, Suit } from "../types";
-
-export type { Language };
+import { CardValue, GameDeclaration, GameType, Language, Suit } from "../types";
 
 export const translations = {
   de: {
@@ -407,57 +405,7 @@ export function gameLabel(
   return label;
 }
 
-/** Render a structured engine log entry in the viewer's language. */
-export function formatLog(entry: LogEntry, lang: Language): string {
-  const p = entry.params ?? {};
-  const name = String(p.name ?? "");
-  const game =
-    p.gameType !== undefined
-      ? gameLabel(lang, p.gameType as GameType, p.calledSuit as Suit | undefined, Boolean(p.isTout))
-      : "";
-  const card =
-    p.suit !== undefined && p.value !== undefined
-      ? `${getCardSuitTranslated(p.suit as Suit, lang)}-${getCardValueTranslated(p.value as CardValue, lang)}`
-      : "";
-
-  const de: Record<string, string> = {
-    "log.lobby": "Lobby bereit.",
-    "log.deal": `Runde ${p.round}: ${p.dealer} gibt.`,
-    "log.will": `${name}: I dad spuin!`,
-    "log.pass": `${name}: Weiter.`,
-    "log.retreat": `${name} zieht zurück.`,
-    "log.declare": `${name} bietet ${game}.`,
-    "log.allPass": "Alle weiter – es wird zusammengeworfen und neu gegeben.",
-    "log.ramsch": "Alle weiter – es wird Ramsch gespielt!",
-    "log.contract": `${name} spielt ${game}.`,
-    "log.play": `${name} spielt ${card}.`,
-    "log.trickWon": `${name} nimmt den Stich (${p.points} Augen).`,
-    "log.stoss": `${name} gibt einen Stoß – doppelter Spielwert!`,
-    "log.retour": `${name} kontert mit Retour – nochmal doppelt!`,
-    "log.roundOver": `Runde beendet – ${p.names} gewinnt.`,
-    "log.ready": `${name} ist bereit.`,
-    "log.paused": "Verbindung unterbrochen – Spiel pausiert.",
-    "log.resumed": "Wieder verbunden – weiter geht's!",
-  };
-  const en: Record<string, string> = {
-    "log.lobby": "Lobby ready.",
-    "log.deal": `Round ${p.round}: ${p.dealer} deals.`,
-    "log.will": `${name}: I'd play!`,
-    "log.pass": `${name}: pass.`,
-    "log.retreat": `${name} retreats.`,
-    "log.declare": `${name} bids ${game}.`,
-    "log.allPass": "All pass – cards are thrown in and redealt.",
-    "log.ramsch": "All pass – a Ramsch is played!",
-    "log.contract": `${name} plays ${game}.`,
-    "log.play": `${name} plays ${card}.`,
-    "log.trickWon": `${name} takes the trick (${p.points} pts).`,
-    "log.stoss": `${name} calls Stoß – the game is doubled!`,
-    "log.retour": `${name} answers with Retour – doubled again!`,
-    "log.roundOver": `Round over – ${p.names} wins.`,
-    "log.ready": `${name} is ready.`,
-    "log.paused": "Connection lost – game paused.",
-    "log.resumed": "Reconnected – game on!",
-  };
-
-  return (lang === "de" ? de : en)[entry.key] ?? entry.key;
+/** `gameLabel` for a whole declaration or contract. */
+export function declarationLabel(lang: Language, declaration: GameDeclaration): string {
+  return gameLabel(lang, declaration.type, declaration.calledSuit, declaration.isTout);
 }

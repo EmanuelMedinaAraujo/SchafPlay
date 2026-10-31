@@ -49,7 +49,7 @@ npm run test:e2e              # run the suite headless (starts the Vite dev serv
 E2E_SLOW=1 npm run test:e2e   # slower in-game pacing, for machines that lose the race
 ```
 
-The suite runs seeded games at 40 ms per AI move, which a CPU-starved machine can fall behind — a card can be gone from the table before the assertion looks. `E2E_SLOW=1` stretches that pacing; it changes timing only, never the deal or the outcome.
+The suite runs seeded games at 40 ms per AI move, which a CPU-starved machine can fall behind — a card can be gone from the table before the assertion looks, and a many-core machine at the default worker count can lose that race too (`--workers=2` matches CI). `E2E_SLOW=1` stretches that pacing; it changes timing only, never the deal or the outcome.
 
 It runs automatically in CI (`.github/workflows/e2e.yml`) on every pull request and on pushes to `main`. There are no unit tests — the suite above is the project's only automated testing.
 
@@ -110,7 +110,7 @@ src/
 ├── persistence/           # GameHistoryStore interface, IndexedDB store, ListRecorder
 ├── analysis/              # Pure replay derivation over stored RoundRecords
 ├── components/            # GameBoard, PlayerHand, BiddingPanel, TrickArea, PairingPanel, …
-└── lib/i18n.ts            # German/English incl. structured game log entries
+└── lib/i18n.ts            # German/English strings and game labels
 ```
 
 - **Host** (player 1) runs the GameEngine, validates every action, and sends the guest only their **redacted** game state — other players' hands are never on the wire.

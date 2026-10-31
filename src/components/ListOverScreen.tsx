@@ -1,5 +1,5 @@
 import { GameState, Language, PlayerAction, PlayerActionType } from "../types";
-import { translations } from "../lib/i18n";
+import { signed, translations } from "../lib/i18n";
 import { TrophyIcon } from "./icons";
 import { summaryInfo } from "./RoundOverScreen";
 
@@ -44,7 +44,7 @@ export default function ListOverScreen({ state, language, myPlayerId, onAction, 
                 </span>
                 <strong>{player.name}</strong>
                 <span className={total >= 0 ? "list-over-total" : "list-over-total negative"}>
-                  {total > 0 ? "+" : ""}{total}
+                  {signed(total)}
                 </span>
               </div>
             );

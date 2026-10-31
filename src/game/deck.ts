@@ -49,10 +49,11 @@ export function cardFromId(id: string): Card | null {
   return { id, suit, value, points: CARD_POINTS[value] };
 }
 
-export function shuffleDeck(deck: Card[]): Card[] {
+/** Fisher-Yates; `random` is injectable so seeded deals share this implementation. */
+export function shuffleDeck(deck: Card[], random: () => number = Math.random): Card[] {
   const shuffled = [...deck];
   for (let i = shuffled.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
   return shuffled;

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { GameState, GameType, Language, PlayerAction, PlayerActionType, Suit } from "../types";
 import { canOverrideBid, getCallableSuits, isRetreatAllowed } from "../game/rules";
-import { gameLabel, translations } from "../lib/i18n";
+import { declarationLabel, gameLabel, translations } from "../lib/i18n";
 
 interface BiddingPanelProps {
   state: GameState;
@@ -79,7 +79,7 @@ export default function BiddingPanel({ state, language, myPlayerId, onAction }: 
       <h2>{t.declarePhaseTitle}</h2>
       {high && (
         <p className="muted">
-          {t.currentHighBid}: <strong>{gameLabel(language, high.type, high.calledSuit, high.isTout)}</strong>
+          {t.currentHighBid}: <strong>{declarationLabel(language, high)}</strong>
           {" – "}
           {state.players.find((player) => player.id === bidding.highBid?.playerId)?.name}
         </p>

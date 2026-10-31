@@ -7,7 +7,7 @@ import { TransportState } from "../net/Transport";
 export type SessionRole = "host" | "guest" | "solo";
 
 /** Callbacks a session uses to drive the UI — wired to React state by useGameSession. */
-export interface SessionEvents {
+interface SessionEvents {
   onGameState(state: GameState): void;
   onConnectionState(state: TransportState | "idle"): void;
   /** The session is ready to show the game screen (fires again on reconnect). */

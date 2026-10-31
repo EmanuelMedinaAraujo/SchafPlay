@@ -34,8 +34,8 @@ export function useGameSession(options: UseGameSessionOptions) {
     depsRef.current = {
       getSettings: () => optionsRef.current.settings,
       events: {
-        onGameState: (state) => setGameState(state),
-        onConnectionState: (state) => setConnectionState(state),
+        onGameState: setGameState,
+        onConnectionState: setConnectionState,
         onEnterGame: () => optionsRef.current.onEnterGame(),
       },
     };

@@ -6,7 +6,6 @@ import {
   GameDeclaration,
   GameState,
   GameType,
-  LogEntry,
   Player,
   PlayerAction,
   PlayerActionType,
@@ -22,11 +21,9 @@ import {
   getLegalCards,
   isCalledAce,
   isRetreatAllowed,
-  isValidSauspielCall,
   stossKindFor,
 } from "../game/rules";
 import { calculateRoundResult } from "../game/scoring";
-import { redactStateFor } from "./redaction";
 import { AIController } from "../players/AIController";
 import { BidContext, PlayerController } from "../players/PlayerController";
 
@@ -60,8 +57,6 @@ const AI_SEAT_AVATAR: Record<"p2" | "p3" | "p4", string> = {
   p3: "preset:zenzi",
   p4: "preset:sepp",
 };
-
-const MAX_LOGS = 30;
 
 export class GameEngine {
   private state: GameState;
@@ -111,10 +106,9 @@ export class GameEngine {
       paused: false,
       biddingState: null,
       readyState: freshReadyState(players),
-      scores: { p1: 0, p2: 0, p3: 0, p4: 0 },
+      scores: freshScores(),
       roundNumber: 0,
       totalRounds,
-      logs: [{ key: "log.lobby" }],
       stoss: [],
       stossEnabled: options.enableStoss ?? false,
     };
@@ -128,11 +122,6 @@ export class GameEngine {
 
   getState(): GameState {
     return structuredClone(this.state);
-  }
-
-  /** The privacy boundary of the host-authoritative model. */
-  getRedactedState(playerId: string): GameState {
-    return redactStateFor(this.getState(), playerId);
   }
 
   setGuestName(name: string): void {
@@ -161,25 +150,31 @@ export class GameEngine {
 
   /** Deal the next round: advance the dealer, reset per-round state, open bidding. */
   private beginRound(state: GameState): void {
-    this.dealInto(state);
     state.dealerIdx = (state.dealerIdx + 1) % 4;
-    state.activePlayerIdx = (state.dealerIdx + 1) % 4;
     state.roundNumber += 1;
     state.readyState = freshReadyState(state.players);
     state.lastResult = undefined;
-    state.logs = [{ key: "log.deal", params: { round: state.roundNumber, dealer: state.players[state.dealerIdx].name } }];
-    this.resetBidding(state);
+    this.deal(state);
   }
 
   processAction(action: PlayerAction): void {
     if (this.state.paused) return;
-    if (action.type === PlayerActionType.BID_WILL) this.processBidWill(action.playerId, Boolean(action.data?.wantsToPlay));
-    if (action.type === PlayerActionType.BID_DECLARE && action.data?.declaration) this.processBidDeclare(action.playerId, action.data.declaration);
-    if (action.type === PlayerActionType.BID_RETREAT) this.processBidDeclare(action.playerId, null);
-    if (action.type === PlayerActionType.PLAY_CARD && action.data?.cardId) this.processCardPlay(action.playerId, action.data.cardId);
-    if (action.type === PlayerActionType.READY_NEXT) this.markReady(action.playerId, "ROUND_OVER");
-    if (action.type === PlayerActionType.REMATCH) this.markReady(action.playerId, "LIST_OVER");
-    if (action.type === PlayerActionType.STOSS) this.processStoss(action.playerId);
+    switch (action.type) {
+      case PlayerActionType.BID_WILL:
+        return this.processBidWill(action.playerId, Boolean(action.data?.wantsToPlay));
+      case PlayerActionType.BID_DECLARE:
+        return action.data?.declaration ? this.processBidDeclare(action.playerId, action.data.declaration) : undefined;
+      case PlayerActionType.BID_RETREAT:
+        return this.processBidDeclare(action.playerId, null);
+      case PlayerActionType.PLAY_CARD:
+        return action.data?.cardId ? this.processCardPlay(action.playerId, action.data.cardId) : undefined;
+      case PlayerActionType.READY_NEXT:
+        return this.markReady(action.playerId, "ROUND_OVER");
+      case PlayerActionType.REMATCH:
+        return this.markReady(action.playerId, "LIST_OVER");
+      case PlayerActionType.STOSS:
+        return this.processStoss(action.playerId);
+    }
   }
 
   private processBidWill(playerId: string, wantsToPlay: boolean): void {
@@ -191,7 +186,6 @@ export class GameEngine {
       const currentBidding = state.biddingState!;
       currentBidding.willBids.push({ playerId, wantsToPlay });
       if (wantsToPlay) currentBidding.interestedPlayerIds.push(playerId);
-      this.log(state, wantsToPlay ? "log.will" : "log.pass", { name: this.playerName(playerId) });
 
       if (currentBidding.willBids.length === 4) {
         this.enterDeclarePhaseOrRedeal(state);
@@ -215,7 +209,7 @@ export class GameEngine {
     if (declaration?.type === GameType.SAUSPIEL && declaration.isTout) return;
     if (declaration?.type === GameType.SAUSPIEL) {
       const suit = declaration.calledSuit;
-      if (!suit || !isValidSauspielCall(this.activePlayer().cards, suit)) return;
+      if (!suit || !getCallableSuits(this.activePlayer().cards).includes(suit)) return;
     }
 
     this.mutate((state) => {
@@ -226,12 +220,10 @@ export class GameEngine {
       if (!declaration) {
         currentBidding.interestedPlayerIds = currentBidding.interestedPlayerIds.filter((id) => id !== playerId);
         currentBidding.declarations.push({ playerId, declaration: null });
-        this.log(state, "log.retreat", { name: this.playerName(playerId) });
       } else {
         const bid: BidDeclaration = { playerId, declaration };
         currentBidding.highBid = bid;
         currentBidding.declarations.push(bid);
-        this.log(state, "log.declare", { name: this.playerName(playerId), ...declarationParams(declaration) });
       }
 
       // A retreat needs a standing bid, whose bidder never retreats, so
@@ -243,7 +235,7 @@ export class GameEngine {
       }
 
       const next = remaining[(declaration ? bidderIndex + 1 : bidderIndex) % remaining.length];
-      state.activePlayerIdx = state.players.findIndex((player) => player.id === next);
+      state.activePlayerIdx = seatIndexOf(state, next);
     });
     this.scheduleProgress();
   }
@@ -261,7 +253,6 @@ export class GameEngine {
 
       player.cards = player.cards.filter((candidate) => candidate.id !== cardId);
       state.currentTrick.playedCards.push({ playerId, card });
-      this.log(state, "log.play", { name: player.name, suit: card.suit, value: card.value });
 
       if (state.currentTrick.playedCards.length === 4) {
         // Keep the finished trick on the table for a moment before collecting.
@@ -279,7 +270,6 @@ export class GameEngine {
     if (!kind) return;
     this.mutate((state) => {
       state.stoss.push({ playerId, kind });
-      this.log(state, kind === "retour" ? "log.retour" : "log.stoss", { name: this.playerName(playerId) });
       // A defender's Stoß gives an AI declarer the chance to answer with a Retour.
       if (kind === "stoss") this.maybeAiRetour(state);
     });
@@ -303,7 +293,6 @@ export class GameEngine {
       if (!controller || this.stossKindFor(player.id) !== "stoss") continue;
       if (controller.decideStoss(player, state.currentContract!, { kind: "stoss" })) {
         state.stoss.push({ playerId: player.id, kind: "stoss" });
-        this.log(state, "log.stoss", { name: player.name });
       }
     }
     this.maybeAiRetour(state);
@@ -318,7 +307,6 @@ export class GameEngine {
     if (this.stossKindFor(declarer.id) !== "retour") return;
     if (controller.decideStoss(declarer, contract!, { kind: "retour" })) {
       state.stoss.push({ playerId: declarer.id, kind: "retour" });
-      this.log(state, "log.retour", { name: declarer.name });
     }
   }
 
@@ -332,7 +320,6 @@ export class GameEngine {
     if (playerId !== "p1" && playerId !== "p3") return;
     this.mutate((state) => {
       state.readyState[playerId] = true;
-      this.log(state, "log.ready", { name: this.playerName(playerId) });
     });
     if (!this.state.readyState.p1 || !this.state.readyState.p3) return;
     if (status === "LIST_OVER") this.rematch();
@@ -355,7 +342,6 @@ export class GameEngine {
     this.mutate((state) => {
       state.paused = true;
       state.players[2].connected = false;
-      this.log(state, "log.paused");
     });
   }
 
@@ -364,7 +350,6 @@ export class GameEngine {
     this.mutate((state) => {
       state.paused = false;
       state.players[2].connected = true;
-      this.log(state, "log.resumed");
     });
     this.scheduleProgress();
   }
@@ -416,24 +401,23 @@ export class GameEngine {
     this.mutate((state) => {
       const trick = state.currentTrick!;
       const winnerId = trick.winnerId!;
-      const winner = state.players.find((candidate) => candidate.id === winnerId)!;
-      const points = countPoints(trick.playedCards.map((played) => played.card));
-      winner.pointsCollected += points;
+      const winnerIdx = seatIndexOf(state, winnerId);
+      state.players[winnerIdx].pointsCollected += countPoints(trick.playedCards.map((played) => played.card));
       state.tricks.push(trick);
       state.collecting = false;
-      this.log(state, "log.trickWon", { name: winner.name, points });
 
       if (state.tricks.length === 8) {
         this.finishRound(state);
       } else {
-        state.activePlayerIdx = state.players.findIndex((candidate) => candidate.id === winnerId);
+        state.activePlayerIdx = winnerIdx;
         state.currentTrick = { id: state.tricks.length + 1, leaderId: winnerId, playedCards: [] };
       }
     });
     this.scheduleProgress();
   }
 
-  private dealInto(state: GameState): void {
+  /** Fresh hands and per-deal state; bidding opens with the forehand. The dealer is the caller's. */
+  private deal(state: GameState): void {
     const deck = this.shuffleFn(createDeck());
     this.initialHands = {};
     state.players.forEach((player, index) => {
@@ -447,9 +431,7 @@ export class GameEngine {
     state.collecting = false;
     state.status = "BIDDING";
     state.stoss = [];
-  }
-
-  private resetBidding(state: GameState): void {
+    state.activePlayerIdx = forehandIdx(state);
     state.biddingState = {
       phase: "WILL_PHASE",
       willBids: [],
@@ -462,39 +444,20 @@ export class GameEngine {
   private enterDeclarePhaseOrRedeal(state: GameState): void {
     const bidding = state.biddingState!;
     if (bidding.interestedPlayerIds.length === 0) {
-      this.handleAllPass(state);
+      // `declarerId: ""` marks Ramsch's missing declarer — no seat id ever matches it.
+      if (this.enableRamsch) this.enterPlaying(state, { type: GameType.RAMSCH, declarerId: "" });
+      else this.deal(state);
       return;
     }
     bidding.phase = "DECLARE_PHASE";
-    bidding.interestedPlayerIds = orderFromForehand(bidding.interestedPlayerIds, state.dealerIdx, state.players);
-    state.activePlayerIdx = state.players.findIndex((player) => player.id === bidding.interestedPlayerIds[0]);
-  }
-
-  private handleAllPass(state: GameState): void {
-    if (this.enableRamsch) {
-      this.startRamsch(state);
-    } else {
-      this.log(state, "log.allPass");
-      this.redealSameDealer(state);
-    }
-  }
-
-  /** `declarerId: ""` marks the missing declarer — no seat id ever matches it. */
-  private startRamsch(state: GameState): void {
-    this.enterPlaying(state, { type: GameType.RAMSCH, declarerId: "" });
-    this.log(state, "log.ramsch");
-  }
-
-  private redealSameDealer(state: GameState): void {
-    this.dealInto(state);
-    state.activePlayerIdx = (state.dealerIdx + 1) % 4;
-    this.resetBidding(state);
+    bidding.interestedPlayerIds = orderFromForehand(bidding.interestedPlayerIds, state);
+    state.activePlayerIdx = seatIndexOf(state, bidding.interestedPlayerIds[0]);
   }
 
   private enterPlaying(state: GameState, contract: Contract): void {
     state.currentContract = contract;
     state.status = "PLAYING";
-    state.activePlayerIdx = (state.dealerIdx + 1) % 4;
+    state.activePlayerIdx = forehandIdx(state);
     state.currentTrick = { id: 1, leaderId: state.players[state.activePlayerIdx].id, playedCards: [] };
   }
 
@@ -506,7 +469,6 @@ export class GameEngine {
       contract.partnerId = state.players.find((player) => player.cards.some((card) => isCalledAce(card, contract)))?.id;
     }
     this.enterPlaying(state, contract);
-    this.log(state, "log.contract", { name: this.playerName(contract.declarerId), ...declarationParams(declaration) });
     this.runAiStossPass(state);
   }
 
@@ -525,13 +487,12 @@ export class GameEngine {
     state.status = "ROUND_OVER";
     state.currentTrick = null;
     state.readyState = freshReadyState(state.players);
-    this.log(state, "log.roundOver", { names: result.winnerIds.map((id) => this.playerName(id)).join(", ") });
   }
 
   private rematch(): void {
     this.clearTimer();
     this.mutate((state) => {
-      state.scores = { p1: 0, p2: 0, p3: 0, p4: 0 };
+      state.scores = freshScores();
       state.roundNumber = 0;
       state.dealerIdx = 3;
       this.beginRound(state);
@@ -540,51 +501,49 @@ export class GameEngine {
   }
 
   devSkipTrick(): void {
-    if (this.devToolsEnabled && this.state.status === "PLAYING" && !this.state.collecting && !this.state.paused) {
-      this.clearTimer();
-      while (this.state.status === "PLAYING" && !this.state.collecting) {
-        if (!this.playStepFor(this.activePlayer())) break;
-      }
+    if (!this.devToolsEnabled || this.state.status !== "PLAYING" || this.state.collecting || this.state.paused) return;
+    this.clearTimer();
+    while (this.state.status === "PLAYING" && !this.state.collecting) {
+      if (!this.playStepFor(this.activePlayer())) break;
     }
   }
 
   devSkipRound(): void {
-    if (this.devToolsEnabled && (this.state.status === "PLAYING" || this.state.status === "BIDDING") && !this.state.paused) {
-      this.clearTimer();
-      let safetyCount = 0;
-      while ((this.state.status === "PLAYING" || this.state.status === "BIDDING") && safetyCount < 200) {
-        safetyCount++;
-        if (this.state.collecting) {
-          // Don't wait for the trick-hold timer — resolve the trick right away,
-          // otherwise processCardPlay ignores every further play and the loop
-          // would only ever finish the current trick.
-          this.collectTrick();
-          continue;
-        }
-        if (this.state.status === "BIDDING") {
-          const active = this.activePlayer();
-          if (this.state.biddingState!.phase === "WILL_PHASE") {
-            const wantsToPlay = active.id === "p1";
-            this.processBidWill(active.id, wantsToPlay);
-          } else {
-            if (active.id === "p1") {
-              // Any legal, progressing declaration for the human seat.
-              const high = this.state.biddingState!.highBid?.declaration ?? null;
-              const calledSuit = high ? undefined : getCallableSuits(active.cards)[0];
-              if (calledSuit) this.processBidDeclare(active.id, { type: GameType.SAUSPIEL, calledSuit });
-              else if (canOverrideBid(high, { type: GameType.WENZ })) this.processBidDeclare(active.id, { type: GameType.WENZ });
-              else this.processBidDeclare(active.id, null);
-            } else {
-              const bidding = this.state.biddingState!;
-              const controller = this.controllers[active.id] ?? devFallbackAI;
-              this.processBidDeclare(active.id, controller.decideBid(active, this.bidContext(bidding)));
-            }
-          }
-        } else if (this.state.status === "PLAYING") {
-          if (!this.playStepFor(this.activePlayer())) break;
-        }
+    if (!this.devToolsEnabled || this.state.paused) return;
+    const inRound = () => this.state.status === "PLAYING" || this.state.status === "BIDDING";
+    if (!inRound()) return;
+    this.clearTimer();
+    for (let safetyCount = 0; inRound() && safetyCount < 200; safetyCount += 1) {
+      if (this.state.collecting) {
+        // Don't wait for the trick-hold timer — resolve the trick right away,
+        // otherwise processCardPlay ignores every further play and the loop
+        // would only ever finish the current trick.
+        this.collectTrick();
+      } else if (this.state.status === "BIDDING") {
+        this.devBidStep(this.activePlayer());
+      } else if (!this.playStepFor(this.activePlayer())) {
+        break;
       }
     }
+  }
+
+  /** Dev-skip: the seat's next bid. p1 always takes any legal, progressing game. */
+  private devBidStep(active: Player): void {
+    const bidding = this.state.biddingState!;
+    if (bidding.phase === "WILL_PHASE") {
+      this.processBidWill(active.id, active.id === "p1");
+      return;
+    }
+    if (active.id !== "p1") {
+      const controller = this.controllers[active.id] ?? devFallbackAI;
+      this.processBidDeclare(active.id, controller.decideBid(active, this.bidContext(bidding)));
+      return;
+    }
+    const high = bidding.highBid?.declaration ?? null;
+    const calledSuit = high ? undefined : getCallableSuits(active.cards)[0];
+    if (calledSuit) this.processBidDeclare(active.id, { type: GameType.SAUSPIEL, calledSuit });
+    else if (canOverrideBid(high, { type: GameType.WENZ })) this.processBidDeclare(active.id, { type: GameType.WENZ });
+    else this.processBidDeclare(active.id, null);
   }
 
   /** Dev-skip: one card for the seat. False when nothing is legal. */
@@ -599,15 +558,6 @@ export class GameEngine {
 
   private activePlayer(): Player {
     return this.state.players[this.state.activePlayerIdx];
-  }
-
-  private playerName(playerId: string): string {
-    return this.state.players.find((player) => player.id === playerId)?.name ?? playerId;
-  }
-
-  private log(state: GameState, key: string, params?: LogEntry["params"]): void {
-    state.logs.unshift({ key, params });
-    if (state.logs.length > MAX_LOGS) state.logs.length = MAX_LOGS;
   }
 
   private defer(fn: () => void, ms: number): void {
@@ -625,12 +575,9 @@ export class GameEngine {
     }
   }
 
+  /** Listeners share one snapshot, detached from the engine's state and read-only by contract. */
   private mutate(mutator: (state: GameState) => void): void {
     mutator(this.state);
-    this.emit();
-  }
-
-  private emit(): void {
     const snapshot = this.getState();
     this.listeners.forEach((listener) => listener(snapshot));
   }
@@ -654,17 +601,20 @@ function makePlayer(id: SeatId, name: string, isHuman: boolean, seatIndex: numbe
   };
 }
 
-function orderFromForehand(ids: string[], dealerIdx: number, players: Player[]): string[] {
-  return [...ids].sort((a, b) => {
-    const aIndex = players.findIndex((player) => player.id === a);
-    const bIndex = players.findIndex((player) => player.id === b);
-    return ((aIndex - dealerIdx + 3) % 4) - ((bIndex - dealerIdx + 3) % 4);
-  });
+function freshScores(): GameState["scores"] {
+  return { p1: 0, p2: 0, p3: 0, p4: 0 };
 }
 
-function declarationParams(declaration: GameDeclaration): Record<string, string | number> {
-  const params: Record<string, string | number> = { gameType: declaration.type };
-  if (declaration.calledSuit) params.calledSuit = declaration.calledSuit;
-  if (declaration.isTout) params.isTout = 1;
-  return params;
+function seatIndexOf(state: GameState, playerId: string): number {
+  return state.players.findIndex((player) => player.id === playerId);
+}
+
+/** The seat left of the dealer: first to bid, first to lead. */
+function forehandIdx(state: GameState): number {
+  return (state.dealerIdx + 1) % 4;
+}
+
+function orderFromForehand(ids: string[], state: GameState): string[] {
+  const position = (id: string) => (seatIndexOf(state, id) - state.dealerIdx + 3) % 4;
+  return [...ids].sort((a, b) => position(a) - position(b));
 }

@@ -2,7 +2,7 @@ import { reconstructHands } from "../analysis/replay";
 import { CardValue, Suit } from "../game/types";
 import { GameRecord } from "../persistence/GameHistoryStore";
 import { Language } from "../types";
-import { gameLabel, getCardSuitTranslated, getCardValueTranslated, translations } from "./i18n";
+import { declarationLabel, gameLabel, getCardSuitTranslated, getCardValueTranslated, translations } from "./i18n";
 
 /**
  * Every fixed label of the text export, per language. Schafkopf terms that are
@@ -87,6 +87,7 @@ const STRINGS = {
   },
 } satisfies Record<Language, Record<string, string>>;
 
+/** Unlike the UI's `signed`, the export has always written zero as "+0". */
 function signed(score: number): string {
   return score >= 0 ? `+${score}` : `${score}`;
 }
@@ -107,7 +108,7 @@ export function formatGamesForExport(games: GameRecord[], lang: Language): strin
   out += `${L.totalGames}: ${games.length}\n`;
   out += `==============================================\n\n`;
 
-  // Sort games oldest to newest so they read chronologically in the export
+  // The store lists newest first; the export reads chronologically.
   const sortedGames = [...games].reverse();
 
   sortedGames.forEach((game, gameIdx) => {
@@ -135,8 +136,7 @@ export function formatGamesForExport(games: GameRecord[], lang: Language): strin
         const t = translations[lang];
         roundText = `${gameLabel(lang, contract.type)}: ${playerName(ramsch.playerId)} ${ramsch.isDurchmarsch ? t.ramschDurchmarsch : t.ramschLoses}`;
       } else if (contract) {
-        const contractLabel = gameLabel(lang, contract.type, contract.calledSuit, contract.isTout);
-        roundText = `${contractLabel} ${L.by} ${playerName(contract.declarerId)}`;
+        roundText = `${declarationLabel(lang, contract)} ${L.by} ${playerName(contract.declarerId)}`;
         if (contract.partnerId) roundText += ` (${L.withPartner} ${playerName(contract.partnerId)})`;
       } else {
         roundText = L.allPass;
@@ -163,8 +163,7 @@ export function formatGamesForExport(games: GameRecord[], lang: Language): strin
         }
         for (const dec of r.declarations ?? []) {
           if (dec.declaration) {
-            const label = gameLabel(lang, dec.declaration.type, dec.declaration.calledSuit, dec.declaration.isTout);
-            out += `      ${playerName(dec.playerId)} ${L.bids} ${label}\n`;
+            out += `      ${playerName(dec.playerId)} ${L.bids} ${declarationLabel(lang, dec.declaration)}\n`;
           } else {
             out += `      ${playerName(dec.playerId)} ${L.retreats}\n`;
           }

@@ -1,7 +1,7 @@
 /** Small building blocks shared by the manual's chapters. */
 
 import type { ReactNode } from "react";
-import { Language } from "../../lib/i18n";
+import { Language } from "../../types";
 
 export interface ChapterProps {
   language: Language;

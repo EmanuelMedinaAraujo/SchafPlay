@@ -24,9 +24,13 @@ export function soloTypeFor(suit: Suit): GameType {
   return (Object.keys(SOLO_SUIT) as GameType[]).find((type) => SOLO_SUIT[type] === suit)!;
 }
 
+export function isOberOrUnter(card: Card): boolean {
+  return card.value === CardValue.OBER || card.value === CardValue.UNTER;
+}
+
 export function isTrump(card: Card, gameType: GameType): boolean {
   if (gameType === GameType.WENZ) return card.value === CardValue.UNTER;
-  if (card.value === CardValue.OBER || card.value === CardValue.UNTER) return true;
+  if (isOberOrUnter(card)) return true;
   // Ramsch (#11) is played with the normal trump order: Ober > Unter > Hearts.
   const trumpSuit = gameType === GameType.SAUSPIEL || gameType === GameType.RAMSCH ? Suit.HEARTS : getSoloSuit(gameType);
   return card.suit === trumpSuit;
@@ -170,15 +174,10 @@ export function canOverrideBid(existing: GameDeclaration | null, incoming: GameD
  */
 export function getCallableSuits(hand: Card[]): Suit[] {
   return [Suit.ACORNS, Suit.LEAVES, Suit.BELLS].filter((suit) => {
-    const hasPlainCard = hand.some((card) => card.suit === suit && card.value !== CardValue.OBER && card.value !== CardValue.UNTER);
+    const hasPlainCard = hand.some((card) => card.suit === suit && !isOberOrUnter(card));
     const hasAce = hand.some((card) => card.suit === suit && card.value === CardValue.ACE);
     return hasPlainCard && !hasAce;
   });
-}
-
-/** A Sauspiel call is valid iff the suit is callable from this hand (Hearts never is). */
-export function isValidSauspielCall(hand: Card[], suit: Suit): boolean {
-  return getCallableSuits(hand).includes(suit);
 }
 
 /** "Doch passen" (#24): retreat only once a Wenz or Solo stands. */
