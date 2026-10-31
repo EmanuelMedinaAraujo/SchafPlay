@@ -23,7 +23,7 @@ export interface Policy {
   decideWill(hand: Card[]): boolean;
   /** Return a declaration to bid, or null to retreat/pass. */
   decideDeclare(hand: Card[], high: GameDeclaration | null): GameDeclaration | null;
-  decideCard(legal: Card[], hand: Card[]): Card;
+  decideCard(legal: Card[]): Card;
 }
 
 /** Mirrors GameEngine.devSkipRound's p1 logic: always a legal, progressing move. */
@@ -38,10 +38,7 @@ export const defaultPolicy: Policy = {
   decideCard: (legal) => legal[0],
 };
 
-/**
- * p1 always says "will", then declares like defaultPolicy — use this to predict
- * rounds the browser advances with the DEV "skip round" button.
- */
+/** p1 always says "will", then declares like defaultPolicy. */
 export const alwaysWillPolicy: Policy = {
   ...defaultPolicy,
   decideWill: () => true,
@@ -63,7 +60,7 @@ export interface HumanBid {
   declaration?: GameDeclaration | null;
 }
 
-export interface TraceContract {
+interface TraceContract {
   type: GameType;
   declarerId: string;
   calledSuit?: Suit;
@@ -228,7 +225,7 @@ function simulate(seed: number, options: InternalOptions): Trace {
       }
     } else if (s.status === "PLAYING") {
       const legal = getLegalCards(active.cards, s.currentTrick, s.currentContract, s.tricks);
-      const chosen = policy.decideCard(legal, active.cards);
+      const chosen = policy.decideCard(legal);
       r.turns.push({
         seat: active.id,
         handIds: active.cards.map((c) => c.id),
@@ -244,7 +241,7 @@ function simulate(seed: number, options: InternalOptions): Trace {
   return [...rounds.values()].sort((a, b) => a.roundNumber - b.roundNumber);
 }
 
-export function simulateSolo(seed: number, options: SimulateOptions = {}): Trace {
+function simulateSolo(seed: number, options: SimulateOptions = {}): Trace {
   return simulate(seed, { ...options, soloMode: true });
 }
 

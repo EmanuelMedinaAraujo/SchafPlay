@@ -1,6 +1,6 @@
 import { Page } from "@playwright/test";
 import { bootHome, de, startSolo } from "./helpers/fixtures";
-import { skipRounds, waitForStoredGames } from "./helpers/ui";
+import { quitFinishedList, skipRounds } from "./helpers/ui";
 import { expect, test } from "./helpers/test";
 
 /**
@@ -9,16 +9,9 @@ import { expect, test } from "./helpers/test";
  * rather than hardcoded, so a seed/AI change can't break it.
  */
 
-/**
- * Quits a finished list and opens the analysis screen with the game listed.
- * The write is fire-and-forget and the screen reads history once on mount, so
- * opening it too early shows an empty list *for good* — poll the store first.
- */
+/** Quits a finished list and opens the analysis screen with the game listed. */
 async function openAnalysisAfterList(page: Page): Promise<void> {
-  await page.locator(".round-over-overlay").getByRole("button", { name: de.quit }).click();
-  await expect(page.locator(".home-screen")).toBeVisible();
-
-  await waitForStoredGames(page, 1);
+  await quitFinishedList(page);
 
   await page.getByTitle(de.analysis).click();
   await expect(page.locator(".analysis-screen")).toBeVisible();

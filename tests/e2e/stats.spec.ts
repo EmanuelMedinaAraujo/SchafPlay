@@ -1,17 +1,13 @@
 import { Page } from "@playwright/test";
+import { signed } from "../../src/lib/i18n";
 import { bootHome, de, startSolo } from "./helpers/fixtures";
 import { expect, test } from "./helpers/test";
-import { readStandings, skipRounds, waitForStoredGames } from "./helpers/ui";
+import { quitFinishedList, readStandings, skipRounds } from "./helpers/ui";
 
 /**
  * Playwright's `page`/`context` fixtures are test-scoped, so each test gets a
  * fresh IndexedDB — no serial mode needed to keep the empty-state test clean.
  */
-
-/** Same "+N / N" formatting the UI uses for a signed score. */
-function formatScore(score: number): string {
-  return score > 0 ? `+${score}` : String(score);
-}
 
 /** Remounting StatsScreen re-runs its one-shot fetch. */
 async function openStats(page: Page): Promise<void> {
@@ -53,12 +49,7 @@ test.describe("stats", () => {
     // score counts as a win, matching the trophy shown in ListOverScreen.
     const expectedWon = p1!.score === top;
 
-    // Scoped to the list-over panel — the in-game toolbar also has a
-    // same-named quit icon button.
-    await page.locator(".round-over-overlay").getByRole("button", { name: de.quit }).click();
-    await expect(page.locator(".home-screen")).toBeVisible();
-
-    await waitForStoredGames(page, 1);
+    await quitFinishedList(page);
     await openStats(page);
 
     const tiles = page.locator(".stat-tiles > div strong");
@@ -67,7 +58,7 @@ test.describe("stats", () => {
     await expect(tiles.nth(2)).toHaveText(expectedWon ? "0" : "1"); // lost
     await expect(tiles.nth(3)).toHaveText(expectedWon ? "100%" : "0%");
     await expect(tiles.nth(4)).toHaveText("4"); // rounds (one 4-round list)
-    await expect(tiles.nth(5)).toHaveText(formatScore(p1!.score)); // points balance
+    await expect(tiles.nth(5)).toHaveText(signed(p1!.score)); // points balance
 
     // With stored games the analysis section shows; a single list is not
     // enough for a trend chart, so the trend panel shows its hint text.
@@ -76,7 +67,7 @@ test.describe("stats", () => {
 
     const rows = page.locator(".stats-game-row");
     await expect(rows).toHaveCount(1);
-    await expect(rows.first().locator(".stats-score")).toHaveText(formatScore(p1!.score));
+    await expect(rows.first().locator(".stats-score")).toHaveText(signed(p1!.score));
     await expect(rows.first().locator(".stats-result")).toHaveText(expectedWon ? "W" : "L");
     await expect(rows.first().locator(".stats-result")).toHaveClass(expectedWon ? /won/ : /lost/);
     await expect(rows.first().locator(".stats-opponent")).toHaveText(de.statsSoloOpponent);

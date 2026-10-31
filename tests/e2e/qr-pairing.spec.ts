@@ -2,11 +2,9 @@ import { bootHome, de, readInvite } from "./helpers/fixtures";
 import { expect, test } from "./helpers/test";
 
 /**
- * QR pairing (issue #7, Option C). Verifies the host's invite QR renders
- * alongside the existing copy-paste flow, and that hiding it never removes the
- * textarea fallback. Camera scanning is feature-detected (BarcodeDetector +
- * getUserMedia) and unavailable in headless CI, so it is out of scope here;
- * the encoder's decode-correctness is verified out of band (see the PR).
+ * QR pairing (#7): the host's invite QR opens from the copy-paste flow and
+ * closing it leaves that flow in place. Scanning needs a camera, so it is out
+ * of scope here.
  */
 test.describe("qr pairing", () => {
   test("host shows an invite QR with the copy-paste flow intact", async ({ page }) => {
@@ -19,12 +17,11 @@ test.describe("qr pairing", () => {
     const qr = page.locator(".qr-code");
     await expect(qr).toHaveCount(0);
 
-    // Open the QR popup
     await page.getByRole("button", { name: de.showQr }).click();
     await expect(qr).toBeVisible();
 
-    // Close the QR popup
     await page.getByRole("button", { name: de.cancel }).click();
     await expect(qr).toHaveCount(0);
+    await expect(page.locator(".pairing-flow textarea[readonly]")).toBeVisible();
   });
 });

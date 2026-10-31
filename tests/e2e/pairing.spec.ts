@@ -70,6 +70,4 @@ test.describe("pairing", () => {
 
     await expect(flow.getByPlaceholder(de.pasteInviteHint)).toHaveValue("test-clipboard-value");
   });
-
-  // Name propagation is asserted by smoke.spec.ts, not duplicated here.
 });

@@ -100,6 +100,14 @@ export async function readStandings(page: Page): Promise<Standing[]> {
   return standings;
 }
 
+/** Quit from the final standings and wait for the list to be recorded. */
+export async function quitFinishedList(page: Page): Promise<void> {
+  // Scoped to the panel — the in-game toolbar has a same-named quit icon button.
+  await page.locator(".round-over-overlay").getByRole("button", { name: de.quit }).click();
+  await expect(page.locator(".home-screen")).toBeVisible();
+  await waitForStoredGames(page, 1);
+}
+
 /**
  * Finished lists in the history store. Deliberately does not open a database
  * that does not exist yet — a versionless `open` would create an empty
@@ -136,7 +144,7 @@ function countStoredGames(): Promise<number> {
  * Wait for ListRecorder's fire-and-forget IndexedDB write. Screens that read
  * history once on mount show a stale list *for good* if opened before it lands.
  */
-export async function waitForStoredGames(page: Page, count: number): Promise<void> {
+async function waitForStoredGames(page: Page, count: number): Promise<void> {
   await expect
     .poll(() => page.evaluate(countStoredGames), { message: "recorded list to reach IndexedDB" })
     .toBe(count);

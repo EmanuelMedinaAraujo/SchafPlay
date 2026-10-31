@@ -3,8 +3,7 @@ import { alwaysWillPolicy, findSeed } from "./helpers/simulate";
 import { performBids, playCardInTurn, readScoreChanges, readStandings, skipRounds } from "./helpers/ui";
 import { expect, test } from "./helpers/test";
 
-/** A seed whose full 4-round game (p1 = always-will, first-legal) completes
- * cleanly — the same trajectory the browser's DEV "skip round" produces. */
+/** A seed whose full 4-round game (p1 = always-will, first-legal) completes cleanly. */
 function cleanSeed() {
   return findSeed((tr) => tr.length === 4 && tr.every((r) => r.result !== null), {
     limit: 200,

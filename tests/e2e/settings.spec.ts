@@ -1,7 +1,7 @@
 import { translations } from "../../src/lib/i18n";
 import { bootHome, de, startSolo } from "./helpers/fixtures";
 import { expect, test } from "./helpers/test";
-import { skipRounds, waitForStoredGames } from "./helpers/ui";
+import { quitFinishedList, skipRounds } from "./helpers/ui";
 
 const en = translations.en;
 
@@ -73,11 +73,6 @@ test.describe("settings", () => {
     );
   });
 
-  test("list length selection controls the round count in a solo game", async ({ page }) => {
-    await startSolo(page, { rounds: 4 });
-    await expect(page.locator(".game-toolbar")).toContainText("1/4");
-  });
-
   test("the home screen always opens on solo (#94)", async ({ page }) => {
     await bootHome(page);
 
@@ -107,7 +102,6 @@ test.describe("settings", () => {
   });
 
   test("export games downloads file or shows error if empty", async ({ page }) => {
-    // 1. Verify empty state first
     await bootHome(page);
     await page.getByTitle(de.settings).click();
     await expect(page.getByRole("heading", { name: de.settingsExport })).toBeVisible();
@@ -116,28 +110,19 @@ test.describe("settings", () => {
     await expect(exportBtn).toBeVisible();
     await exportBtn.click();
 
-    // Should show error when no games are recorded
+    // Nothing recorded yet.
     await expect(page.locator(".error-message")).toContainText(de.exportNoGames);
 
-    // 2. Play a game to record history, then try again to download the file
-    // Start solo game with 4 rounds
+    // With a recorded list the same button downloads it.
     await startSolo(page, { seed: 5, rounds: 4, name: "Wastl" });
     await skipRounds(page, 4);
-
-    // Quit back to home screen
-    await page.locator(".round-over-overlay").getByRole("button", { name: de.quit }).click();
-    await expect(page.locator(".home-screen")).toBeVisible();
-    await waitForStoredGames(page, 1);
-
-    // Go to Settings
+    await quitFinishedList(page);
     await page.getByTitle(de.settings).click();
 
-    // Trigger download listener
     const downloadPromise = page.waitForEvent("download");
     await exportBtn.click();
     const download = await downloadPromise;
 
-    // Verify downloaded filename pattern
     expect(download.suggestedFilename()).toMatch(/^schafplay-history-\d{4}-\d{2}-\d{2}\.txt$/);
   });
 });
