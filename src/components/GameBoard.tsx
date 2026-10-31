@@ -84,7 +84,7 @@ export default function GameBoard({
 
   const contractLabel = state.currentContract ? declarationLabel(language, state.currentContract) : t.bidding;
 
-  const lastCompletedTrick = state.tricks.at(-1);
+  const lastCompletedTrick = state.tricks[state.tricks.length - 1];
 
   const renderSeat = (offset: number, position: "top" | "left" | "right") => {
     const player = seatAt(offset);

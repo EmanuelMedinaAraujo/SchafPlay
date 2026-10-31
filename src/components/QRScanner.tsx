@@ -43,13 +43,14 @@ export default function QRScanner({ language, onResult, onClose }: QRScannerProp
           },
           audio: false,
         });
-        // A large dependency only this overlay uses; the service worker precaches the chunk.
-        const { default: jsQR } = await import("jsqr");
         // Closed while waiting: the cleanup below ran before there was a stream to stop.
         if (cancelled) {
           stopStream();
           return;
         }
+        // A large dependency only this overlay uses; the service worker precaches the chunk.
+        const { default: jsQR } = await import("jsqr");
+        if (cancelled) return;
         const video = videoRef.current;
         if (!video) return;
         video.srcObject = stream;
@@ -83,7 +84,8 @@ export default function QRScanner({ language, onResult, onClose }: QRScannerProp
           }
         }, 250);
       } catch (err) {
-        console.error("Failed to acquire camera stream:", err);
+        console.error("Failed to start the QR scanner:", err);
+        stopStream();
         if (!cancelled) setError(true);
       }
     })();

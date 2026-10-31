@@ -1,5 +1,4 @@
 import { Page } from "@playwright/test";
-import { signed } from "../../src/lib/i18n";
 import { bootHome, de, startSolo } from "./helpers/fixtures";
 import { expect, test } from "./helpers/test";
 import { quitFinishedList, readStandings, skipRounds } from "./helpers/ui";
@@ -14,6 +13,11 @@ async function openStats(page: Page): Promise<void> {
   await page.getByTitle(de.home).click();
   await page.getByTitle(de.stats).click();
   await expect(page.locator(".stats-screen")).toBeVisible();
+}
+
+/** Spelled out rather than imported, so the UI's own formatter stays under test. */
+function formatScore(score: number): string {
+  return score > 0 ? `+${score}` : String(score);
 }
 
 test.describe("stats", () => {
@@ -58,7 +62,7 @@ test.describe("stats", () => {
     await expect(tiles.nth(2)).toHaveText(expectedWon ? "0" : "1"); // lost
     await expect(tiles.nth(3)).toHaveText(expectedWon ? "100%" : "0%");
     await expect(tiles.nth(4)).toHaveText("4"); // rounds (one 4-round list)
-    await expect(tiles.nth(5)).toHaveText(signed(p1!.score)); // points balance
+    await expect(tiles.nth(5)).toHaveText(formatScore(p1!.score)); // points balance
 
     // With stored games the analysis section shows; a single list is not
     // enough for a trend chart, so the trend panel shows its hint text.
@@ -67,7 +71,7 @@ test.describe("stats", () => {
 
     const rows = page.locator(".stats-game-row");
     await expect(rows).toHaveCount(1);
-    await expect(rows.first().locator(".stats-score")).toHaveText(signed(p1!.score));
+    await expect(rows.first().locator(".stats-score")).toHaveText(formatScore(p1!.score));
     await expect(rows.first().locator(".stats-result")).toHaveText(expectedWon ? "W" : "L");
     await expect(rows.first().locator(".stats-result")).toHaveClass(expectedWon ? /won/ : /lost/);
     await expect(rows.first().locator(".stats-opponent")).toHaveText(de.statsSoloOpponent);

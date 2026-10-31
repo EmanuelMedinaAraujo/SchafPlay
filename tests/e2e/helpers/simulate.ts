@@ -26,7 +26,7 @@ export interface Policy {
   decideCard(legal: Card[]): Card;
 }
 
-/** Mirrors GameEngine.devSkipRound's p1 logic: always a legal, progressing move. */
+/** Mirrors GameEngine.devBidStep's p1 logic: always a legal, progressing move. */
 export const defaultPolicy: Policy = {
   decideWill: (hand) => getCallableSuits(hand).length > 0,
   decideDeclare: (hand, high) => {
