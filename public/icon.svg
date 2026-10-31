@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512">
+  <defs>
+    <path id="herz" fill="#c8201f" d="M50 90C12 60 4 40 4 27C4 13 16 5 28 5C38 5 46 11 50 21C54 11 62 5 72 5C84 5 96 13 96 27C96 40 88 60 50 90Z"/>
+    <g id="wool">
+      <circle cx="256" cy="104" r="58"/><circle cx="178" cy="124" r="54"/><circle cx="334" cy="124" r="54"/>
+      <circle cx="128" cy="184" r="44"/><circle cx="384" cy="184" r="44"/><circle cx="196" cy="196" r="46"/>
+      <circle cx="256" cy="210" r="48"/><circle cx="316" cy="196" r="46"/>
+    </g>
+  </defs>
+  <rect width="512" height="512" fill="#a11616"/>
+  <!-- The fan sits inside the central 80% circle so maskable crops keep it whole. -->
+  <g transform="translate(256 256) scale(.95) translate(-256 -270)">
+    <g transform="rotate(-22 256 300)">
+      <rect x="150" y="100" width="212" height="316" rx="24" fill="#22305a" stroke="#2b211c" stroke-width="5"/>
+      <rect x="168" y="118" width="176" height="280" rx="12" fill="none" stroke="#f4ead2" stroke-width="5"/>
+    </g>
+    <rect x="150" y="100" width="212" height="316" rx="24" fill="#f4ead2" stroke="#2b211c" stroke-width="5" transform="rotate(-8 256 300)"/>
+    <g transform="rotate(8 256 300)">
+      <rect x="150" y="100" width="212" height="316" rx="24" fill="#fffaf0" stroke="#2b211c" stroke-width="5"/>
+      <rect x="166" y="170" width="180" height="176" rx="14" fill="#1b4a2a"/>
+      <use href="#herz" xlink:href="#herz" transform="translate(162 112) scale(.5)"/>
+      <use href="#herz" xlink:href="#herz" transform="rotate(180 325 379) translate(300 354) scale(.5)"/>
+      <g transform="translate(135 160) scale(.473)">
+        <g transform="rotate(-16 122 240)"><ellipse cx="122" cy="240" rx="58" ry="29" fill="#2b211c"/><ellipse cx="116" cy="241" rx="34" ry="13" fill="#c98f7f"/></g>
+        <g transform="rotate(16 390 240)"><ellipse cx="390" cy="240" rx="58" ry="29" fill="#2b211c"/><ellipse cx="396" cy="241" rx="34" ry="13" fill="#c98f7f"/></g>
+        <path d="M178 205Q256 170 334 205Q350 305 300 378Q256 420 212 378Q162 305 178 205Z" fill="#2b211c"/>
+        <!-- Wool: a dark outline under a bright fill, with curls so it reads as fleece. -->
+        <use href="#wool" xlink:href="#wool" fill="#2b211c" stroke="#2b211c" stroke-width="22"/>
+        <use href="#wool" xlink:href="#wool" fill="#ffffff"/>
+        <path d="M226 100q30-26 58 0M150 122q26-24 52 -2M310 120q26-22 52 2M104 182q20-18 40 0M368 182q20-18 40 0M170 196q24-20 48 0M294 196q24-20 48 0M232 212q24-20 48 0" fill="none" stroke="#b9a06f" stroke-width="10" stroke-linecap="round"/>
+        <circle cx="216" cy="290" r="23" fill="#fff"/><circle cx="296" cy="290" r="23" fill="#fff"/><circle cx="220" cy="294" r="11" fill="#111"/><circle cx="292" cy="294" r="11" fill="#111"/>
+        <path d="M232 344Q256 334 280 344Q270 368 256 370Q242 368 232 344Z" fill="#f4ead2"/>
+      </g>
+    </g>
+  </g>
+</svg>
