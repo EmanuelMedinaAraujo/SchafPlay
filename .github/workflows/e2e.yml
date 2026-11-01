@@ -11,6 +11,9 @@ concurrency:
   group: e2e-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   playwright:
     name: Playwright E2E (chromium)
