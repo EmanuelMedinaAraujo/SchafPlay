@@ -35,6 +35,10 @@ jobs:
       - name: Type-check (app + e2e tests)
         run: npm run lint
 
+      # E2E runs against the dev server, so only this catches a broken production build.
+      - name: Build
+        run: npm run build
+
       - name: Run E2E tests
         run: npm run test:e2e
 
