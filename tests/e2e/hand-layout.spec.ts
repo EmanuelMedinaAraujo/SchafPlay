@@ -20,6 +20,7 @@ async function measure(page: Page) {
       me: box(document.querySelector(".player-hand-me")),
       right: box(document.querySelector(".player-hand-col-right")),
       first: box(cards[0]),
+      second: box(cards[1]),
       last: box(cards[cards.length - 1]),
       widths: cards.map((card) => {
         const face = card.querySelector(".card-face")!.getBoundingClientRect().width;
@@ -40,7 +41,8 @@ for (const viewport of [
     page,
   }) => {
     await page.setViewportSize(viewport);
-    await startSolo(page, { seed: 42, name: "Toni", rounds: 4 });
+    // A long name: its (ellipsised) plate is the widest the own seat gets.
+    await startSolo(page, { seed: 42, name: "Maximiliane", rounds: 4 });
     await expect(handCards(page)).toHaveCount(8);
 
     const m = await measure(page);
@@ -50,5 +52,9 @@ for (const viewport of [
     // The fanned hand stays between the profile column and the right column.
     expect(m.first!.left).toBeGreaterThanOrEqual(m.me!.right);
     expect(m.last!.right).toBeLessThanOrEqual(m.right!.left);
+    // The hand uses the room it has: every card shows at least 70% of its
+    // width, which keeps each one comfortably tappable.
+    const cardWidth = m.widths[0].button;
+    expect(m.second!.left - m.first!.left).toBeGreaterThanOrEqual(cardWidth * 0.7);
   });
 }
