@@ -19,10 +19,8 @@ html.narrow .score-grid {
   grid-template-columns: 1fr 1fr;
 }
 
-/* Keep the side columns equal (see seats.css) so the trick stays centered;
-   the hand row mirrors the table's columns. */
-html.narrow .table,
-html.narrow .player-hand-container {
+/* Keep the side columns equal (see seats.css) so the trick stays centered. */
+html.narrow .table {
   grid-template-columns: minmax(100px, 1fr) minmax(140px, 2fr) minmax(100px, 1fr);
 }
 
@@ -165,16 +163,12 @@ html.compact .player-hand-container {
 }
 
 html.compact .player-hand-cards {
-  height: 86px;
-}
-
-html.compact .playing-card {
-  margin-left: -26px;
+  --hand-card-h: 86px;
 }
 
 /* Beat the fixed compact card size — hand cards scale with the box. */
 html.compact .playing-card .card-face {
-  width: auto;
+  width: 100%;
   height: 100%;
 }
 

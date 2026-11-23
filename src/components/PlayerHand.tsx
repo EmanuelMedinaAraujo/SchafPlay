@@ -1,4 +1,4 @@
-import { PointerEvent, useEffect, useRef, useState } from "react";
+import { CSSProperties, PointerEvent, useEffect, useRef, useState } from "react";
 import { Card, Contract, GameType, Language, StossKind, Trick } from "../types";
 import { getLegalCards, sortCardsForHand } from "../game/rules";
 import { translations } from "../lib/i18n";
@@ -150,7 +150,7 @@ export default function PlayerHand({
         ) : null}
       </div>
 
-      <div className="player-hand-cards">
+      <div className="player-hand-cards" style={{ "--hand-n": sorted.length } as CSSProperties}>
         {sorted.map((card) => {
           const isLegal = legalCards.some((candidate) => candidate.id === card.id);
           const isGrayed = showIllegal && !isLegal;
