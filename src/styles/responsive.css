@@ -165,7 +165,7 @@ html.compact .player-hand-container {
 }
 
 html.compact .player-hand-cards {
-  height: 86px;
+  --hand-card-h: 86px;
 }
 
 html.compact .playing-card {
@@ -174,7 +174,7 @@ html.compact .playing-card {
 
 /* Beat the fixed compact card size — hand cards scale with the box. */
 html.compact .playing-card .card-face {
-  width: auto;
+  width: 100%;
   height: 100%;
 }
 
