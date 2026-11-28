@@ -13,11 +13,9 @@ interface RoundOverScreenProps {
 
 /** Shared by the round and list summaries: who is ready, and the standings. */
 export function summaryInfo(state: GameState, myPlayerId: string) {
-  const otherId = myPlayerId === "p1" ? "p3" : "p1";
   return {
-    otherName: state.players.find((player) => player.id === otherId)?.name ?? "",
+    others: state.players.filter((player) => player.isHuman && player.id !== myPlayerId),
     iAmReady: Boolean(state.readyState[myPlayerId]),
-    otherReady: Boolean(state.readyState[otherId]),
     sortedByScore: [...state.players].sort((a, b) => (state.scores[b.id] ?? 0) - (state.scores[a.id] ?? 0)),
   };
 }
@@ -28,7 +26,7 @@ export default function RoundOverScreen({ state, language, myPlayerId, onAction 
   const [cardsOpen, setCardsOpen] = useState(false);
   if (!result) return null;
 
-  const { otherName, iAmReady, otherReady, sortedByScore } = summaryInfo(state, myPlayerId);
+  const { others, iAmReady, sortedByScore } = summaryInfo(state, myPlayerId);
   // The last round shows its summary first; readying up then reveals the list
   // summary rather than dealing a new round (#27).
   const isLastRound = state.roundNumber >= state.totalRounds;
@@ -86,9 +84,9 @@ export default function RoundOverScreen({ state, language, myPlayerId, onAction 
           <button className="secondary-button" onClick={() => setCardsOpen(true)} type="button">
             {t.showCards}
           </button>
-          <p className="muted round-over-status">
-            {otherName}: {otherReady ? `✓ ${t.isReady}` : `… ${t.notReady}`}
-          </p>
+          <div className="muted round-over-status">
+            {others.map(({ id, name }) => <div key={id}>{name}: {state.readyState[id] ? `✓ ${t.isReady}` : `… ${t.notReady}`}</div>)}
+          </div>
         </div>
         <button
           className="primary-button"

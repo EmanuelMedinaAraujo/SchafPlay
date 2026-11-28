@@ -45,6 +45,7 @@ export enum GamePriority {
 }
 
 export type SeatId = "p1" | "p2" | "p3" | "p4";
+export type RemoteSeatId = Exclude<SeatId, "p1">;
 export type GameStatus = "LOBBY" | "BIDDING" | "PLAYING" | "ROUND_OVER" | "LIST_OVER";
 
 export interface GameDeclaration {

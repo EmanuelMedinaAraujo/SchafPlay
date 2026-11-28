@@ -1,136 +1,216 @@
 import { GameEngine } from "../engine/GameEngine";
 import { redactStateFor } from "../engine/redaction";
-import { GameState, PlayerAction, SeatId } from "../game/types";
+import { GameState, PlayerAction, RemoteSeatId } from "../game/types";
 import { ListRecorder } from "../persistence";
-import { createMessage, P2PMessageType } from "../net/protocol";
-import { Transport } from "../net/Transport";
-import { heavyAvatars, sanitizeAvatar, withoutHeavyAvatars } from "./avatarSync";
+import { createMessage, P2PMessageType, readPlayerAction } from "../net/protocol";
+import { Transport, TransportState } from "../net/Transport";
+import { AvatarMap, heavyAvatars, sanitizeAvatar, withoutHeavyAvatars } from "./avatarSync";
 import { engineOptions, GameSession, SessionDeps } from "./GameSession";
 
-/** The fan-out seam for variable multiplayer (#6). */
-const REMOTE_HUMAN_SEATS: readonly SeatId[] = ["p3"];
+export type HumanCount = 2 | 3 | 4;
 
-/** What a `CONNECTION_ACK` carries, already past the wire boundary. */
-interface GuestIdentity {
-  name: string | undefined;
-  /** Sanitized; `undefined` means the peer sent none, not "clear it". */
-  avatar: string | undefined;
+export interface LobbySeat {
+  id: RemoteSeatId;
+  name: string;
+  state: TransportState | "idle";
 }
 
-/**
- * Runs the authoritative engine. It is created lazily on the first successful
- * connection and survives reconnects — a fresh transport resumes the same game.
- */
+interface GuestIdentity {
+  name: string;
+  avatar: string;
+}
+
+interface GuestLink {
+  transport: Transport;
+  open: boolean;
+  admitted: boolean;
+  hello?: { identity: GuestIdentity; assignedSeat?: unknown; supportsSeats: boolean };
+  sentAvatars: AvatarMap;
+  helloTimeout?: ReturnType<typeof setTimeout>;
+  close(): void;
+}
+
+interface GuestSeat extends LobbySeat {
+  avatar: string;
+  link?: GuestLink;
+}
+
+// Players in a two-human game still sit opposite each other.
+const GUEST_SEATS: readonly RemoteSeatId[] = ["p3", "p2", "p4"];
+const HELLO_TIMEOUT_MS = 5_000;
+
+/** Owns the lobby and the same authoritative engine for the lifetime of the table. */
 export class HostSession implements GameSession {
   private engine: GameEngine | null = null;
-  private recorder: ListRecorder | null = null;
-  private transport: Transport | null = null;
-  /** Reset per transport: a re-paired peer needs the avatar map again (#14). */
-  private sentAvatars = "";
-  /** An ACK that beat the engine into existence, held for `createEngine` (#95). */
-  private pendingGuestIdentity: GuestIdentity | null = null;
+  private recorder = new ListRecorder("multiplayer", "host", "p1");
+  private readonly seats: GuestSeat[];
 
-  constructor(private readonly deps: SessionDeps) {}
+  constructor(private readonly deps: SessionDeps, private readonly humanCount: HumanCount) {
+    this.seats = GUEST_SEATS.slice(0, humanCount - 1).map((id) => ({ id, name: "", avatar: "", state: "idle" }));
+  }
 
-  attachTransport(transport: Transport): void {
-    this.transport?.disconnect();
-    this.transport = transport;
-    this.sentAvatars = "";
-    this.pendingGuestIdentity = null;
+  attachTransport(id: RemoteSeatId, transport: Transport): void {
+    const seat = this.seats.find((candidate) => candidate.id === id);
+    if (!seat || seat.state === "connected") {
+      transport.disconnect();
+      return;
+    }
 
-    transport.onConnectionStateChange((state) => {
-      this.deps.events.onConnectionState(state);
+    seat.link?.close();
+    const link: GuestLink = {
+      transport,
+      open: false,
+      admitted: false,
+      sentAvatars: {},
+      close: () => {
+        clearTimeout(link.helloTimeout);
+        offState();
+        offMessage();
+        transport.disconnect();
+      },
+    };
+    seat.link = link;
+
+    const offState = transport.onConnectionStateChange((state) => {
       if (state === "connected") {
-        if (!this.engine) this.createEngine();
-        const engine = this.engine!;
-        this.deps.events.onEnterGame();
-        if (engine.getState().status === "LOBBY") {
-          engine.dealCards();
-        } else {
-          engine.resume();
-          this.broadcastState(engine.getState());
-        }
-      }
-      if (state === "disconnected" || state === "failed") {
-        this.engine?.pause();
-      }
-    });
-
-    transport.onMessage((message) => {
-      if (message.type === P2PMessageType.CONNECTION_ACK) {
-        const payload = message.payload as { name?: string; avatar?: unknown } | undefined;
-        // The session is the network boundary; the engine stores what it is given.
-        const identity: GuestIdentity = {
-          name: payload?.name,
-          avatar: payload?.avatar === undefined ? undefined : sanitizeAvatar(payload.avatar),
-        };
-        // The guest sends this once, as soon as *its* channel opens, which can
-        // be before the host's own "connected" callback has built the engine.
-        // Dropping it then left the seat as „Gast" for the whole game (#95).
-        if (this.engine) this.applyGuestIdentity(this.engine, identity);
-        else this.pendingGuestIdentity = identity;
+        link.open = true;
+        if (link.hello) this.admit(seat, link);
+        else link.helloTimeout = setTimeout(() => this.drop(seat, link, "failed"), HELLO_TIMEOUT_MS);
         return;
       }
-      const engine = this.engine;
-      if (!engine) return;
-      if (message.type === P2PMessageType.PLAYER_ACTION) {
-        const action = (message.payload as { action: PlayerAction }).action;
-        // The guest is always seat 3 — never trust the id on the wire.
-        engine.processAction({ ...action, playerId: "p3" });
+      if (state === "disconnected" || state === "failed") {
+        this.drop(seat, link, link.admitted ? "disconnected" : "failed");
+      } else {
+        seat.state = state;
+        this.publishLobby();
+      }
+    });
+
+    const offMessage = transport.onMessage((message) => {
+      if (message?.type === P2PMessageType.CONNECTION_ACK && !link.admitted && !link.hello) {
+        const payload = message.payload as { name?: unknown; avatar?: unknown; supportsSeats?: unknown; seat?: unknown } | undefined;
+        link.hello = {
+          identity: {
+            name: (typeof payload?.name === "string" && payload.name.trim().slice(0, 20)) || seat.name || "Gast",
+            avatar: payload?.avatar === undefined ? seat.avatar : sanitizeAvatar(payload.avatar),
+          },
+          assignedSeat: payload?.seat,
+          supportsSeats: payload?.supportsSeats === true,
+        };
+        // Either the hello or the host's open event may arrive first.
+        if (link.open) this.admit(seat, link);
+      } else if (message?.type === P2PMessageType.PLAYER_ACTION && link.admitted) {
+        const action = readPlayerAction((message.payload as { action?: unknown })?.action, seat.id);
+        if (action) this.engine?.processAction(action);
       }
     });
   }
 
-  private applyGuestIdentity(engine: GameEngine, identity: GuestIdentity): void {
-    if (identity.name) engine.setGuestName(identity.name);
-    if (identity.avatar !== undefined) engine.setGuestAvatar(identity.avatar);
-  }
+  private admit(seat: GuestSeat, link: GuestLink): void {
+    const hello = link.hello!;
+    clearTimeout(link.helloTimeout);
+    if ((hello.assignedSeat !== undefined && hello.assignedSeat !== seat.id) ||
+        (!hello.supportsSeats && this.humanCount > 2)) {
+      // The rejected peer receives no seat assignment, avatars or game state.
+      this.drop(seat, link, "failed");
+      return;
+    }
 
-  /** Lazily at connect, not at attach, so it picks up the latest settings. */
-  private createEngine(): void {
-    const settings = this.deps.getSettings();
-    const engine = new GameEngine(settings.playerName, settings.totalRounds, engineOptions(settings));
-    this.engine = engine;
-    this.recorder = new ListRecorder("multiplayer", "host", "p1");
-    engine.onStateChange((snapshot) => {
-      // The host's own view is redacted too — it records and renders exactly
-      // what a player at seat p1 may see.
-      const redacted = redactStateFor(snapshot, "p1");
-      this.recorder?.observe(redacted);
-      this.deps.events.onGameState(redacted);
-      this.broadcastState(snapshot);
-    });
-    // After the listener above, so the seat it fills in is broadcast like any other change.
-    if (this.pendingGuestIdentity) {
-      this.applyGuestIdentity(engine, this.pendingGuestIdentity);
-      this.pendingGuestIdentity = null;
+    try {
+      if (hello.supportsSeats) {
+        link.transport.send(createMessage(P2PMessageType.SEAT_ASSIGNED, { seat: seat.id }));
+      }
+    } catch {
+      this.drop(seat, link, "failed");
+      return;
+    }
+
+    link.admitted = true;
+    Object.assign(seat, hello.identity, { state: "connected" });
+    this.publishLobby();
+    if (this.engine) {
+      this.engine.setGuestConnection(seat.id, true, hello.identity);
+    } else if (this.seats.every((candidate) => candidate.state === "connected")) {
+      this.startGame();
     }
   }
 
-  /** Send each remote human seat its own redacted view of `snapshot`. */
+  private drop(seat: GuestSeat, link: GuestLink, state: "disconnected" | "failed"): void {
+    link.close();
+    seat.link = undefined;
+    seat.state = state;
+    if (link.admitted) this.engine?.setGuestConnection(seat.id, false);
+    this.publishLobby();
+  }
+
+  private publishLobby(): void {
+    this.deps.events.onLobbyChange(this.seats.map(({ id, name, state }) => ({ id, name, state })));
+    const pending = this.seats.find((seat) => seat.state === "connecting") ??
+      this.seats.find((seat) => seat.state !== "connected");
+    this.deps.events.onConnectionState(pending?.state ?? "connected");
+  }
+
+  private startGame(): void {
+    const settings = this.deps.getSettings();
+    const guests = Object.fromEntries(this.seats.map(({ id, name, avatar }) => [id, { name, avatar }]));
+    const engine = new GameEngine(settings.playerName, settings.totalRounds, { ...engineOptions(settings), guests });
+    this.engine = engine;
+    engine.onStateChange((snapshot) => {
+      if (snapshot.status === "LOBBY") return;
+      const hostView = redactStateFor(snapshot, "p1");
+      this.recorder.observe(hostView);
+      this.deps.events.onGameState(hostView);
+      this.broadcastState(snapshot);
+    });
+    engine.dealCards();
+    this.deps.events.onEnterGame();
+  }
+
   private broadcastState(snapshot: GameState): void {
-    const transport = this.transport;
-    if (!transport) return;
-    for (const seat of REMOTE_HUMAN_SEATS) {
-      const state = redactStateFor(snapshot, seat);
+    const avatars = heavyAvatars(snapshot);
+    const compact = withoutHeavyAvatars(snapshot);
+    for (const { id, link } of this.seats) {
+      if (!link?.admitted) continue;
+      this.sendAvatars(link, snapshot, avatars);
+      const state = redactStateFor(compact, id);
       try {
-        // Once per peer instead of in every snapshot (see session/avatarSync.ts).
-        // Sent before the state it belongs to; the channel is ordered.
-        const avatars = heavyAvatars(state);
-        const signature = JSON.stringify(avatars);
-        if (signature !== this.sentAvatars) {
-          transport.send(createMessage(P2PMessageType.AVATAR_UPDATE, { avatars }));
-          this.sentAvatars = signature;
-        }
-        transport.send(createMessage(P2PMessageType.GAME_STATE_UPDATE, { state: withoutHeavyAvatars(state) }));
+        link.transport.send(createMessage(P2PMessageType.GAME_STATE_UPDATE, { state }));
       } catch {
-        // Channel not open (yet / anymore); the next state change will retry.
+        // The link may have closed. Its connection state will trigger re-pairing.
+      }
+    }
+  }
+
+  private sendAvatars(link: GuestLink, snapshot: GameState, avatars: AvatarMap): void {
+    const changed = snapshot.players.filter(({ id }) => avatars[id] !== link.sentAvatars[id]);
+    if (!changed.length) return;
+
+    if (!link.hello?.supportsSeats) {
+      // Older two-player guests replace the whole map.
+      try {
+        link.transport.send(createMessage(P2PMessageType.AVATAR_UPDATE, { avatars }));
+        link.sentAvatars = avatars;
+      } catch {
+        // A picture that exceeds the channel budget must not block the game state.
+      }
+      return;
+    }
+
+    // Per seat keeps four uploaded avatars below the per-message limit.
+    for (const { id } of changed) {
+      const update = avatars[id] ? { [id]: avatars[id] } : {};
+      try {
+        link.transport.send(createMessage(P2PMessageType.AVATAR_UPDATE, { avatars: update, seat: id }));
+        if (avatars[id]) link.sentAvatars[id] = avatars[id];
+        else delete link.sentAvatars[id];
+      } catch {
+        // Try this picture again with the next state. Other pictures can still arrive.
       }
     }
   }
 
   dispatch(action: PlayerAction): void {
-    this.engine?.processAction(action);
+    this.engine?.processAction({ ...action, playerId: "p1" });
   }
 
   devSkipTrick(): void {
@@ -142,12 +222,8 @@ export class HostSession implements GameSession {
   }
 
   destroy(): void {
-    this.transport?.disconnect();
-    this.transport = null;
+    for (const seat of this.seats) seat.link?.close();
     this.engine?.destroy();
     this.engine = null;
-    this.pendingGuestIdentity = null;
-    // An aborted list leaves no trace in the statistics.
-    this.recorder = null;
   }
 }

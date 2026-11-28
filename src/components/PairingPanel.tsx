@@ -151,9 +151,9 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
 
   useEffect(() => {
     return () => {
-      if (peerRef.current && !peerRef.current.isConnected()) {
-        peerRef.current.disconnect();
-      }
+      const peer = peerRef.current;
+      peerRef.current = null;
+      if (peer && !peer.isConnected()) peer.disconnect();
     };
   }, []);
 
@@ -179,7 +179,9 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
   useEffect(() => {
     const prev = prevStateRef.current;
     prevStateRef.current = connectionState;
-    if (connectionState !== "failed" || prev === "failed") return;
+    const reset = connectionState === "failed" ||
+      (mode === "join" && connectionState === "disconnected");
+    if (!reset || prev === connectionState) return;
     setPastedCode("");
     setAccepted(false);
     if (mode === "host") {
@@ -201,8 +203,9 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
     setError("");
     try {
       await peer.acceptAnswer(code);
-      setAccepted(true);
+      if (peerRef.current === peer) setAccepted(true);
     } catch (err) {
+      if (peerRef.current !== peer) return;
       if (err instanceof Error && err.message === "INVALID_CODE") {
         setError(t.invalidCode);
       } else {
@@ -224,27 +227,25 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
     setError("");
     const peer = new WebRTCPeer();
     peerRef.current = peer;
-    onPeer(peer);
+    onPeerRef.current(peer);
     try {
       const reply = await peer.join(code);
-      setReplyCode(reply);
+      if (peerRef.current === peer) setReplyCode(reply);
     } catch {
       peer.disconnect();
-      setError(t.invalidCode);
+      if (peerRef.current === peer) setError(t.invalidCode);
     } finally {
-      setBusy(false);
+      if (peerRef.current === peer) setBusy(false);
     }
   }
 
-  // Deep-link join: same path as a pasted code, including its error UI.
-  const autoSubmittedRef = useRef(false);
+  // Defer the deep-link exchange until after StrictMode's effect cleanup.
   useEffect(() => {
-    if (mode !== "join" || autoSubmittedRef.current) return;
     const code = initialInvite?.trim();
-    if (!code) return;
-    autoSubmittedRef.current = true;
-    guestGenerateReply(code);
-  }, [mode]);
+    if (mode !== "join" || !code) return;
+    const start = setTimeout(() => void guestGenerateReply(code), 0);
+    return () => clearTimeout(start);
+  }, [mode, initialInvite]);
 
   const connectedNote = connectionState === "connected" && (
     <p className="muted" style={{ color: "var(--green)" }}>✓ {t.connected}</p>
@@ -362,6 +363,7 @@ export default function PairingPanel({ language, mode, connectionState, onPeer, 
       )}
 
       {connectedNote}
+      {connectionState === "connected" && <p className="muted" role="status">{t.waitingForTable}</p>}
 
       {busy && <p className="muted pulse-soft">{t.connecting}</p>}
       {error && <p className="error-text">{error}</p>}

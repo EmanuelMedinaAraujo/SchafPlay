@@ -91,6 +91,29 @@ test.describe("profile pictures over the wire (#14)", () => {
     expect(Math.max(...states.map((frame) => frame.length))).toBeLessThan(CUSTOM_AVATAR.length * 40);
   });
 
+  test("a rejected avatar frame does not stop the guest from receiving the deal", async ({ newPage }) => {
+    const host = await newPage();
+    const guest = await newPage();
+    await presetAvatar(host, CUSTOM_AVATAR);
+    await rejectAvatarFrame(host, "AVATAR_UPDATE");
+
+    await pairPages(host, guest, { seed: 12345, hostName: "Wirt" });
+    await expect(guest.locator(".player-hand-cards .playing-card")).toHaveCount(8);
+    await expect(guest.locator(".seat-top .seat-avatar-img")).toHaveAttribute("src", /avatars\/default\.[a-z]+$/);
+  });
+
+  test("the guest can join when the channel rejects an introduction with a picture", async ({ newPage }) => {
+    const host = await newPage();
+    const guest = await newPage();
+    await presetAvatar(guest, CUSTOM_AVATAR);
+    await rejectAvatarFrame(guest, "CONNECTION_ACK");
+
+    await pairPages(host, guest, { seed: 12345, guestName: "Franzi" });
+    await expect(host.locator(".seat-top .seat-name")).toHaveText("Franzi");
+    await expect(host.locator(".seat-top .seat-avatar-img")).toHaveAttribute("src", /avatars\/default\.[a-z]+$/);
+    await expect(guest.locator(".player-hand-cards .playing-card")).toHaveCount(8);
+  });
+
   test("an oversized picture from a peer is rejected, not stored", async ({ newPage }) => {
     const host = await newPage();
     const guest = await newPage();
@@ -144,6 +167,19 @@ test.describe("the guest's identity survives a slow host (#95)", () => {
     await expect(guestSeat.locator(".seat-avatar-img")).toHaveAttribute("src", /avatars\/wastl\.[a-z]+$/);
   });
 });
+
+/** Simulate the negotiated per-message budget rejecting a picture-bearing frame. */
+async function rejectAvatarFrame(page: Page, type: "AVATAR_UPDATE" | "CONNECTION_ACK"): Promise<void> {
+  await page.addInitScript((rejectedType) => {
+    const send = RTCDataChannel.prototype.send as (this: RTCDataChannel, data: unknown) => void;
+    RTCDataChannel.prototype.send = function (this: RTCDataChannel, data: unknown) {
+      if (typeof data === "string" && data.includes("data:image/") && JSON.parse(data).type === rejectedType) {
+        throw new TypeError("Avatar frame exceeds the negotiated message size");
+      }
+      send.call(this, data);
+    } as typeof RTCDataChannel.prototype.send;
+  }, type);
+}
 
 /**
  * Hold back the app's reaction to the data channel opening, without touching

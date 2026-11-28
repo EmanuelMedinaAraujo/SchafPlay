@@ -1,22 +1,22 @@
 # SchafPlay 🃏
 
-Bavarian **Schafkopf for two players** as an offline-first PWA. Two humans (seats 1 & 3) play against each other over a serverless **WebRTC direct connection**; seats 2 & 4 are AI opponents (Resi & Sepp). Solo mode fills seat 3 with a third AI (Zenzi).
+Bavarian **Schafkopf for one to four players** as an offline-first PWA. Play solo against three AI players, or host a table with two, three, or four humans over direct **WebRTC** connections. AI fills the open seats.
 
 ## How does the connection work?
 
 No server, no third-party signaling servers, no sign-up — signaling is completely serverless and done directly:
 
-1. **Host**: "Host game" → copies the generated **invitation code** (compressed base64 SDP blob) and sends it to the guest.
-2. **Guest**: "Join game" → pastes the invitation code, generates a **reply code**, copies it, and sends it back to the host.
-3. **Host**: Pastes the reply code → connection is established directly P2P over a local WebRTC data channel.
+1. **Host**: Choose "Host" and the number of human players. Share the **invite code** for the current guest by copying it or showing its QR code.
+2. **Guest**: Choose "Join", paste or scan the invite, and share the **reply code** with the host.
+3. **Host**: Paste or scan the reply. The lobby prepares an invite for the next guest. The game starts when all selected players are connected.
 
-If the connection drops, the host pauses the game: they exchange fresh codes, and the entire game state is preserved.
+If any player disconnects, the host pauses the game and exchanges fresh codes for each disconnected seat. The table resumes when all seats are connected again. Keep the host tab open to preserve the game, and keep each guest tab open to preserve its in-progress history. Tables with three or four humans require the updated app on every device.
 
 ## Game rules
 
 - **Two-stage bidding**: first "Do you want to play?" (I dad spuin / Weiter), then "What do you play?" with overbidding by priority: Sauspiel < Wenz < Solo < Wenz Tout < Solo Tout
 - **Everyone passes** → cards are thrown in and redealt, or the deal is played out as a **Ramsch** if that house rule is enabled in Settings
-- **Between rounds** both players must tap "Ready", then the dealer rotates
+- **Between rounds** every human player must tap "Ready", then the dealer rotates
 
 House rules (Settings): Stoß/Retour doubling (on by default), Ramsch on an all-pass (off by default), and disabling Laufende (they count by default).
 
@@ -38,7 +38,7 @@ npm run lint     # TypeScript type-check
 npm run build    # Production build (dist/)
 ```
 
-The output in `dist/` is a purely static site — deployable to any static host (GitHub Pages, Netlify, Cloudflare Pages, …). Installable as a PWA; both devices need to be on the same local network to establish the direct P2P WebRTC connection.
+The output in `dist/` is a purely static site — deployable to any static host (GitHub Pages, Netlify, Cloudflare Pages, …). Installable as a PWA; all devices need to be on the same local network to establish the direct P2P WebRTC connection.
 
 ## Testing
 
@@ -113,14 +113,14 @@ src/
 └── lib/i18n.ts            # German/English strings and game labels
 ```
 
-- **Host** (player 1) runs the GameEngine, validates every action, and sends the guest only their **redacted** game state — other players' hands are never on the wire.
-- **Guest** (player 3) renders the received state and sends actions (bidding, card, ready) back.
+- **Host** (player 1) runs the GameEngine, validates every action, and sends each guest their own **redacted** game state — other players' hands are never on the wire.
+- **Each guest** renders the received state and sends actions (bidding, card, ready) back.
 
 ## Statistics
 
 The statistics page (chart icon in the header) shows how many matches you have played, won and lost, split by multiplayer and solo.
 
-- **Fully local, per device.** Statistics never leave the device — there is no backend to send them to. Each player's device records its own view of the match, so both players keep their own history.
+- **Fully local, per device.** Statistics never leave the device — there is no backend to send them to. Each player's device records its own view of the match, so every player keeps their own history.
 - **A game counts once a match is finished.** Matches you quit or abandon are not recorded at all.
 - Alongside the summary, the full raw data of every round is stored — the hand you were dealt, the contract, every trick in play order and the scoring result. The analysis view replays any recorded round from it, trick by trick.
 - Stored in IndexedDB (database `schafplay`). Clearing the site data (or the browser's storage for the PWA) clears the statistics.

@@ -2,11 +2,13 @@ import { useEffect, useLayoutEffect, useState } from "react";
 import GameBoard from "./components/GameBoard";
 import HomeScreen from "./components/HomeScreen";
 import PairingPanel from "./components/PairingPanel";
+import HostLobby from "./components/HostLobby";
 import RulesModal from "./components/RulesModal";
 import SettingsScreen from "./components/SettingsScreen";
 import StatsScreen from "./components/StatsScreen";
 import AnalysisScreen from "./components/AnalysisScreen";
 import { OVERLAY_ROOT_ID } from "./components/OverlayPortal";
+import { HumanCount } from "./session/HostSession";
 import { useGameSession } from "./session/useGameSession";
 import { translations } from "./lib/i18n";
 import { useSettings } from "./lib/settings";
@@ -33,9 +35,13 @@ export default function App() {
   // A replay is only on screen from within the analysis view.
   const inReplay = screen === "analysis" && replayActive;
   // Captured once at startup, before the fragment is scrubbed below.
-  const [initialInvite] = useState(readInviteFromHash);
+  const [initialInvite, setInitialInvite] = useState(readInviteFromHash);
+  const [humanCount, setHumanCount] = useState<HumanCount>(2);
 
-  const session = useGameSession({ settings, onEnterGame: () => setScreen("game") });
+  const session = useGameSession({ settings, onEnterGame: () => {
+    setInitialInvite("");
+    setScreen("game");
+  } });
   const { gameState, connectionState, role, myPlayerId } = session;
 
   // Strip the fragment so a reload doesn't re-trigger a stale invite.
@@ -82,11 +88,21 @@ export default function App() {
 
   const t = translations[language];
 
+  function cancelPairing() {
+    session.quit();
+    setInitialInvite("");
+  }
+
+  function navigate(next: "home" | "stats" | "analysis" | "settings") {
+    if (screen === "home" && next !== "home") cancelPairing();
+    setScreen(next);
+  }
+
   const navButtons = [
-    { title: t.home, Icon: HomeIcon, onClick: () => setScreen("home") },
-    { title: t.stats, Icon: ChartColumnIcon, onClick: () => setScreen("stats") },
-    { title: t.analysis, Icon: HistoryIcon, onClick: () => setScreen("analysis") },
-    { title: t.settings, Icon: SettingsIcon, onClick: () => setScreen("settings") },
+    { title: t.home, Icon: HomeIcon, onClick: () => navigate("home") },
+    { title: t.stats, Icon: ChartColumnIcon, onClick: () => navigate("stats") },
+    { title: t.analysis, Icon: HistoryIcon, onClick: () => navigate("analysis") },
+    { title: t.settings, Icon: SettingsIcon, onClick: () => navigate("settings") },
     { title: t.rules, Icon: BookOpenIcon, onClick: () => setRulesOpen(true) },
   ];
   const connectionLabel = {
@@ -98,7 +114,7 @@ export default function App() {
   }[connectionState];
 
   function quitGame() {
-    session.quit();
+    cancelPairing();
     setScreen("home");
   }
 
@@ -115,7 +131,7 @@ export default function App() {
   }, [pubScreen]);
 
   // Stays up through "connecting" — it only closes once the peer is back.
-  const needsReconnect = Boolean(inGame && role !== "solo" && connectionState !== "connected");
+  const needsReconnect = Boolean(inGame && role !== "solo" && (gameState.paused || connectionState !== "connected"));
 
   return (
     <div className="app-shell">
@@ -129,7 +145,7 @@ export default function App() {
           in-game toolbar carries the contract, round and quit controls. */}
       {!inGame && !inReplay && (
       <header className="topbar">
-        <button className="brand" onClick={() => setScreen("home")} type="button">
+        <button className="brand" onClick={() => navigate("home")} type="button">
           <span className="brand-mark">S</span>
           <span>SchafPlay</span>
         </button>
@@ -169,7 +185,14 @@ export default function App() {
           playerName={playerName}
           onPlayerNameChange={(value) => updateSetting("playerName", value)}
           connectionState={connectionState}
+          humanCount={humanCount}
+          onHumanCountChange={(count) => {
+            session.quit();
+            setHumanCount(count);
+          }}
+          hostSeats={session.hostSeats}
           onHostPeer={session.attachHostPeer}
+          onCancelPairing={cancelPairing}
           onGuestPeer={session.attachGuestPeer}
           totalRounds={totalRounds}
           onTotalRoundsChange={(value) => updateSetting("totalRounds", value)}
@@ -182,14 +205,19 @@ export default function App() {
         <div className="reconnect-overlay">
           <div className="reconnect-panel">
             <h2>{t.paused}</h2>
-            <p className="muted">{t.reconnectHint}</p>
-            <PairingPanel
-              key={`reconnect-${role}`}
-              language={language}
-              mode={role === "guest" ? "join" : "host"}
-              connectionState={connectionState}
-              onPeer={role === "guest" ? session.attachGuestPeer : session.attachHostPeer}
-            />
+            {role === "host" ? (
+              <>
+                <p className="muted">{t.reconnectHint}</p>
+                <HostLobby language={language} count={humanCount} seats={session.hostSeats} onPeer={session.attachHostPeer} />
+              </>
+            ) : connectionState === "connected" ? (
+              <p className="muted" role="status">{t.waitingForReconnect}</p>
+            ) : (
+              <>
+                <p className="muted">{t.reconnectGuestHint}</p>
+                <PairingPanel language={language} mode="join" connectionState={connectionState} onPeer={session.attachGuestPeer} />
+              </>
+            )}
             <button className="secondary-button" onClick={quitGame} type="button">
               {t.quit}
             </button>

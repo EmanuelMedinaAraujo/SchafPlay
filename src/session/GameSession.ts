@@ -1,8 +1,9 @@
 import { EngineOptions } from "../engine/GameEngine";
-import { GameState, PlayerAction } from "../game/types";
+import { GameState, PlayerAction, SeatId } from "../game/types";
 import { getE2EOverrides } from "../lib/e2e";
 import { Settings } from "../lib/settings";
 import { TransportState } from "../net/Transport";
+import type { LobbySeat } from "./HostSession";
 
 export type SessionRole = "host" | "guest" | "solo";
 
@@ -10,7 +11,9 @@ export type SessionRole = "host" | "guest" | "solo";
 interface SessionEvents {
   onGameState(state: GameState): void;
   onConnectionState(state: TransportState | "idle"): void;
-  /** The session is ready to show the game screen (fires again on reconnect). */
+  onLobbyChange(seats: LobbySeat[]): void;
+  onLocalSeat(id: SeatId): void;
+  /** The session is ready to show the game screen. */
   onEnterGame(): void;
 }
 
