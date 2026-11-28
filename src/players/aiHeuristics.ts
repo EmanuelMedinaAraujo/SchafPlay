@@ -13,61 +13,48 @@ import {
   isTrump,
   soloTypeFor,
 } from "../game/rules";
+import { countGuaranteedWenzTricks, getWenzPlainMasters } from "./wenz";
 
 interface HandProfile {
   unters: Card[];
   obers: Card[];
-  aces: Card[];
   trumpsInNormal: Card[];
-  hand: Card[];
 }
 
 function analyzeHand(hand: Card[]): HandProfile {
   return {
     unters: hand.filter((card) => card.value === CardValue.UNTER),
     obers: hand.filter((card) => card.value === CardValue.OBER),
-    aces: hand.filter((card) => card.value === CardValue.ACE),
     trumpsInNormal: hand.filter((card) => isTrump(card, GameType.SAUSPIEL)),
-    hand,
   };
-}
-
-function isWenzWorthy({ unters, aces, hand }: HandProfile): boolean {
-  const tensMatchingAces = hand.filter(
-    (card) => card.value === CardValue.TEN && aces.some((ace) => ace.suit === card.suit)
-  );
-  const cond1 = unters.length >= 2 && aces.length >= 2 && tensMatchingAces.length >= 2;
-  const cond2 = unters.length >= 3 && aces.length >= 2 && tensMatchingAces.length >= 1;
-  const cond3 = unters.length >= 4 && aces.length >= 2;
-  return cond1 || cond2 || cond3;
 }
 
 function isSoloWorthy({ obers, trumpsInNormal }: HandProfile): boolean {
   return obers.length >= 3 && trumpsInNormal.length >= 7;
 }
 
-export function getAIWillBid(player: Player, willBids: WillBid[]): boolean {
+export function getAIWillBid(player: Player, willBids: WillBid[], leadsOpeningTrick = false): boolean {
   const someoneElseWantsToPlay = willBids.some((bid) => bid.playerId !== player.id && bid.wantsToPlay);
-
-  if (someoneElseWantsToPlay) {
-    const hp = analyzeHand(player.cards);
-    return isWenzWorthy(hp) || isSoloWorthy(hp);
-  }
-
-  // A "will" can't be taken back once a Sauspiel stands (#24), so only commit
-  // when there is actually a declarable game.
-  return getAIBid(player, null, true) !== null;
+  // A "will" can't be taken back once a Sauspiel stands (#24). If another
+  // player has committed, make sure we can beat at least that game.
+  const minimumBid = someoneElseWantsToPlay ? { type: GameType.SAUSPIEL } : null;
+  return getAIBid(player, minimumBid, true, leadsOpeningTrick) !== null;
 }
 
 /** `canRetreat` = "Doch passen" (#24): may only bow out once a Wenz/Solo stands. */
 export function getAIBid(
   player: Player,
-  existingDeclaration?: GameDeclaration | null,
+  existingDeclaration: GameDeclaration | null = null,
   canRetreat = true,
+  leadsOpeningTrick = false,
 ): GameDeclaration | null {
   const hand = player.cards;
+  const guaranteedTricks = countGuaranteedWenzTricks(hand, leadsOpeningTrick);
+  const wenz = { type: GameType.WENZ };
+  if (guaranteedTricks >= 5 && canOverrideBid(existingDeclaration, wenz)) return wenz;
+
   const hp = analyzeHand(hand);
-  const { unters, obers, aces, trumpsInNormal } = hp;
+  const { unters, obers, trumpsInNormal } = hp;
 
   const declarations: GameDeclaration[] = [];
 
@@ -75,18 +62,21 @@ export function getAIBid(
   const goodSauspielHand = (trumpsInNormal.length >= 4 && obers.length >= 1) || trumpsInNormal.length >= 5;
   if (goodSauspielHand && callableSuit) declarations.push({ type: GameType.SAUSPIEL, calledSuit: callableSuit });
 
-  if (isWenzWorthy(hp)) declarations.push({ type: GameType.WENZ, isTout: unters.length === 4 && aces.length >= 2 });
+  if (guaranteedTricks === 8) declarations.push({ type: GameType.WENZ, isTout: true });
 
   if (isSoloWorthy(hp)) declarations.push({ type: bestSoloType(hand), isTout: obers.length >= 4 && trumpsInNormal.length >= 8 });
 
   // Lowest-ranking viable game first; reach higher only to overbid.
   const chosen = declarations
     .sort((a, b) => getGamePriority(a.type, a.isTout) - getGamePriority(b.type, b.isTout))
-    .find((declaration) => canOverrideBid(existingDeclaration ?? null, declaration));
+    .find((declaration) => canOverrideBid(existingDeclaration, declaration));
   if (chosen) return chosen;
 
   // Committed to topping the standing Sauspiel: pick the least-bad higher game.
-  if (!canRetreat) return unters.length >= 2 ? { type: GameType.WENZ } : { type: bestSoloType(hand) };
+  if (!canRetreat) {
+    const fallback = unters.length >= 2 ? wenz : { type: bestSoloType(hand) };
+    if (canOverrideBid(existingDeclaration, fallback)) return fallback;
+  }
   return null;
 }
 
@@ -130,7 +120,7 @@ export function getAICardPlay(
   }
 
   if (!contract || !currentTrick || currentTrick.playedCards.length === 0) {
-    return chooseLead(player, legalCards, contract, gameType);
+    return chooseLead(player, legalCards, contract, gameType, tricks);
   }
 
   const played = currentTrick.playedCards;
@@ -227,10 +217,16 @@ function lowestValueCard(cards: Card[], gameType: GameType): Card {
 }
 
 /** Declaring side pulls trumps; a defender opens safely and keeps Tens back. */
-function chooseLead(player: Player, legal: Card[], contract: Contract | null, gameType: GameType): Card {
+function chooseLead(player: Player, legal: Card[], contract: Contract | null, gameType: GameType, tricks: Trick[]): Card {
   const trumps = legal.filter((card) => isTrump(card, gameType));
   const nonTrumps = legal.filter((card) => !isTrump(card, gameType));
-  if (contract && isDeclaringSide(player.id, contract) && trumps.length > 0) return highestRankCard(trumps, gameType);
+  if (contract && isDeclaringSide(player.id, contract)) {
+    if (trumps.length > 0) return highestRankCard(trumps, gameType);
+    if (gameType === GameType.WENZ) {
+      const [master] = getWenzPlainMasters(legal, tricks);
+      if (master) return master;
+    }
+  }
 
   const aces = nonTrumps.filter((card) => card.value === CardValue.ACE);
   if (aces.length > 0) return highestRankCard(aces, gameType);
