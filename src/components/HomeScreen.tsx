@@ -1,16 +1,23 @@
 import { CSSProperties, useState } from "react";
+import { RemoteSeatId } from "../game/types";
+import { HumanCount, LobbySeat } from "../session/HostSession";
 import { Transport, TransportState } from "../net/Transport";
 import { Language } from "../types";
 import { GameMode, ROUND_OPTIONS } from "../lib/settings";
 import { translations } from "../lib/i18n";
 import PairingPanel from "./PairingPanel";
+import HostLobby from "./HostLobby";
 
 interface HomeScreenProps {
   language: Language;
   playerName: string;
   connectionState: TransportState | "idle";
   onPlayerNameChange: (name: string) => void;
-  onHostPeer: (peer: Transport) => void;
+  humanCount: HumanCount;
+  onHumanCountChange: (count: HumanCount) => void;
+  hostSeats: LobbySeat[];
+  onHostPeer: (id: RemoteSeatId, peer: Transport, count: HumanCount) => void;
+  onCancelPairing: () => void;
   onGuestPeer: (peer: Transport) => void;
   totalRounds: number;
   onTotalRoundsChange: (rounds: number) => void;
@@ -73,7 +80,11 @@ export default function HomeScreen(props: HomeScreenProps) {
                 aria-selected={mode === m}
                 className={`wh-mat-btn wh-mat-${m}${mode === m ? " active" : ""}`}
                 style={{ "--i": i } as CSSProperties}
-                onClick={() => setMode(m)}
+                onClick={() => {
+                  if (m === mode) return;
+                  if (mode !== "solo") props.onCancelPairing();
+                  setMode(m);
+                }}
               >
                 <span className="wh-mat">
                   <span className="wh-mat-top" aria-hidden="true">
@@ -143,13 +154,26 @@ export default function HomeScreen(props: HomeScreenProps) {
                 {t.startGame}
               </button>
             </>
+          ) : mode === "host" ? (
+            <>
+              <label className="field-label" htmlFor="human-count">{t.humanPlayers}</label>
+              <select
+                id="human-count"
+                className="input human-count"
+                value={props.humanCount}
+                onChange={(event) => props.onHumanCountChange(Number(event.target.value) as HumanCount)}
+              >
+                {[2, 3, 4].map((count) => <option key={count} value={count}>{count}</option>)}
+              </select>
+              <HostLobby key={props.humanCount} language={props.language} count={props.humanCount} seats={props.hostSeats} onPeer={props.onHostPeer} />
+            </>
           ) : (
             <PairingPanel
               language={props.language}
-              mode={mode}
+              mode="join"
               connectionState={props.connectionState}
-              onPeer={mode === "host" ? props.onHostPeer : props.onGuestPeer}
-              initialInvite={mode === "join" ? props.initialInvite : undefined}
+              onPeer={props.onGuestPeer}
+              initialInvite={props.initialInvite}
             />
           )}
         </section>

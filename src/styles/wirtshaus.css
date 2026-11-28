@@ -451,13 +451,20 @@ html[data-screen] .qr-popup-close {
   gap: 3px;
 }
 
-.wh-note .pairing-flow .field-label {
+.wh-note .field-label {
   margin: 0;
   color: #1d3f7a;
   font-family: var(--wh-hand);
   font-size: 20px;
   font-weight: 700;
   line-height: 1.1;
+}
+
+.wh-note .human-count {
+  align-self: start;
+  background: #fffaf0;
+  border-color: #8a7a5a;
+  color: var(--wh-ink);
 }
 
 /* The codes break anywhere (base rule); the hint text in an empty field

@@ -1,15 +1,15 @@
 import { useRef, useState } from "react";
-import { GameState, PlayerAction, SeatId } from "../game/types";
+import { GameState, PlayerAction, RemoteSeatId, SeatId } from "../game/types";
 import { Settings } from "../lib/settings";
 import { Transport, TransportState } from "../net/Transport";
 import { GameSession, SessionDeps, SessionRole } from "./GameSession";
 import { GuestSession } from "./GuestSession";
-import { HostSession } from "./HostSession";
+import { HostSession, HumanCount, LobbySeat } from "./HostSession";
 import { SoloSession } from "./SoloSession";
 
 export interface UseGameSessionOptions {
   settings: Settings;
-  /** Show the game screen (also fires on reconnect, where it is a no-op). */
+  /** Show the game screen. */
   onEnterGame(): void;
 }
 
@@ -23,6 +23,8 @@ export function useGameSession(options: UseGameSessionOptions) {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [connectionState, setConnectionState] = useState<TransportState | "idle">("idle");
   const [role, setRole] = useState<SessionRole | null>(null);
+  const [hostSeats, setHostSeats] = useState<LobbySeat[]>([]);
+  const [myPlayerId, setLocalSeat] = useState<SeatId>("p1");
 
   const optionsRef = useRef(options);
   optionsRef.current = options;
@@ -35,6 +37,8 @@ export function useGameSession(options: UseGameSessionOptions) {
       getSettings: () => optionsRef.current.settings,
       events: {
         onGameState: setGameState,
+        onLobbyChange: setHostSeats,
+        onLocalSeat: setLocalSeat,
         onConnectionState: setConnectionState,
         onEnterGame: () => optionsRef.current.onEnterGame(),
       },
@@ -42,16 +46,30 @@ export function useGameSession(options: UseGameSessionOptions) {
   }
   const deps = depsRef.current;
 
-  function attachPeer(Session: typeof HostSession | typeof GuestSession, peerRole: "host" | "guest", peer: Transport): void {
+  function attachHostPeer(id: RemoteSeatId, peer: Transport, count: HumanCount): void {
     const current = sessionRef.current;
-    // Re-attaching the same role is a reconnect: keep the session.
-    const session: HostSession | GuestSession = current instanceof Session ? current : new Session(deps);
-    if (session !== current) {
+    if (current instanceof HostSession) {
+      current.attachTransport(id, peer);
+    } else {
       current?.destroy();
+      const session = new HostSession(deps, count);
       sessionRef.current = session;
+      setRole("host");
+      session.attachTransport(id, peer);
     }
-    setRole(peerRole);
-    session.attachTransport(peer);
+  }
+
+  function attachGuestPeer(peer: Transport): void {
+    const current = sessionRef.current;
+    if (current instanceof GuestSession) {
+      current.attachTransport(peer);
+    } else {
+      current?.destroy();
+      const session = new GuestSession(deps);
+      sessionRef.current = session;
+      setRole("guest");
+      session.attachTransport(peer);
+    }
   }
 
   function startSolo(): void {
@@ -59,6 +77,7 @@ export function useGameSession(options: UseGameSessionOptions) {
     const session = new SoloSession(deps);
     sessionRef.current = session;
     setRole("solo");
+    setLocalSeat("p1");
     session.start();
   }
 
@@ -71,18 +90,19 @@ export function useGameSession(options: UseGameSessionOptions) {
     sessionRef.current = null;
     setGameState(null);
     setRole(null);
+    setHostSeats([]);
+    setLocalSeat("p1");
     setConnectionState("idle");
   }
-
-  const myPlayerId: SeatId = role === "guest" ? "p3" : "p1";
 
   return {
     gameState,
     connectionState,
     role,
     myPlayerId,
-    attachHostPeer: (peer: Transport) => attachPeer(HostSession, "host", peer),
-    attachGuestPeer: (peer: Transport) => attachPeer(GuestSession, "guest", peer),
+    hostSeats,
+    attachHostPeer,
+    attachGuestPeer,
     startSolo,
     dispatch,
     quit,

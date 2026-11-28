@@ -1,4 +1,4 @@
-import { BidDeclaration, Contract, RoundResult, WillBid } from "../game/types";
+import { BidDeclaration, Contract, RoundResult, SeatId, WillBid } from "../game/types";
 
 /**
  * Local game statistics, persisted per device. Binding: never remove or
@@ -36,9 +36,9 @@ export interface GameRecord {
   finishedAt: string;
   mode: StatsMode;
   role: "host" | "guest" | "solo";
-  localPlayerId: "p1" | "p3";
+  localPlayerId: SeatId;
   localPlayerName: string;
-  /** The other human's name; null in solo games. */
+  /** Legacy single-name summary. The full table is in players. */
   opponentName: string | null;
   players: { id: string; name: string; isHuman: boolean }[];
   totalRounds: number;

@@ -9,6 +9,7 @@ import {
   Player,
   PlayerAction,
   PlayerActionType,
+  RemoteSeatId,
   SeatId,
   StossKind,
 } from "../game/types";
@@ -35,7 +36,9 @@ export interface EngineOptions {
   trickHoldMs?: number;
   /** Injectable for deterministic tests. */
   shuffleFn?: (deck: Card[]) => Card[];
-  /** Seat p3 is a third AI instead of the remote human. */
+  /** Names and avatars for the remote seats occupied by humans. */
+  guests?: Partial<Record<RemoteSeatId, PlayerIdentity>>;
+  /** Seat p3 is a third AI when no guest roster is supplied. */
   soloMode?: boolean;
   /** Enables devSkipTrick/devSkipRound. */
   devToolsEnabled?: boolean;
@@ -50,12 +53,16 @@ export interface EngineOptions {
 
 const devFallbackAI = new AIController();
 
-/** Opaque preset keys (#14); must match `AVATAR_PRESETS` in `lib/avatars.ts`,
- *  which the engine cannot import — it stays DOM-free for the Node-side sim. */
-const AI_SEAT_AVATAR: Record<"p2" | "p3" | "p4", string> = {
-  p2: "preset:resi",
-  p3: "preset:zenzi",
-  p4: "preset:sepp",
+interface PlayerIdentity {
+  name: string;
+  avatar: string;
+}
+
+/** Preset keys match AVATAR_PRESETS without importing browser code. */
+const AI_SEATS: Record<RemoteSeatId, PlayerIdentity> = {
+  p2: { name: "Resi (KI)", avatar: "preset:resi" },
+  p3: { name: "Zenzi (KI)", avatar: "preset:zenzi" },
+  p4: { name: "Sepp (KI)", avatar: "preset:sepp" },
 };
 
 export class GameEngine {
@@ -71,7 +78,6 @@ export class GameEngine {
   private disableLaufende: boolean;
   private enableRamsch: boolean;
 
-  /** The guest's name and avatar arrive later, via `setGuestName`/`setGuestAvatar`. */
   constructor(hostName: string, totalRounds = 8, options: EngineOptions = {}) {
     this.aiDelayMs = options.aiDelayMs ?? 900;
     this.trickHoldMs = options.trickHoldMs ?? 1600;
@@ -80,13 +86,15 @@ export class GameEngine {
     this.disableLaufende = options.disableLaufende ?? false;
     this.enableRamsch = options.enableRamsch ?? false;
 
+    const guests = options.guests ?? (options.soloMode ? {} : { p3: { name: "Gast", avatar: "" } });
+    const remoteIds: RemoteSeatId[] = ["p2", "p3", "p4"];
     const players: Player[] = [
       makePlayer("p1", hostName || "Host", true, 0, options.hostAvatar || ""),
-      makePlayer("p2", "Resi (KI)", false, 1, AI_SEAT_AVATAR.p2),
-      options.soloMode
-        ? makePlayer("p3", "Zenzi (KI)", false, 2, AI_SEAT_AVATAR.p3)
-        : makePlayer("p3", "Gast", true, 2, ""),
-      makePlayer("p4", "Sepp (KI)", false, 3, AI_SEAT_AVATAR.p4),
+      ...remoteIds.map((id, index) => {
+        const guest = guests[id];
+        const { name, avatar } = guest ?? AI_SEATS[id];
+        return makePlayer(id, name, Boolean(guest), index + 1, avatar);
+      }),
     ];
 
     // A seat is engine-driven iff it has a controller.
@@ -124,19 +132,6 @@ export class GameEngine {
     return structuredClone(this.state);
   }
 
-  setGuestName(name: string): void {
-    this.mutate((state) => {
-      state.players[2].name = name.trim() || "Gast";
-    });
-  }
-
-  /** Already sanitized by `HostSession` — the wire boundary is the session's job. */
-  setGuestAvatar(avatar: string): void {
-    this.mutate((state) => {
-      state.players[2].avatar = avatar;
-    });
-  }
-
   destroy(): void {
     this.clearTimer();
     this.listeners.clear();
@@ -158,7 +153,7 @@ export class GameEngine {
   }
 
   processAction(action: PlayerAction): void {
-    if (this.state.paused) return;
+    if (this.state.paused || !this.state.players.some((player) => player.id === action.playerId && player.isHuman)) return;
     switch (action.type) {
       case PlayerActionType.BID_WILL:
         return this.processBidWill(action.playerId, Boolean(action.data?.wantsToPlay));
@@ -311,17 +306,17 @@ export class GameEngine {
   }
 
   /**
-   * A human's ready click on the round or list summary. Once both humans are
+   * A human's ready click on the round or list summary. Once all humans are
    * ready the game advances: the next deal, the list summary after the last
    * round (#27), or a rematch.
    */
   private markReady(playerId: string, status: "ROUND_OVER" | "LIST_OVER"): void {
     if (this.state.status !== status) return;
-    if (playerId !== "p1" && playerId !== "p3") return;
+    if (this.state.readyState[playerId]) return;
     this.mutate((state) => {
       state.readyState[playerId] = true;
     });
-    if (!this.state.readyState.p1 || !this.state.readyState.p3) return;
+    if (!this.state.players.every((player) => this.state.readyState[player.id])) return;
     if (status === "LIST_OVER") this.rematch();
     else if (this.state.roundNumber >= this.state.totalRounds) this.finishList();
     else this.dealCards();
@@ -335,23 +330,18 @@ export class GameEngine {
     });
   }
 
-  /** Freeze the game while the peer is gone. Timers stop, actions are ignored. */
-  pause(): void {
-    if (this.state.paused) return;
-    this.clearTimer();
+  /** Freeze progress until every human seat is connected again. */
+  setGuestConnection(id: RemoteSeatId, connected: boolean, identity?: PlayerIdentity): void {
+    const wasPaused = this.state.paused;
     this.mutate((state) => {
-      state.paused = true;
-      state.players[2].connected = false;
+      const player = state.players.find((candidate) => candidate.id === id && candidate.isHuman);
+      if (!player) return;
+      player.connected = connected;
+      if (identity) Object.assign(player, identity);
+      state.paused = state.players.some((candidate) => candidate.isHuman && candidate.connected === false);
+      if (state.paused) this.clearTimer();
     });
-  }
-
-  resume(): void {
-    if (!this.state.paused) return;
-    this.mutate((state) => {
-      state.paused = false;
-      state.players[2].connected = true;
-    });
-    this.scheduleProgress();
+    if (wasPaused && !this.state.paused) this.scheduleProgress();
   }
 
   // --- Internal progression -------------------------------------------------
@@ -583,9 +573,8 @@ export class GameEngine {
   }
 }
 
-/** Fresh ready flags: humans must click ready; an AI at seat 3 (solo) auto-readies. */
 function freshReadyState(players: Player[]): GameState["readyState"] {
-  return { p1: false, p3: !players[2].isHuman };
+  return Object.fromEntries(players.map((player) => [player.id, !player.isHuman]));
 }
 
 function makePlayer(id: SeatId, name: string, isHuman: boolean, seatIndex: number, avatar: string): Player {
