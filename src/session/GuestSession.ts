@@ -2,7 +2,7 @@ import { GameState, PlayerAction, RemoteSeatId } from "../game/types";
 import { ListRecorder } from "../persistence";
 import { createMessage, isRemoteSeat, isSeat, P2PMessageType } from "../net/protocol";
 import { Transport } from "../net/Transport";
-import { AvatarMap, sanitizeAvatarMap, sanitizeStateAvatars, withAvatars } from "./avatarSync";
+import { AvatarMap, sanitizeAvatar, sanitizeAvatarMap, sanitizeStateAvatars, withAvatars } from "./avatarSync";
 import { GameSession, SessionDeps } from "./GameSession";
 
 /** Thin client, with the local seat and recorder kept through transport swaps. */
@@ -23,14 +23,7 @@ export class GuestSession implements GameSession {
 
     const offState = transport.onConnectionStateChange((state) => {
       if (state === "connected") {
-        const { playerName, avatar } = this.deps.getSettings();
-        try {
-          transport.send(createMessage(P2PMessageType.CONNECTION_ACK, {
-            name: playerName, avatar, supportsSeats: true, seat: this.seat ?? undefined,
-          }));
-        } catch {
-          this.fail();
-        }
+        this.introduce(transport);
         return;
       }
       if (state === "disconnected" || state === "failed") {
@@ -89,6 +82,29 @@ export class GuestSession implements GameSession {
       this.transport = null;
       this.detach = null;
     };
+  }
+
+  private introduce(transport: Transport): void {
+    const { playerName, avatar } = this.deps.getSettings();
+    const intro = {
+      name: playerName.trim().slice(0, 20),
+      supportsSeats: true,
+      seat: this.seat ?? undefined,
+    };
+    const picture = sanitizeAvatar(avatar);
+    if (picture) {
+      try {
+        transport.send(createMessage(P2PMessageType.CONNECTION_ACK, { ...intro, avatar: picture }));
+        return;
+      } catch {
+        // Retry without the picture if it exceeded the channel's message limit.
+      }
+    }
+    try {
+      transport.send(createMessage(P2PMessageType.CONNECTION_ACK, { ...intro, avatar: picture ? undefined : "" }));
+    } catch {
+      this.fail();
+    }
   }
 
   private fail(): void {
