@@ -65,7 +65,8 @@ export function replayDecisions(game: GameRecord, round: RoundRecord): ReplayDec
   }
 
   // Will decisions only see the earlier answers, starting at the opening lead's seat.
-  const forehand = seatIds.indexOf(round.tricks[0]?.leaderId);
+  const openingLeader = round.tricks[0]?.leaderId;
+  const forehand = seatIds.indexOf(openingLeader);
   const priorWillBids: WillBid[] = [];
   const will: ReplayDecisions["will"] = [];
   for (const recorded of round.bids ?? []) {
@@ -73,7 +74,7 @@ export function replayDecisions(game: GameRecord, round: RoundRecord): ReplayDec
     if (forehand < 0 || priorWillBids.length >= seatIds.length ||
         playerId !== seatIds[(forehand + priorWillBids.length) % seatIds.length]) break;
     const cards = hands[playerId];
-    will.push({ recorded, suggestion: cards && getAIWillBid({ id: playerId, cards }, priorWillBids) });
+    will.push({ recorded, suggestion: cards && getAIWillBid({ id: playerId, cards }, priorWillBids, playerId === openingLeader) });
     priorWillBids.push(recorded);
   }
 
@@ -87,8 +88,8 @@ export function replayDecisions(game: GameRecord, round: RoundRecord): ReplayDec
 
     const cards = hands[playerId];
     let suggestion: GameDeclaration | null | undefined;
-    if (cards) {
-      const candidate = getAIBid({ id: playerId, cards }, standing, canRetreat);
+    if (cards && forehand >= 0) {
+      const candidate = getAIBid({ id: playerId, cards }, standing, canRetreat, playerId === openingLeader);
       if (candidate === null ? canRetreat : isLegalBid(candidate, standing, cards)) suggestion = candidate;
     }
     declarations.push({ recorded, suggestion });

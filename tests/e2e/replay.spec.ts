@@ -87,6 +87,30 @@ test.describe("analysis replay", () => {
     bidContext.declarations.splice(1, 2, { playerId: "p1", declaration: { type: GameType.WENZ } });
     expect(replayDecisions(recorded, bidContext).declarations.at(-1)?.suggestion).toEqual({ type: GameType.SOLO_BELLS });
 
+    const leaderContext = {
+      ...bidContext,
+      initialHand: ["ACORNS-U", "LEAVES-U", "ACORNS-A", "ACORNS-10", "ACORNS-K", "ACORNS-7", "LEAVES-7", "BELLS-7"],
+      tricks: [{ leaderId: "p1", plays: [] }],
+      bids: ["p1", "p2", "p3", "p4"].map((playerId) => ({ playerId, wantsToPlay: playerId === "p1" })),
+      declarations: [{ playerId: "p1", declaration: { type: GameType.WENZ } }],
+    };
+    const followingContext = {
+      ...leaderContext,
+      tricks: [{ leaderId: "p2", plays: [] }],
+      bids: [...leaderContext.bids.slice(1), leaderContext.bids[0]],
+    };
+    // The same hand only guarantees five Wenz tricks when the bidder opens.
+    expect(replayDecisions(recorded, leaderContext).will[0].suggestion).toBe(true);
+    expect(replayDecisions(recorded, followingContext).will.at(-1)?.suggestion).toBe(false);
+
+    // This variant also qualifies for Sauspiel, so its declaration shows the
+    // difference between a guaranteed Wenz and the ordinary Sauspiel choice.
+    const trumpHearts = ["ACORNS-U", "LEAVES-U", "HEARTS-A", "HEARTS-10", "HEARTS-K", "ACORNS-7", "LEAVES-7", "BELLS-7"];
+    expect(replayDecisions(recorded, { ...leaderContext, initialHand: trumpHearts }).declarations[0].suggestion)
+      .toEqual({ type: GameType.WENZ });
+    expect(replayDecisions(recorded, { ...followingContext, initialHand: trumpHearts }).declarations[0].suggestion)
+      .toEqual({ type: GameType.SAUSPIEL, calledSuit: Suit.ACORNS });
+
     const partialRound = { ...round, initialHand: [], tricks: structuredClone(round.tricks) };
     const missingPlay = partialRound.tricks.at(-1)!.plays.pop()!;
     const partialDecisions = replayDecisions(recorded, partialRound);
