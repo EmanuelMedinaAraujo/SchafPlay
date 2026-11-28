@@ -1,12 +1,13 @@
 import { Page } from "@playwright/test";
-import { createDeck } from "../../src/game/deck";
-import { getCallableSuits, getPlaySuit } from "../../src/game/rules";
+import { cardFromId, createDeck } from "../../src/game/deck";
+import { getCallableSuits, getLegalCards, getPlaySuit } from "../../src/game/rules";
 import { Card, CardValue, GameState, GameType, RemoteSeatId, SeatId, Suit } from "../../src/game/types";
 import { gameLabel } from "../../src/lib/i18n";
 import { seededShuffle } from "../../src/lib/seededShuffle";
 import { GameRecord } from "../../src/persistence/GameHistoryStore";
 import { bootHome, de, exchangeCodes, handCards, readInvite } from "./helpers/fixtures";
 import { expect, test } from "./helpers/test";
+import { playCardInTurn } from "./helpers/ui";
 
 const SEATS = ["p1", "p2", "p3", "p4"] as const;
 const GUESTS = ["p3", "p2", "p4"] as const;
@@ -92,21 +93,27 @@ function findDeal() {
   throw new Error("No suitable Sauspiel deal");
 }
 
-async function playRound(pages: Page[], observer: Page, humanCount: number) {
-  // Only the active human has an unlocked hand. AI and trick collection run
-  // normally while this clicks each human's first legal card.
-  const activeCard = (page: Page) => page.locator(".player-hand-container.my-turn .playing-card:not(.grayed-out)").first();
+async function playRound(pages: Partial<Record<SeatId, Page>>, observer: Page, humanCount: number) {
+  let previousPlayCount = -1;
   for (let turn = 0; turn < humanCount * 8; turn += 1) {
-    let next: Page | undefined;
+    let next: { page: Page; state: GameState } | undefined;
     await expect.poll(async () => {
-      const turns = await Promise.all(pages.map((page) => activeCard(page).count()));
-      next = pages[turns.indexOf(1)];
-      return Boolean(next);
+      const state = await observer.evaluate(() =>
+        (window as unknown as { wireCapture: WireCapture }).wireCapture.states.at(-1),
+      );
+      if (!state || state.status !== "PLAYING" || state.collecting) return false;
+      const playCount = state.tricks.length * 4 + (state.currentTrick?.playedCards.length ?? 0);
+      const page = pages[state.players[state.activePlayerIdx].id];
+      if (!page || playCount <= previousPlayCount) return false;
+      previousPlayCount = playCount;
+      next = { page, state };
+      return true;
     }).toBe(true);
-    const card = activeCard(next!);
-    const id = await card.getAttribute("data-card-id");
-    await card.click();
-    await expect(handCards(next!).and(next!.locator(`[data-card-id="${id}"]`))).toHaveCount(0);
+    const { page, state } = next!;
+    // Derive the legal choice from the public trick and the acting player's hand.
+    const hand = (await handIds(page)).map((id) => cardFromId(id)!);
+    const [card] = getLegalCards(hand, state.currentTrick, state.currentContract, state.tricks);
+    await playCardInTurn(page, card.id);
   }
   await expect(observer.locator(".round-over-overlay h2")).toHaveText(de.roundOver);
 }
@@ -228,7 +235,7 @@ for (const humanCount of [3, 4] as const) {
       }
     }
 
-    await playRound(table, observer, humanCount);
+    await playRound(pages, observer, humanCount);
     for (const id of guests) {
       const received = await wire(pages[id]!);
       expect(received.avatars).toEqual(expect.arrayContaining(humans.map(avatarFor)));

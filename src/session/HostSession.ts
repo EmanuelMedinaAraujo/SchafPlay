@@ -171,24 +171,40 @@ export class HostSession implements GameSession {
     const compact = withoutHeavyAvatars(snapshot);
     for (const { id, link } of this.seats) {
       if (!link?.admitted) continue;
+      this.sendAvatars(link, snapshot, avatars);
+      const state = redactStateFor(compact, id);
       try {
-        if (link.hello?.supportsSeats) {
-          // Per seat keeps four uploaded avatars below the per-message limit.
-          for (const { id: avatarSeat } of snapshot.players) {
-            if (avatars[avatarSeat] === link.sentAvatars[avatarSeat]) continue;
-            const update = avatars[avatarSeat] ? { [avatarSeat]: avatars[avatarSeat] } : {};
-            link.transport.send(createMessage(P2PMessageType.AVATAR_UPDATE, { avatars: update, seat: avatarSeat }));
-            link.sentAvatars[avatarSeat] = avatars[avatarSeat];
-          }
-        } else if (JSON.stringify(avatars) !== JSON.stringify(link.sentAvatars)) {
-          // Older two-player guests replace the whole map.
-          link.transport.send(createMessage(P2PMessageType.AVATAR_UPDATE, { avatars }));
-          link.sentAvatars = avatars;
-        }
-        const state = redactStateFor(compact, id);
         link.transport.send(createMessage(P2PMessageType.GAME_STATE_UPDATE, { state }));
       } catch {
         // The link may have closed. Its connection state will trigger re-pairing.
+      }
+    }
+  }
+
+  private sendAvatars(link: GuestLink, snapshot: GameState, avatars: AvatarMap): void {
+    const changed = snapshot.players.filter(({ id }) => avatars[id] !== link.sentAvatars[id]);
+    if (!changed.length) return;
+
+    if (!link.hello?.supportsSeats) {
+      // Older two-player guests replace the whole map.
+      try {
+        link.transport.send(createMessage(P2PMessageType.AVATAR_UPDATE, { avatars }));
+        link.sentAvatars = avatars;
+      } catch {
+        // A picture that exceeds the channel budget must not block the game state.
+      }
+      return;
+    }
+
+    // Per seat keeps four uploaded avatars below the per-message limit.
+    for (const { id } of changed) {
+      const update = avatars[id] ? { [id]: avatars[id] } : {};
+      try {
+        link.transport.send(createMessage(P2PMessageType.AVATAR_UPDATE, { avatars: update, seat: id }));
+        if (avatars[id]) link.sentAvatars[id] = avatars[id];
+        else delete link.sentAvatars[id];
+      } catch {
+        // Try this picture again with the next state. Other pictures can still arrive.
       }
     }
   }
