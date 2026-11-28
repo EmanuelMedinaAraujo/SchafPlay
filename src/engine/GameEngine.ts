@@ -379,7 +379,8 @@ export class GameEngine {
     if (this.state.status === "BIDDING") {
       const bidding = this.state.biddingState!;
       if (bidding.phase === "WILL_PHASE") {
-        this.processBidWill(player.id, controller.decideWill(player, bidding.willBids));
+        const leadsOpeningTrick = this.state.activePlayerIdx === forehandIdx(this.state);
+        this.processBidWill(player.id, controller.decideWill(player, bidding.willBids, leadsOpeningTrick));
       } else {
         this.processBidDeclare(player.id, controller.decideBid(player, this.bidContext(bidding)));
       }
@@ -392,6 +393,7 @@ export class GameEngine {
   private bidContext(bidding: BiddingState): BidContext {
     return {
       highBid: bidding.highBid?.declaration ?? null,
+      leadsOpeningTrick: this.state.activePlayerIdx === forehandIdx(this.state),
       canRetreat: isRetreatAllowed(bidding.highBid?.declaration),
     };
   }

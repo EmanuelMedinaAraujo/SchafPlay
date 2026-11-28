@@ -4,12 +4,12 @@ import { BidContext, PlayerController, StossContext } from "./PlayerController";
 
 /** The built-in heuristic AI. */
 export class AIController implements PlayerController {
-  decideWill(player: Player, willBids: WillBid[]): boolean {
-    return getAIWillBid(player, willBids);
+  decideWill(player: Player, willBids: WillBid[], leadsOpeningTrick: boolean): boolean {
+    return getAIWillBid(player, willBids, leadsOpeningTrick);
   }
 
   decideBid(player: Player, context: BidContext): GameDeclaration | null {
-    return getAIBid(player, context.highBid, context.canRetreat);
+    return getAIBid(player, context.highBid, context.canRetreat, context.leadsOpeningTrick);
   }
 
   decideCard(player: Player, currentTrick: Trick | null, contract: Contract | null, tricks: Trick[]): Card {
