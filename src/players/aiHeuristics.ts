@@ -1,6 +1,6 @@
 /** AI decision heuristics — pure; the engine owns pacing and validation. */
 
-import { Card, CardValue, Contract, GameDeclaration, GameType, Player, StossKind, Suit, Trick, WillBid } from "../game/types";
+import { Card, CardValue, Contract, GameDeclaration, GameType, StossKind, Suit, Trick, WillBid } from "../game/types";
 import {
   canOverrideBid,
   countPoints,
@@ -15,7 +15,12 @@ import {
 } from "../game/rules";
 import { countGuaranteedWenzTricks, getWenzPlainMasters } from "./wenz";
 
-export function getAIWillBid(player: Player, willBids: WillBid[], leadsOpeningTrick = false): boolean {
+interface AIHand {
+  id: string;
+  cards: Card[];
+}
+
+export function getAIWillBid(player: AIHand, willBids: WillBid[], leadsOpeningTrick = false): boolean {
   const someoneElseWantsToPlay = willBids.some((bid) => bid.playerId !== player.id && bid.wantsToPlay);
   // A "will" can't be taken back once a Sauspiel stands (#24). If another
   // player has committed, make sure we can beat at least that game.
@@ -25,7 +30,7 @@ export function getAIWillBid(player: Player, willBids: WillBid[], leadsOpeningTr
 
 /** `canRetreat` = "Doch passen" (#24): may only bow out once a Wenz/Solo stands. */
 export function getAIBid(
-  player: Player,
+  player: AIHand,
   existingDeclaration: GameDeclaration | null = null,
   canRetreat = true,
   leadsOpeningTrick = false,
@@ -88,7 +93,7 @@ export function getAIStoss(hand: Card[], contract: Contract, kind: StossKind): b
 }
 
 export function getAICardPlay(
-  player: Player,
+  player: AIHand,
   currentTrick: Trick | null,
   contract: Contract | null,
   tricks: Trick[],
@@ -201,7 +206,7 @@ function lowestValueCard(cards: Card[], gameType: GameType): Card {
 }
 
 /** Declaring side pulls trumps; a defender opens safely and keeps Tens back. */
-function chooseLead(player: Player, legal: Card[], contract: Contract | null, gameType: GameType, tricks: Trick[]): Card {
+function chooseLead(player: AIHand, legal: Card[], contract: Contract | null, gameType: GameType, tricks: Trick[]): Card {
   const trumps = legal.filter((card) => isTrump(card, gameType));
   const nonTrumps = legal.filter((card) => !isTrump(card, gameType));
   if (contract && isDeclaringSide(player.id, contract)) {

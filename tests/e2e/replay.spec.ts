@@ -1,4 +1,9 @@
 import { Page } from "@playwright/test";
+import { replayDecisions } from "../../src/analysis/replaySuggestions";
+import { cardFromId } from "../../src/game/deck";
+import { getLegalCards } from "../../src/game/rules";
+import { GameType, Suit } from "../../src/game/types";
+import { GameRecord } from "../../src/persistence/GameHistoryStore";
 import { bootHome, de, startSolo } from "./helpers/fixtures";
 import { quitFinishedList, skipRounds } from "./helpers/ui";
 import { expect, test } from "./helpers/test";
@@ -18,6 +23,34 @@ async function openAnalysisAfterList(page: Page): Promise<void> {
   await expect(page.locator(".stats-game-row")).toHaveCount(1);
 }
 
+async function readReplayGame(page: Page, makeLegacy = false): Promise<GameRecord> {
+  return page.evaluate((legacy) => new Promise<GameRecord>((resolve, reject) => {
+    const open = indexedDB.open("schafplay");
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const db = open.result;
+      const tx = db.transaction("games", legacy ? "readwrite" : "readonly");
+      const store = tx.objectStore("games");
+      const read = store.getAll();
+      tx.onerror = () => reject(tx.error);
+      tx.oncomplete = () => {
+        db.close();
+        resolve(read.result[0]);
+      };
+      read.onsuccess = () => {
+        if (!legacy) return;
+        const game: GameRecord = read.result[0];
+        delete game.rounds[0].bids;
+        delete game.rounds[0].declarations;
+        game.rounds[0].initialHand = [];
+        game.rounds[1].tricks = game.rounds[1].tricks.slice(0, 1);
+        delete game.rounds[1].declarations;
+        store.put(game);
+      };
+    };
+  }), makeLegacy);
+}
+
 test.describe("analysis replay", () => {
   test("empty state before any finished game", async ({ page }) => {
     await bootHome(page);
@@ -32,6 +65,58 @@ test.describe("analysis replay", () => {
     await skipRounds(page, 4);
 
     await openAnalysisAfterList(page);
+    const recorded = await readReplayGame(page);
+    const round = recorded.rounds[0];
+
+    // A local Sauspiel hand passes if an earlier seat already wants to play.
+    // If it said yes anyway, it must overbid a standing Sauspiel. Once another
+    // seat tops that with Wenz, the same hand may legally retreat.
+    const bidContext = {
+      ...round,
+      initialHand: ["ACORNS-O", "LEAVES-O", "HEARTS-U", "HEARTS-7", "ACORNS-7", "LEAVES-7", "BELLS-7", "BELLS-8"],
+      tricks: [{ leaderId: "p2", plays: [] }],
+      bids: ["p2", "p3", "p4", "p1"].map((playerId) => ({ playerId, wantsToPlay: playerId !== "p4" })),
+      declarations: [
+        { playerId: "p2", declaration: { type: GameType.SAUSPIEL, calledSuit: Suit.ACORNS } },
+        { playerId: "p3", declaration: { type: GameType.WENZ } },
+        { playerId: "p1", declaration: null },
+      ],
+    };
+    expect(replayDecisions(recorded, bidContext).will.at(-1)?.suggestion).toBe(false);
+    expect(replayDecisions(recorded, bidContext).declarations.at(-1)?.suggestion).toBeNull();
+    bidContext.declarations.splice(1, 2, { playerId: "p1", declaration: { type: GameType.WENZ } });
+    expect(replayDecisions(recorded, bidContext).declarations.at(-1)?.suggestion).toEqual({ type: GameType.SOLO_BELLS });
+
+    const leaderContext = {
+      ...bidContext,
+      initialHand: ["ACORNS-U", "LEAVES-U", "ACORNS-A", "ACORNS-10", "ACORNS-K", "ACORNS-7", "LEAVES-7", "BELLS-7"],
+      tricks: [{ leaderId: "p1", plays: [] }],
+      bids: ["p1", "p2", "p3", "p4"].map((playerId) => ({ playerId, wantsToPlay: playerId === "p1" })),
+      declarations: [{ playerId: "p1", declaration: { type: GameType.WENZ } }],
+    };
+    const followingContext = {
+      ...leaderContext,
+      tricks: [{ leaderId: "p2", plays: [] }],
+      bids: [...leaderContext.bids.slice(1), leaderContext.bids[0]],
+    };
+    // The same hand only guarantees five Wenz tricks when the bidder opens.
+    expect(replayDecisions(recorded, leaderContext).will[0].suggestion).toBe(true);
+    expect(replayDecisions(recorded, followingContext).will.at(-1)?.suggestion).toBe(false);
+
+    // This variant also qualifies for Sauspiel, so its declaration shows the
+    // difference between a guaranteed Wenz and the ordinary Sauspiel choice.
+    const trumpHearts = ["ACORNS-U", "LEAVES-U", "HEARTS-A", "HEARTS-10", "HEARTS-K", "ACORNS-7", "LEAVES-7", "BELLS-7"];
+    expect(replayDecisions(recorded, { ...leaderContext, initialHand: trumpHearts }).declarations[0].suggestion)
+      .toEqual({ type: GameType.WENZ });
+    expect(replayDecisions(recorded, { ...followingContext, initialHand: trumpHearts }).declarations[0].suggestion)
+      .toEqual({ type: GameType.SAUSPIEL, calledSuit: Suit.ACORNS });
+
+    const partialRound = { ...round, initialHand: [], tricks: structuredClone(round.tricks) };
+    const missingPlay = partialRound.tricks.at(-1)!.plays.pop()!;
+    const partialDecisions = replayDecisions(recorded, partialRound);
+    expect(partialDecisions.play).toBeNull();
+    expect(partialDecisions.will.filter((bid) => bid.suggestion !== undefined).map((bid) => bid.recorded.playerId))
+      .toEqual(round.bids!.map((bid) => bid.playerId).filter((id) => id !== missingPlay.playerId));
 
     const rows = page.locator(".stats-game-row");
     await expect(rows.first().locator(".stats-opponent")).toHaveText(de.statsSoloOpponent);
@@ -58,28 +143,51 @@ test.describe("analysis replay", () => {
     await expect(page.locator(".replay-progress")).toContainText(`${de.trick} 1/8`);
     await expect(page.getByRole("button", { name: de.replayPrev, exact: true })).toBeDisabled();
 
-    // Each click plays exactly one card: it leaves a hand and hits the felt.
+    const toggle = page.getByRole("button", { name: de.replayAiSuggestions });
+    const suggestion = page.locator(".replay-card-suggestion");
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await toggle.click();
+    await expect(suggestion).toHaveCount(0);
+    await toggle.click();
+
+    const bidding = page.getByRole("button", { name: de.bidding, exact: true });
+    await bidding.click();
+    await expect(page.locator(".replay-bid-suggestion")).toHaveCount(round.bids!.length + round.declarations!.length);
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".replay-bidding")).toHaveCount(0);
+
+    // Check every upcoming decision against the actual actor's remaining legal
+    // cards, including the next lead while the last trick is still on the felt.
     const next = page.getByRole("button", { name: de.replayNext, exact: true });
-    for (let card = 1; card <= 4; card++) {
+    const tricks = round.tricks.map((trick, index) => ({
+      id: index + 1,
+      leaderId: trick.leaderId,
+      winnerId: trick.winnerId,
+      playedCards: trick.plays.map(({ playerId, card }) => ({ playerId, card: cardFromId(card)! })),
+    }));
+    const plays = tricks.flatMap((trick) => trick.playedCards);
+    for (let index = 0; index < plays.length; index++) {
+      const trickIndex = Math.floor(index / 4);
+      const alreadyPlayed = index % 4;
+      const { playerId, card } = plays[index];
+      const seatIndex = recorded.players.findIndex((player) => player.id === playerId);
+      const hand = plays.slice(index).filter((play) => play.playerId === playerId).map((play) => play.card);
+      const trick = { ...tricks[trickIndex], playedCards: tricks[trickIndex].playedCards.slice(0, alreadyPlayed) };
+      const legal = getLegalCards(hand, trick, round.contract, tricks.slice(0, trickIndex));
+
+      const suggested = seats.nth(seatIndex).locator(".replay-hand-card:has(.replay-card-suggestion)");
+      await expect(suggestion).toHaveCount(1);
+      await expect(suggested).toBeVisible();
+      expect(legal.map((candidate) => candidate.id)).toContain(await suggested.getAttribute("data-card-id"));
+      if (index === 4) await expect(page.locator(".replay-trick-slot.winner")).toHaveCount(1);
+
       await next.click();
-      await expect(page.locator(".replay-trick-card")).toHaveCount(card);
-      await expect(page.locator(".replay-hand-card")).toHaveCount(32 - card);
-      await expect(page.locator(".replay-progress")).toContainText(`${de.replayCard} ${card}/4`);
+      await expect(page.locator(`.replay-trick-card[data-card-id="${card.id}"]`)).toBeVisible();
+      await expect(page.locator(".replay-trick-card")).toHaveCount(alreadyPlayed + 1);
+      await expect(page.locator(".replay-hand-card")).toHaveCount(31 - index);
+      await expect(page.locator(".replay-progress")).toContainText(`${de.trick} ${trickIndex + 1}/8`);
     }
-
-    // The completed trick names its winner and stays on the table one step.
-    await expect(page.locator(".replay-trick-slot.winner")).toHaveCount(1);
-
-    // The winner's banked points appear once the next card is played.
-    await next.click();
-    await expect(page.locator(".replay-progress")).toContainText(`${de.trick} 2/8`);
-    const banked = await page.locator(".replay-seat-points").allTextContents();
-    expect(banked.some((text) => !text.startsWith("0 "))).toBe(true);
-
-    // Jump to the end: every card played, the stored result on screen.
-    await page.getByTitle(de.replayEnd).click();
-    await expect(page.locator(".replay-hand-card")).toHaveCount(0);
-    await expect(page.locator(".replay-progress")).toContainText(`${de.trick} 8/8`);
+    await expect(suggestion).toHaveCount(0);
     await expect(page.locator(".replay-result")).toBeVisible();
 
     // The last trick banks immediately, so the seat totals reach 120 — held
@@ -97,6 +205,42 @@ test.describe("analysis replay", () => {
     await page.getByRole("button", { name: de.replayBack, exact: true }).click();
     await expect(page.locator(".analysis-screen")).toBeVisible();
     await expect(page.locator(".stats-game-row")).toHaveCount(1);
+  });
+
+  test("older replay data works in landscape and rotated phone layouts", async ({ page }) => {
+    await startSolo(page, { seed: 5, rounds: 4, name: "Wastl" });
+    await skipRounds(page, 4);
+    await quitFinishedList(page);
+    await readReplayGame(page, true);
+
+    await page.getByTitle(de.analysis).click();
+    await page.locator(".analysis-play-game").click();
+    const bidding = page.getByRole("button", { name: de.bidding, exact: true });
+    const suggestion = page.locator(".replay-card-suggestion");
+    await expect(bidding).toHaveCount(0);
+    await expect(suggestion).toBeVisible();
+
+    // A partial trick log can't recover the other hands or the card context.
+    // The recorded local deal still supports that seat's will suggestion.
+    await page.getByTitle(de.replayNextRound).click();
+    await expect(suggestion).toHaveCount(0);
+    await page.getByTitle(de.replayEnd).click();
+    for (const viewport of [{ width: 540, height: 521 }, { width: 440, height: 320 }, { width: 320, height: 440 }]) {
+      await page.setViewportSize(viewport);
+      await bidding.click();
+      await expect(page.locator(".replay-bid-suggestion")).toHaveCount(1);
+      await expect(page.getByText(de.replayBidNoSuggestion)).toHaveCount(3);
+      await expect(page.getByText(de.declarePhaseTitle)).toHaveCount(0);
+      for (const control of await page.locator(".replay-controls > *").all()) {
+        const bounds = (await control.boundingBox())!;
+        expect(bounds.x).toBeGreaterThanOrEqual(0);
+        expect(bounds.y).toBeGreaterThanOrEqual(0);
+        expect(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width);
+        expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height);
+      }
+      await bidding.click();
+      await expect(page.locator(".replay-bidding")).toHaveCount(0);
+    }
   });
 
   test("playback runs across round borders through the whole list", async ({ page }) => {

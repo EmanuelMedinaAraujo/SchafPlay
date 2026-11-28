@@ -136,6 +136,10 @@
   min-height: 0;
 }
 
+.replay-table[hidden] {
+  display: none;
+}
+
 /* The top and bottom seats span the full width — their rows are theirs alone,
    and confining them to the felt's column squeezes eight cards into a third of
    the screen while the side seats get a full column each. Their contents stay
@@ -247,9 +251,28 @@
    overridden below so the rendered card is exactly the box it sits in.
    `flex: none`: a card must never resize because its neighbours came or went. */
 .replay-hand-card {
+  position: relative;
   display: block;
   width: var(--rc-w);
   flex: none;
+}
+
+.replay-hand-card:has(.replay-card-suggestion) .card-face {
+  outline: 2px solid var(--blue);
+  outline-offset: -2px;
+}
+
+.replay-card-suggestion {
+  position: absolute;
+  z-index: 1;
+  top: 2px;
+  right: 2px;
+  display: grid;
+  place-items: center;
+  padding: 3px;
+  border-radius: 4px;
+  background: var(--navy);
+  color: var(--text);
 }
 
 /* Scoped through `.replay-screen` on purpose. `.card-face.small` carries a
@@ -351,6 +374,11 @@
   gap: 4px;
 }
 
+.replay-controls button[aria-pressed="true"] {
+  border-color: var(--blue);
+  background: var(--navy);
+}
+
 .replay-controls button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -360,6 +388,48 @@
   flex: 1;
   min-width: 60px;
   accent-color: var(--red-2);
+}
+
+.replay-bidding {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.replay-bidding table {
+  width: 100%;
+  border-spacing: 0;
+  font-size: 13px;
+  text-align: left;
+}
+
+.replay-bidding th,
+.replay-bidding td {
+  padding: 6px 10px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--line);
+}
+
+.replay-bidding thead {
+  position: sticky;
+  top: 0;
+  background: var(--panel-2);
+}
+
+.replay-bidding thead svg {
+  vertical-align: middle;
+}
+
+.replay-bidding-phase {
+  background: var(--inset);
+  color: var(--muted);
+}
+
+.replay-bid-suggestion {
+  background: var(--navy);
 }
 
 /* A single strip rather than a panel — it appears at a round's last card and
@@ -458,4 +528,26 @@ html.compact .replay-screen {
 
 html.compact .replay-felt {
   min-height: 110px;
+}
+
+html.narrow .replay-controls,
+html.compact .replay-controls {
+  gap: 5px;
+}
+
+html.narrow .replay-controls button,
+html.compact .replay-controls button {
+  min-height: 34px;
+  padding-inline: 6px;
+  font-size: 13px;
+}
+
+html.narrow .replay-controls .icon-button,
+html.compact .replay-controls .icon-button {
+  width: 34px;
+}
+
+html.narrow .replay-scrub,
+html.compact .replay-scrub {
+  min-width: 36px;
 }

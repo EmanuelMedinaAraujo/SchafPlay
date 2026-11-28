@@ -4,7 +4,9 @@ import { declarationLabel, signed, translations } from "../lib/i18n";
 import { TablePosition, tablePosition } from "../lib/seating";
 import { GameRecord, RoundRecord } from "../persistence";
 import { isReplayable, replayStep, stepCount } from "../analysis/replay";
+import { replayCardSuggestion, replayDecisions } from "../analysis/replaySuggestions";
 import CardFace from "./CardFace";
+import ReplayBidding from "./ReplayBidding";
 import { BotIcon, ChevronLeftIcon, ChevronRightIcon, SkipBackIcon, SkipForwardIcon, UserIcon } from "./icons";
 
 interface ReplayScreenProps {
@@ -42,10 +44,21 @@ export default function ReplayScreen({ game, startRoundIndex, language, onBack }
     return forward >= 0 ? forward : Math.max(0, nearestReplayable(rounds, start, -1));
   });
   const [step, setStep] = useState(0);
+  const [showSuggestions, setShowSuggestions] = useState(true);
+  const [showBids, setShowBids] = useState(false);
 
   const round = rounds[roundIndex];
   const total = round ? stepCount(round) : 1;
   const view = useMemo(() => (round ? replayStep(round, step) : null), [round, step]);
+  const decisions = useMemo(() => (round ? replayDecisions(game, round) : null), [game, round]);
+  const hasBids = decisions && (
+    decisions.will.some((bid) => bid.suggestion !== undefined) ||
+    decisions.declarations.some((bid) => bid.suggestion !== undefined)
+  );
+  const biddingVisible = showSuggestions && showBids && hasBids;
+  const cardSuggestion = showSuggestions && !biddingVisible && decisions && view
+    ? replayCardSuggestion(decisions, view)
+    : null;
 
   const atRoundEnd = step >= total - 1;
   const nextRound = nearestReplayable(rounds, roundIndex + 1, 1);
@@ -54,12 +67,17 @@ export default function ReplayScreen({ game, startRoundIndex, language, onBack }
   const hasPrevRound = prevRound >= 0;
   const atGameEnd = atRoundEnd && !hasNextRound;
 
+  function openStep(index: number) {
+    setShowBids(false);
+    setStep(index);
+  }
+
   /** Jump to a (already resolved, replayable) round's deal or its last card. */
   function openRound(index: number, atLastStep = false) {
     const target = rounds[index];
     if (!target || !isReplayable(target)) return;
     setRoundIndex(index);
-    setStep(atLastStep ? stepCount(target) - 1 : 0);
+    openStep(atLastStep ? stepCount(target) - 1 : 0);
   }
 
   /** One step forward/back across the whole list, rolling over round borders. */
@@ -72,17 +90,19 @@ export default function ReplayScreen({ game, startRoundIndex, language, onBack }
       if (hasPrevRound) openRound(prevRound, true);
       return;
     }
-    setStep(next);
+    openStep(next);
   }
 
   // Arrow keys drive playback; Home/End jump to this round's deal and last card.
   // Re-subscribes every render, so the handler always sees the current step.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "ArrowRight") go(step + 1);
+      if (event.key === "Escape" && biddingVisible) setShowBids(false);
+      else if (event.target instanceof Element && event.target.closest(".replay-bidding")) return;
+      else if (event.key === "ArrowRight") go(step + 1);
       else if (event.key === "ArrowLeft") go(step - 1);
-      else if (event.key === "Home") setStep(0);
-      else if (event.key === "End") setStep(total - 1);
+      else if (event.key === "Home") openStep(0);
+      else if (event.key === "End") openStep(total - 1);
       else return;
       event.preventDefault();
     };
@@ -154,7 +174,14 @@ export default function ReplayScreen({ game, startRoundIndex, language, onBack }
         </span>
       </div>
 
-      <div className="replay-table">
+      {biddingVisible && decisions && (
+        <ReplayBidding
+          decisions={decisions}
+          language={language}
+          playerNames={new Map(game.players.map((player) => [player.id, player.name]))}
+        />
+      )}
+      <div className="replay-table" hidden={Boolean(biddingVisible)}>
         {seats.map(({ player, position }) => (
           <div
             key={player.id}
@@ -177,6 +204,16 @@ export default function ReplayScreen({ game, startRoundIndex, language, onBack }
               {(view.hands[player.id] ?? []).map((card) => (
                 <span key={card.id} className="replay-hand-card" data-card-id={card.id}>
                   <CardFace card={card} contract={contract} small />
+                  {cardSuggestion?.playerId === player.id && cardSuggestion.card.id === card.id && (
+                    <span
+                      className="replay-card-suggestion"
+                      role="img"
+                      aria-label={`${t.replayAiSuggestion} · ${player.name} · ${card.value} ${t.suits[card.suit]}`}
+                      title={t.replayAiSuggestion}
+                    >
+                      <BotIcon size={14} />
+                    </span>
+                  )}
                 </span>
               ))}
             </div>
@@ -204,7 +241,7 @@ export default function ReplayScreen({ game, startRoundIndex, language, onBack }
         </div>
       </div>
 
-      {atRoundEnd && (
+      {atRoundEnd && !biddingVisible && (
         <section className="replay-result">
           <strong>{t.replayResult}</strong>
           <span>
@@ -233,7 +270,7 @@ export default function ReplayScreen({ game, startRoundIndex, language, onBack }
         <button
           className="icon-button"
           type="button"
-          onClick={() => setStep(0)}
+          onClick={() => openStep(0)}
           disabled={step === 0}
           title={t.replayStart}
         >
@@ -254,7 +291,7 @@ export default function ReplayScreen({ game, startRoundIndex, language, onBack }
           min={0}
           max={total - 1}
           value={step}
-          onChange={(event) => setStep(Number(event.target.value))}
+          onChange={(event) => openStep(Number(event.target.value))}
           aria-label={t.replayTitle}
         />
         {/* At a round's last card the primary action rolls into the next round,
@@ -271,12 +308,33 @@ export default function ReplayScreen({ game, startRoundIndex, language, onBack }
         <button
           className="icon-button"
           type="button"
-          onClick={() => setStep(total - 1)}
+          onClick={() => openStep(total - 1)}
           disabled={atRoundEnd}
           title={t.replayEnd}
         >
           <SkipForwardIcon size={16} />
         </button>
+        {hasBids && showSuggestions && (
+          <button className="secondary-button" type="button" aria-pressed={showBids} onClick={() => setShowBids(!showBids)}>
+            {t.bidding}
+          </button>
+        )}
+        {(decisions?.play || hasBids) && (
+          <button
+            className="secondary-button"
+            type="button"
+            aria-pressed={showSuggestions}
+            aria-label={t.replayAiSuggestions}
+            title={t.replayAiSuggestions}
+            onClick={() => {
+              setShowSuggestions(!showSuggestions);
+              setShowBids(false);
+            }}
+          >
+            <BotIcon size={15} />
+            {t.replayAi}
+          </button>
+        )}
       </div>
     </main>
   );
