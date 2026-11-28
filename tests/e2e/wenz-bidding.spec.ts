@@ -1,9 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { GameEngine } from "../../src/engine/GameEngine";
 import { cardFromId } from "../../src/game/deck";
-import { getLegalCards } from "../../src/game/rules";
-import { GameType, Player, PlayerActionType, Suit } from "../../src/game/types";
+import { GameType, Player, Suit } from "../../src/game/types";
 import { getAIBid, getAIWillBid } from "../../src/players/aiHeuristics";
+import { defaultPolicy, simulateMultiplayer } from "./helpers/simulate";
 
 const wenz = { type: GameType.WENZ };
 const wenzTout = { type: GameType.WENZ, isTout: true };
@@ -100,41 +99,14 @@ test("only a guaranteed sweep raises Wenz to Tout, and stronger bids still stand
 });
 
 test("the engine's opening AI bids Wenz and cashes its five winners", () => {
-  const { cards } = seat(
-    "ACORNS-U", "LEAVES-U", "ACORNS-A", "ACORNS-10", "ACORNS-K", "ACORNS-7", "LEAVES-7", "BELLS-7",
-  );
-  const engine = new GameEngine("Host", 1, {
-    aiDelayMs: 0,
-    trickHoldMs: 0,
-    enableRamsch: true,
-    shuffleFn: (deck) => {
-      const rest = deck.filter((card) => !cards.some(({ id }) => id === card.id));
-      return [...rest.slice(0, 8), ...cards, ...rest.slice(8)];
-    },
+  // Seed 2463 gives forehand p2 the top two Unters and Hearts Ace, Ten and King.
+  const [round] = simulateMultiplayer(2463, {
+    totalRounds: 1,
+    policy: { ...defaultPolicy, decideWill: () => false },
   });
-  try {
-    engine.dealCards();
-    expect(engine.getState().biddingState?.willBids[0]).toEqual({ playerId: "p2", wantsToPlay: true });
-    for (const id of ["p3", "p1"]) {
-      engine.processAction({ type: PlayerActionType.BID_WILL, playerId: id, data: { wantsToPlay: false } });
-    }
-    expect(engine.getState().currentContract).toEqual({ ...wenz, declarerId: "p2" });
-
-    for (let turn = 0; turn < 16; turn += 1) {
-      const state = engine.getState();
-      if (state.status === "ROUND_OVER") break;
-      const player = state.players[state.activePlayerIdx];
-      const [card] = getLegalCards(player.cards, state.currentTrick, state.currentContract, state.tricks);
-      engine.processAction({ type: PlayerActionType.PLAY_CARD, playerId: player.id, data: { cardId: card.id } });
-    }
-
-    const { tricks } = engine.getState();
-    expect(tricks).toHaveLength(8);
-    expect(tricks.slice(0, 5).map((trick) => trick.winnerId)).toEqual(Array(5).fill("p2"));
-    expect(tricks.slice(0, 5).map((trick) => trick.playedCards[0].card.id)).toEqual([
-      "ACORNS-U", "LEAVES-U", "ACORNS-A", "ACORNS-10", "ACORNS-K",
-    ]);
-  } finally {
-    engine.destroy();
-  }
+  expect(round.contract).toMatchObject({ ...wenz, declarerId: "p2" });
+  const leads = round.plays.filter((_, index) => index % 4 === 0);
+  const openingCards = ["ACORNS-U", "LEAVES-U", "HEARTS-A", "HEARTS-10", "HEARTS-K"];
+  expect(leads.slice(0, 5)).toEqual(openingCards.map((cardId) => ({ playerId: "p2", cardId })));
+  expect(leads[5]?.playerId).toBe("p2");
 });

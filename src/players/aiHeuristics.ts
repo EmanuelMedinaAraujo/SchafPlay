@@ -15,24 +15,6 @@ import {
 } from "../game/rules";
 import { countGuaranteedWenzTricks, getWenzPlainMasters } from "./wenz";
 
-interface HandProfile {
-  unters: Card[];
-  obers: Card[];
-  trumpsInNormal: Card[];
-}
-
-function analyzeHand(hand: Card[]): HandProfile {
-  return {
-    unters: hand.filter((card) => card.value === CardValue.UNTER),
-    obers: hand.filter((card) => card.value === CardValue.OBER),
-    trumpsInNormal: hand.filter((card) => isTrump(card, GameType.SAUSPIEL)),
-  };
-}
-
-function isSoloWorthy({ obers, trumpsInNormal }: HandProfile): boolean {
-  return obers.length >= 3 && trumpsInNormal.length >= 7;
-}
-
 export function getAIWillBid(player: Player, willBids: WillBid[], leadsOpeningTrick = false): boolean {
   const someoneElseWantsToPlay = willBids.some((bid) => bid.playerId !== player.id && bid.wantsToPlay);
   // A "will" can't be taken back once a Sauspiel stands (#24). If another
@@ -53,18 +35,19 @@ export function getAIBid(
   const wenz = { type: GameType.WENZ };
   if (guaranteedTricks >= 5 && canOverrideBid(existingDeclaration, wenz)) return wenz;
 
-  const hp = analyzeHand(hand);
-  const { unters, obers, trumpsInNormal } = hp;
-
+  const obers = hand.filter((card) => card.value === CardValue.OBER).length;
+  const normalTrumps = hand.filter((card) => isTrump(card, GameType.SAUSPIEL)).length;
   const declarations: GameDeclaration[] = [];
 
   const callableSuit = getCallableSuits(hand)[0];
-  const goodSauspielHand = (trumpsInNormal.length >= 4 && obers.length >= 1) || trumpsInNormal.length >= 5;
+  const goodSauspielHand = (normalTrumps >= 4 && obers >= 1) || normalTrumps >= 5;
   if (goodSauspielHand && callableSuit) declarations.push({ type: GameType.SAUSPIEL, calledSuit: callableSuit });
 
   if (guaranteedTricks === 8) declarations.push({ type: GameType.WENZ, isTout: true });
 
-  if (isSoloWorthy(hp)) declarations.push({ type: bestSoloType(hand), isTout: obers.length >= 4 && trumpsInNormal.length >= 8 });
+  if (obers >= 3 && normalTrumps >= 7) {
+    declarations.push({ type: bestSoloType(hand), isTout: obers >= 4 && normalTrumps >= 8 });
+  }
 
   // Lowest-ranking viable game first; reach higher only to overbid.
   const chosen = declarations
@@ -74,7 +57,8 @@ export function getAIBid(
 
   // Committed to topping the standing Sauspiel: pick the least-bad higher game.
   if (!canRetreat) {
-    const fallback = unters.length >= 2 ? wenz : { type: bestSoloType(hand) };
+    const unters = hand.filter((card) => card.value === CardValue.UNTER).length;
+    const fallback = unters >= 2 ? wenz : { type: bestSoloType(hand) };
     if (canOverrideBid(existingDeclaration, fallback)) return fallback;
   }
   return null;
