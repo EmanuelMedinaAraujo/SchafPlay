@@ -821,10 +821,6 @@ html[data-screen] .settings-tooltip {
   background: #fffaf0;
 }
 
-html[data-screen] .avatar-picker-preview {
-  border: 3px solid #b3261e;
-}
-
 html[data-screen] .avatar-option {
   border-color: #d9c49a;
 }
@@ -839,10 +835,6 @@ html[data-screen] .avatar-option.avatar-upload {
   border: 2px dashed #8a7a5a;
   background: #fffaf0;
   color: #6b5a3a;
-}
-
-html[data-screen] .avatar-option.avatar-upload.selected {
-  border-color: #1d4f91;
 }
 
 html[data-screen] .avatar-option-check {

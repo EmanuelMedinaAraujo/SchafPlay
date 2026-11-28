@@ -1,7 +1,7 @@
 import { ReactNode, useState } from "react";
 import { Language } from "../types";
 import { translations } from "../lib/i18n";
-import { Settings } from "../lib/settings";
+import { AvatarChange, Settings, UpdateSetting } from "../lib/settings";
 import { checkForUpdate } from "../lib/pwa";
 import { CheckIcon, DownloadIcon, HelpCircleIcon, LoaderIcon, RefreshIcon, SettingsIcon } from "./icons";
 import { gameHistoryStore } from "../persistence";
@@ -10,7 +10,8 @@ import AvatarPicker from "./AvatarPicker";
 
 interface SettingsScreenProps {
   settings: Settings;
-  onChange: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
+  onChange: UpdateSetting;
+  onAvatarChange: (change: AvatarChange) => void;
 }
 
 type UpdateStatus = "idle" | "checking" | "uptodate" | "installing" | "unsupported";
@@ -100,8 +101,8 @@ function ToggleRow({
   );
 }
 
-export default function SettingsScreen({ settings, onChange }: SettingsScreenProps) {
-  const { language, avatar, disableLaufende, enableRamsch, enableStoss } = settings;
+export default function SettingsScreen({ settings, onChange, onAvatarChange }: SettingsScreenProps) {
+  const { language, avatar, customAvatar, disableLaufende, enableRamsch, enableStoss } = settings;
   const t = translations[language];
   const [status, setStatus] = useState<UpdateStatus>("idle");
   const [exportError, setExportError] = useState<string | null>(null);
@@ -213,7 +214,7 @@ export default function SettingsScreen({ settings, onChange }: SettingsScreenPro
           <h2>{t.settingsAvatar}</h2>
           <HelpHint hint={t.settingsAvatarHint} />
         </div>
-        <AvatarPicker value={avatar} onChange={(value) => onChange("avatar", value)} language={language} />
+        <AvatarPicker value={avatar} customAvatar={customAvatar} onChange={onAvatarChange} language={language} />
       </section>
 
       <SettingRow

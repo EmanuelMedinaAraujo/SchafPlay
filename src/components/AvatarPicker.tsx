@@ -3,33 +3,40 @@ import { Language } from "../types";
 import { translations } from "../lib/i18n";
 import { AVATAR_PRESETS, presetValue, resolveAvatarSrc } from "../lib/avatars";
 import { fileToAvatarDataUrl } from "../lib/image";
+import { AvatarChange } from "../lib/settings";
 import { CheckIcon, ImagePlusIcon } from "./icons";
 
 interface AvatarPickerProps {
   value: string;
-  onChange: (value: string) => void;
+  customAvatar: string;
+  onChange: (change: AvatarChange) => void;
   language: Language;
 }
 
-/** Profile-picture chooser (#14): the presets plus an upload tile. */
-export default function AvatarPicker({ value, onChange, language }: AvatarPickerProps) {
+export default function AvatarPicker({ value, customAvatar, onChange, language }: AvatarPickerProps) {
   const t = translations[language];
   const fileRef = useRef<HTMLInputElement>(null);
+  const uploadRef = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const hasCustom = value.startsWith("data:");
-  const previewSrc = resolveAvatarSrc(value, true);
+  const choices = [
+    { id: "default", value: "", label: t.avatarDefault, src: resolveAvatarSrc("", true) },
+    ...AVATAR_PRESETS.map(({ id, name, src }) => ({ id, value: presetValue(id), label: name, src })),
+  ];
+  if (customAvatar) choices.push({ id: "custom", value: customAvatar, label: t.avatarCustom, src: customAvatar });
+  const selectedValue = choices.some((choice) => choice.value === value) ? value : "";
 
   async function onFile(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     // Allow re-picking the same file next time.
     event.target.value = "";
-    if (!file) return;
+    if (!file || busy) return;
     setError(null);
     setBusy(true);
     try {
-      onChange(await fileToAvatarDataUrl(file));
+      const photo = await fileToAvatarDataUrl(file);
+      if (fileRef.current) onChange({ type: "upload", photo });
     } catch {
       setError(t.avatarUploadFailed);
     } finally {
@@ -39,74 +46,67 @@ export default function AvatarPicker({ value, onChange, language }: AvatarPicker
 
   return (
     <div className="avatar-picker">
-      <div className="avatar-picker-preview">
-        <img src={previewSrc} alt="" />
-      </div>
-
       <div className="avatar-picker-choices" role="radiogroup" aria-label={t.avatarChoose}>
-        {AVATAR_PRESETS.map((preset) => {
-          const selected = value === presetValue(preset.id);
+        {choices.map((choice) => {
+          const selected = choice.value === selectedValue;
           return (
-            <button
-              key={preset.id}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              className={`avatar-option ${selected ? "selected" : ""}`}
-              onClick={() => {
-                setError(null);
-                onChange(presetValue(preset.id));
-              }}
-            >
-              <img src={preset.src} alt="" />
+            <label key={choice.id} className={`avatar-option ${selected ? "selected" : ""}`} title={choice.label}>
+              <input
+                className="avatar-option-input"
+                type="radio"
+                name="profile-avatar"
+                aria-label={choice.label}
+                checked={selected}
+                disabled={busy}
+                onChange={() => {
+                  setError(null);
+                  onChange(
+                    choice.id === "custom"
+                      ? { type: "selectCustom", photo: choice.value }
+                      : { type: "select", value: choice.value },
+                  );
+                }}
+              />
+              <img src={choice.src} alt="" />
               {selected && (
-                <span className="avatar-option-check">
+                <span className="avatar-option-check" aria-hidden="true">
                   <CheckIcon size={14} />
                 </span>
               )}
-            </button>
+            </label>
           );
         })}
-
-        <button
-          type="button"
-          className={`avatar-option avatar-upload ${hasCustom ? "selected" : ""}`}
-          aria-label={t.avatarUpload}
-          aria-pressed={hasCustom}
-          disabled={busy}
-          onClick={() => fileRef.current?.click()}
-        >
-          {hasCustom ? <img src={value} alt="" /> : <ImagePlusIcon size={22} />}
-          {hasCustom && (
-            <span className="avatar-option-check">
-              <CheckIcon size={14} />
-            </span>
-          )}
-        </button>
-
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          className="avatar-file-input"
-          onChange={onFile}
-        />
       </div>
 
-      {value !== "" && (
+      <button
+        ref={uploadRef}
+        type="button"
+        className="avatar-option avatar-upload"
+        aria-label={t.avatarUpload}
+        title={t.avatarUpload}
+        disabled={busy}
+        onClick={() => fileRef.current?.click()}
+      >
+        <ImagePlusIcon size={22} />
+      </button>
+      <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
+
+      {customAvatar && (
         <button
           type="button"
-          className="text-button avatar-reset"
+          className="text-button avatar-delete"
+          disabled={busy}
           onClick={() => {
             setError(null);
-            onChange("");
+            onChange({ type: "delete", photo: customAvatar });
+            uploadRef.current?.focus();
           }}
         >
-          {t.avatarReset}
+          {t.avatarDelete}
         </button>
       )}
 
-      {error && <p className="error-message muted avatar-picker-error">{error}</p>}
+      {error && <p className="error-message muted avatar-picker-error" role="alert">{error}</p>}
     </div>
   );
 }
