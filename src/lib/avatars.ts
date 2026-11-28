@@ -9,6 +9,7 @@ export const MAX_AVATAR_LENGTH = 64 * 1024;
 
 export interface AvatarPreset {
   id: string;
+  name: string;
   src: string;
 }
 
@@ -18,11 +19,11 @@ function presetSrc(id: string): string {
 
 /** Adding a portrait is a pure asset change: drop `public/avatars/<id>.jpg` in and list the id. */
 export const AVATAR_PRESETS: AvatarPreset[] = [
-  { id: "resi", src: presetSrc("resi") },
-  { id: "sepp", src: presetSrc("sepp") },
-  { id: "zenzi", src: presetSrc("zenzi") },
-  { id: "wastl", src: presetSrc("wastl") },
-  { id: "liesl", src: presetSrc("liesl") },
+  { id: "resi", name: "Resi", src: presetSrc("resi") },
+  { id: "sepp", name: "Sepp", src: presetSrc("sepp") },
+  { id: "zenzi", name: "Zenzi", src: presetSrc("zenzi") },
+  { id: "wastl", name: "Wastl", src: presetSrc("wastl") },
+  { id: "liesl", name: "Liesl", src: presetSrc("liesl") },
 ];
 
 const PRESET_PREFIX = "preset:";

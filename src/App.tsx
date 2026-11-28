@@ -24,7 +24,7 @@ function readInviteFromHash(): string {
 
 export default function App() {
   // All persisted device preferences flow through one store (see lib/settings).
-  const [settings, updateSetting] = useSettings();
+  const [settings, updateSetting, updateAvatar] = useSettings();
   const { language, playerName, totalRounds } = settings;
   const [screen, setScreen] = useState<"home" | "game" | "stats" | "analysis" | "settings">("home");
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -162,7 +162,7 @@ export default function App() {
       ) : screen === "analysis" ? (
         <AnalysisScreen language={language} onReplayActiveChange={setReplayActive} />
       ) : screen === "settings" ? (
-        <SettingsScreen settings={settings} onChange={updateSetting} />
+        <SettingsScreen settings={settings} onChange={updateSetting} onAvatarChange={updateAvatar} />
       ) : (
         <HomeScreen
           language={language}

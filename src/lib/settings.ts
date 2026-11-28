@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Language } from "../types";
 
 /** The three ways to start a session from the home screen. */
@@ -7,15 +7,26 @@ export type GameMode = "host" | "join" | "solo";
 /** List lengths offered on the home screen / settings, in rounds. */
 export const ROUND_OPTIONS = [4, 8, 12] as const;
 
+interface AvatarPreferences {
+  /** Own profile picture (#14); see `lib/avatars.ts`. Synced to the other human. */
+  avatar: string;
+  /** Locally available upload, including when another avatar is selected. */
+  customAvatar: string;
+}
+
+export type AvatarChange =
+  | { type: "select"; value: string }
+  | { type: "selectCustom"; photo: string }
+  | { type: "upload"; photo: string }
+  | { type: "delete"; photo: string };
+
 /**
  * Every persisted local-device preference (#44). Small scalars only, in
  * synchronous storage so the right value is on screen at first paint.
  */
-export interface Settings {
+export interface Settings extends AvatarPreferences {
   language: Language;
   playerName: string;
-  /** Own profile picture (#14); see `lib/avatars.ts`. Synced to the other human. */
-  avatar: string;
   totalRounds: number;
   disableLaufende: boolean;
   /** House rule #11. The HOST's setting governs a game. */
@@ -24,10 +35,15 @@ export interface Settings {
   enableStoss: boolean;
 }
 
-const DEFAULT_SETTINGS: Settings = {
+type SettingKey = Exclude<keyof Settings, keyof AvatarPreferences>;
+export type UpdateSetting = <K extends SettingKey>(key: K, value: Settings[K]) => void;
+
+const AVATAR_KEY = "schafplay.avatar";
+const DEFAULT_AVATAR: AvatarPreferences = { avatar: "", customAvatar: "" };
+
+const DEFAULT_SETTINGS: Omit<Settings, keyof AvatarPreferences> = {
   language: "de",
   playerName: "Bazi",
-  avatar: "",
   totalRounds: 8,
   disableLaufende: false,
   enableRamsch: false,
@@ -47,7 +63,7 @@ interface FieldCodec<T> {
 
 const identity = (value: string) => value;
 
-const CODECS: { [K in keyof Settings]: FieldCodec<Settings[K]> } = {
+const CODECS: { [K in SettingKey]: FieldCodec<Settings[K]> } = {
   language: {
     key: "schafplay.language",
     parse: (raw) => (raw === "en" ? "en" : "de"),
@@ -56,11 +72,6 @@ const CODECS: { [K in keyof Settings]: FieldCodec<Settings[K]> } = {
   playerName: {
     key: "schafplay.name",
     parse: (raw) => raw || DEFAULT_SETTINGS.playerName,
-    serialize: identity,
-  },
-  avatar: {
-    key: "schafplay.avatar",
-    parse: identity,
     serialize: identity,
   },
   totalRounds: {
@@ -89,11 +100,65 @@ const CODECS: { [K in keyof Settings]: FieldCodec<Settings[K]> } = {
   },
 };
 
-const KEYS = Object.keys(CODECS) as Array<keyof Settings>;
+const KEYS = Object.keys(CODECS) as SettingKey[];
+
+function readAvatarRecord(): string | null {
+  try {
+    return localStorage.getItem(AVATAR_KEY) ?? "";
+  } catch {
+    return null;
+  }
+}
+
+function parseAvatarPreferences(raw: string): AvatarPreferences {
+  // Old profiles stored only the active avatar, including uploaded data URLs.
+  if (!raw.startsWith("{")) {
+    return { avatar: raw, customAvatar: raw.startsWith("data:") ? raw : "" };
+  }
+  try {
+    const { avatar, customAvatar } = JSON.parse(raw);
+    if (typeof avatar === "string" && typeof customAvatar === "string" && customAvatar.startsWith("data:")) {
+      return { avatar, customAvatar };
+    }
+  } catch {
+    // Unreadable record — use the default.
+  }
+  return DEFAULT_AVATAR;
+}
+
+function saveAvatarPreferences(preferences: AvatarPreferences): boolean {
+  const { avatar, customAvatar } = preferences;
+  // Store both together when a separate photo needs retaining. Keep the
+  // original format when the selected avatar alone represents the profile.
+  const raw = customAvatar && customAvatar !== avatar ? JSON.stringify(preferences) : avatar;
+  try {
+    localStorage.setItem(AVATAR_KEY, raw);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function changeAvatar(preferences: AvatarPreferences, change: AvatarChange): AvatarPreferences {
+  switch (change.type) {
+    case "select":
+      return { ...preferences, avatar: change.value };
+    case "selectCustom":
+      return change.photo === preferences.customAvatar ? { ...preferences, avatar: preferences.customAvatar } : preferences;
+    case "upload":
+      return { avatar: change.photo, customAvatar: change.photo };
+    case "delete":
+      if (change.photo !== preferences.customAvatar) return preferences;
+      return {
+        avatar: preferences.avatar === preferences.customAvatar ? "" : preferences.avatar,
+        customAvatar: "",
+      };
+  }
+}
 
 /** Total: always a full `Settings`, defaulting any missing or unparseable field. */
 function loadSettings(): Settings {
-  const result = { ...DEFAULT_SETTINGS };
+  const result = { ...DEFAULT_SETTINGS, ...parseAvatarPreferences(readAvatarRecord() ?? "") };
   for (const key of KEYS) {
     try {
       const raw = localStorage.getItem(CODECS[key].key);
@@ -109,7 +174,7 @@ function loadSettings(): Settings {
   return result;
 }
 
-function saveSetting<K extends keyof Settings>(key: K, value: Settings[K]): void {
+function saveSetting<K extends SettingKey>(key: K, value: Settings[K]): void {
   try {
     localStorage.setItem(CODECS[key].key, CODECS[key].serialize(value));
   } catch {
@@ -120,11 +185,40 @@ function saveSetting<K extends keyof Settings>(key: K, value: Settings[K]): void
 /** Seeds state synchronously from `localStorage` (no flash) and writes through. */
 export function useSettings() {
   const [settings, setSettings] = useState<Settings>(loadSettings);
+  const unsavedAvatar = useRef<{ record: string | null; preferences: AvatarPreferences } | null>(null);
 
-  const update = useCallback(<K extends keyof Settings>(key: K, value: Settings[K]) => {
+  const update = useCallback<UpdateSetting>((key, value) => {
     setSettings((prev) => (prev[key] === value ? prev : { ...prev, [key]: value }));
     saveSetting(key, value);
   }, []);
 
-  return [settings, update] as const;
+  useEffect(() => {
+    function syncAvatar(event: StorageEvent) {
+      if (event.storageArea !== localStorage || (event.key !== AVATAR_KEY && event.key !== null)) return;
+      const record = readAvatarRecord();
+      if (record === null || record === unsavedAvatar.current?.record) return;
+      unsavedAvatar.current = null;
+      setSettings((prev) => ({ ...prev, ...parseAvatarPreferences(record) }));
+    }
+    window.addEventListener("storage", syncAvatar);
+    return () => window.removeEventListener("storage", syncAvatar);
+  }, []);
+
+  const updateAvatar = useCallback((change: AvatarChange) => {
+    // A background tab can receive its storage event after the next click.
+    const record = readAvatarRecord();
+    const unsaved = unsavedAvatar.current;
+    let current = { avatar: settings.avatar, customAvatar: settings.customAvatar };
+    if (unsaved && (record === null || record === unsaved.record)) {
+      // Keep edits in this session when storage is unavailable or full.
+      current = unsaved.preferences;
+    } else if (record !== null) {
+      current = parseAvatarPreferences(record);
+    }
+    const next = changeAvatar(current, change);
+    unsavedAvatar.current = saveAvatarPreferences(next) ? null : { record, preferences: next };
+    setSettings((prev) => ({ ...prev, ...next }));
+  }, [settings.avatar, settings.customAvatar]);
+
+  return [settings, update, updateAvatar] as const;
 }
