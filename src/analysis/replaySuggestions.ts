@@ -6,7 +6,7 @@ import { getAIBid, getAICardPlay, getAIWillBid } from "../players/aiHeuristics";
 import { reconstructHands, ReplayStep } from "./replay";
 
 interface ReplayDecisions {
-  hands: Record<string, Card[]>;
+  hands: Partial<Record<string, Card[]>>;
   play: { contract: Contract; tricks: Trick[] } | null;
   will: { recorded: WillBid; suggestion?: boolean }[];
   declarations: { recorded: BidDeclaration; suggestion?: GameDeclaration | null }[];
@@ -16,21 +16,32 @@ interface ReplayDecisions {
 export function replayDecisions(game: GameRecord, round: RoundRecord): ReplayDecisions {
   const seatIds = game.players.map((player) => player.id);
   const reconstructed = reconstructHands(round);
-  const dealtCards = Object.values(reconstructed).flat();
-  const completeDeal = seatIds.length === 4 && new Set(seatIds).size === 4 &&
-    seatIds.every((id) => reconstructed[id]?.length === 8) &&
-    dealtCards.length === 32 && new Set(dealtCards.map((card) => card.id)).size === 32;
-  const hands = completeDeal ? reconstructed : {};
+  const cardsById = new Map<string, Card>();
+  const duplicates = new Set<string>();
+  for (const card of Object.values(reconstructed).flat()) {
+    if (cardsById.has(card.id)) duplicates.add(card.id);
+    cardsById.set(card.id, card);
+  }
+
+  const hands: ReplayDecisions["hands"] = {};
+  for (const id of seatIds) {
+    const cards = reconstructed[id];
+    if (cards?.length === 8 && cards.every((card) => !duplicates.has(card.id))) hands[id] = cards;
+  }
+  const completeDeal = seatIds.length === 4 && Object.keys(hands).length === 4 && cardsById.size === 32;
 
   // The local hand retains its original deal order, which breaks ties in the AI.
   const localHand = (round.initialHand ?? []).map(cardFromId).filter((card) => card !== null);
   const localIds = new Set(localHand.map((card) => card.id));
-  if (localHand.length === 8 && localIds.size === 8 && seatIds.includes(game.localPlayerId) &&
-      (reconstructed[game.localPlayerId] ?? []).every((card) => localIds.has(card.id))) {
-    hands[game.localPlayerId] = localHand;
+  const localId = game.localPlayerId;
+  if (localHand.length === 8 && localIds.size === 8 && seatIds.includes(localId) &&
+      (reconstructed[localId] ?? []).every((card) => localIds.has(card.id)) &&
+      seatIds.filter((id) => id !== localId).every((id) =>
+        !(reconstructed[id] ?? []).some((card) => localIds.has(card.id)),
+      )) {
+    hands[localId] = localHand;
   }
 
-  const cardsById = new Map(dealtCards.map((card) => [card.id, card]));
   let play: ReplayDecisions["play"] = null;
   if (completeDeal && round.contract && round.tricks.length === 8 && round.tricks.every(
     (trick) => trick.plays.length === 4 && new Set(trick.plays.map((entry) => entry.playerId)).size === 4,
@@ -38,7 +49,7 @@ export function replayDecisions(game: GameRecord, round: RoundRecord): ReplayDec
     const contract = round.contract;
     // The live AI gets the engine's contract, including the actual Sauspiel team.
     const partnerId = contract.type === GameType.SAUSPIEL
-      ? seatIds.find((id) => hands[id].some((card) => isCalledAce(card, contract)))
+      ? seatIds.find((id) => hands[id]?.some((card) => isCalledAce(card, contract)))
       : undefined;
     if (contract.type !== GameType.SAUSPIEL || (partnerId && partnerId !== contract.declarerId)) {
       play = {
@@ -105,7 +116,7 @@ export function replayCardSuggestion(decisions: ReplayDecisions, view: ReplaySte
 
   const { playerId } = next;
   const remainingIds = new Set(view.hands[playerId]?.map((card) => card.id));
-  const cards = decisions.hands[playerId].filter((card) => remainingIds.has(card.id));
+  const cards = (decisions.hands[playerId] ?? []).filter((card) => remainingIds.has(card.id));
   const currentTrick = { id: trick.id, leaderId: trick.leaderId, playedCards: trick.playedCards.slice(0, playIndex) };
   const completed = tricks.slice(0, trickIndex);
   const legal = getLegalCards(cards, currentTrick, contract, completed);

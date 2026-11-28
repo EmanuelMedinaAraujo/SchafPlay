@@ -87,6 +87,13 @@ test.describe("analysis replay", () => {
     bidContext.declarations.splice(1, 2, { playerId: "p1", declaration: { type: GameType.WENZ } });
     expect(replayDecisions(recorded, bidContext).declarations.at(-1)?.suggestion).toEqual({ type: GameType.SOLO_BELLS });
 
+    const partialRound = { ...round, initialHand: [], tricks: structuredClone(round.tricks) };
+    const missingPlay = partialRound.tricks.at(-1)!.plays.pop()!;
+    const partialDecisions = replayDecisions(recorded, partialRound);
+    expect(partialDecisions.play).toBeNull();
+    expect(partialDecisions.will.filter((bid) => bid.suggestion !== undefined).map((bid) => bid.recorded.playerId))
+      .toEqual(round.bids!.map((bid) => bid.playerId).filter((id) => id !== missingPlay.playerId));
+
     const rows = page.locator(".stats-game-row");
     await expect(rows.first().locator(".stats-opponent")).toHaveText(de.statsSoloOpponent);
 
@@ -193,15 +200,20 @@ test.describe("analysis replay", () => {
     // The recorded local deal still supports that seat's will suggestion.
     await page.getByTitle(de.replayNextRound).click();
     await expect(suggestion).toHaveCount(0);
-    for (const viewport of [{ width: 568, height: 320 }, { width: 320, height: 568 }]) {
+    await page.getByTitle(de.replayEnd).click();
+    for (const viewport of [{ width: 540, height: 521 }, { width: 440, height: 320 }, { width: 320, height: 440 }]) {
       await page.setViewportSize(viewport);
       await bidding.click();
       await expect(page.locator(".replay-bid-suggestion")).toHaveCount(1);
       await expect(page.getByText(de.replayBidNoSuggestion)).toHaveCount(3);
       await expect(page.getByText(de.declarePhaseTitle)).toHaveCount(0);
-      const controls = await page.locator(".replay-controls").boundingBox();
-      expect(controls!.x + controls!.width).toBeLessThanOrEqual(viewport.width);
-      expect(controls!.y + controls!.height).toBeLessThanOrEqual(viewport.height);
+      for (const control of await page.locator(".replay-controls > *").all()) {
+        const bounds = (await control.boundingBox())!;
+        expect(bounds.x).toBeGreaterThanOrEqual(0);
+        expect(bounds.y).toBeGreaterThanOrEqual(0);
+        expect(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width);
+        expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height);
+      }
       await bidding.click();
       await expect(page.locator(".replay-bidding")).toHaveCount(0);
     }

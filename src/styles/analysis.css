@@ -530,16 +530,24 @@ html.compact .replay-felt {
   min-height: 110px;
 }
 
+html.narrow .replay-controls,
 html.compact .replay-controls {
   gap: 5px;
 }
 
+html.narrow .replay-controls button,
 html.compact .replay-controls button {
   min-height: 34px;
-  padding-inline: 8px;
+  padding-inline: 6px;
   font-size: 13px;
 }
 
+html.narrow .replay-controls .icon-button,
+html.compact .replay-controls .icon-button {
+  width: 34px;
+}
+
+html.narrow .replay-scrub,
 html.compact .replay-scrub {
-  min-width: 40px;
+  min-width: 36px;
 }
