@@ -134,6 +134,11 @@ export const translations = {
     replayNextRound: "Nächste Runde",
     replayPrevRound: "Vorige Runde",
     replayWholeGame: "Ganze Partie nachspielen",
+    replayAi: "KI",
+    replayAiSuggestion: "KI-Vorschlag",
+    replayAiSuggestions: "KI-Vorschläge",
+    replayRecordedBid: "Gespielt",
+    replayBidNoSuggestion: "Kein Vorschlag verfügbar",
 
     // Settings
     settings: "Einstellungen",
@@ -317,6 +322,11 @@ export const translations = {
     replayNextRound: "Next round",
     replayPrevRound: "Previous round",
     replayWholeGame: "Replay the whole game",
+    replayAi: "AI",
+    replayAiSuggestion: "AI suggestion",
+    replayAiSuggestions: "AI suggestions",
+    replayRecordedBid: "Recorded",
+    replayBidNoSuggestion: "No suggestion available",
 
     // Settings
     settings: "Settings",

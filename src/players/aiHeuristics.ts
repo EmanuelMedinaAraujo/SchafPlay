@@ -1,6 +1,6 @@
 /** AI decision heuristics — pure; the engine owns pacing and validation. */
 
-import { Card, CardValue, Contract, GameDeclaration, GameType, Player, StossKind, Suit, Trick, WillBid } from "../game/types";
+import { Card, CardValue, Contract, GameDeclaration, GameType, StossKind, Suit, Trick, WillBid } from "../game/types";
 import {
   canOverrideBid,
   countPoints,
@@ -20,6 +20,11 @@ interface HandProfile {
   aces: Card[];
   trumpsInNormal: Card[];
   hand: Card[];
+}
+
+interface AIHand {
+  id: string;
+  cards: Card[];
 }
 
 function analyzeHand(hand: Card[]): HandProfile {
@@ -46,7 +51,7 @@ function isSoloWorthy({ obers, trumpsInNormal }: HandProfile): boolean {
   return obers.length >= 3 && trumpsInNormal.length >= 7;
 }
 
-export function getAIWillBid(player: Player, willBids: WillBid[]): boolean {
+export function getAIWillBid(player: AIHand, willBids: WillBid[]): boolean {
   const someoneElseWantsToPlay = willBids.some((bid) => bid.playerId !== player.id && bid.wantsToPlay);
 
   if (someoneElseWantsToPlay) {
@@ -61,7 +66,7 @@ export function getAIWillBid(player: Player, willBids: WillBid[]): boolean {
 
 /** `canRetreat` = "Doch passen" (#24): may only bow out once a Wenz/Solo stands. */
 export function getAIBid(
-  player: Player,
+  player: AIHand,
   existingDeclaration?: GameDeclaration | null,
   canRetreat = true,
 ): GameDeclaration | null {
@@ -114,7 +119,7 @@ export function getAIStoss(hand: Card[], contract: Contract, kind: StossKind): b
 }
 
 export function getAICardPlay(
-  player: Player,
+  player: AIHand,
   currentTrick: Trick | null,
   contract: Contract | null,
   tricks: Trick[],
@@ -227,7 +232,7 @@ function lowestValueCard(cards: Card[], gameType: GameType): Card {
 }
 
 /** Declaring side pulls trumps; a defender opens safely and keeps Tens back. */
-function chooseLead(player: Player, legal: Card[], contract: Contract | null, gameType: GameType): Card {
+function chooseLead(player: AIHand, legal: Card[], contract: Contract | null, gameType: GameType): Card {
   const trumps = legal.filter((card) => isTrump(card, gameType));
   const nonTrumps = legal.filter((card) => !isTrump(card, gameType));
   if (contract && isDeclaringSide(player.id, contract) && trumps.length > 0) return highestRankCard(trumps, gameType);
