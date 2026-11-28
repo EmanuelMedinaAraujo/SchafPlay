@@ -20,6 +20,13 @@ export const translations = {
     homeHintHost: "Tisch eröffnen",
     homeHintJoin: "Einladung annehmen",
     homeTally: "Strichliste",
+    humanPlayers: "Menschliche Spieler",
+    guestSeat: "Gast",
+    invitingSeat: "Wird eingeladen",
+    waitingSeat: "Wartet",
+    waitingForTable: "Warte auf die übrigen Mitspieler.",
+    waitingForReconnect: "Warte, bis alle Mitspieler wieder verbunden sind.",
+    reconnectGuestHint: "Bitte den Gastgeber um einen neuen Einladungscode für deinen Platz.",
     inviteCode: "Einladungscode",
     replyCode: "Antwortcode",
     pasteInvite: "Einladungscode einfügen",
@@ -89,7 +96,7 @@ export const translations = {
 
     // Connection / reconnect
     paused: "Spiel pausiert – Verbindung unterbrochen",
-    reconnectHint: "Erstelle einen neuen Einladungscode und tausche ihn mit deinem Mitspieler. Der Spielstand bleibt erhalten.",
+    reconnectHint: "Tausche für jeden getrennten Platz einen neuen Einladungscode aus. Der Spielstand bleibt erhalten.",
     rules: "Regeln",
 
     // Statistics
@@ -211,6 +218,13 @@ export const translations = {
     homeHintHost: "Open a table",
     homeHintJoin: "Accept an invite",
     homeTally: "Tally",
+    humanPlayers: "Human players",
+    guestSeat: "Guest",
+    invitingSeat: "Inviting",
+    waitingSeat: "Waiting",
+    waitingForTable: "Waiting for the other players.",
+    waitingForReconnect: "Waiting for everyone to reconnect.",
+    reconnectGuestHint: "Ask the host for a new invite code for your seat.",
     inviteCode: "Invite code",
     replyCode: "Reply code",
     pasteInvite: "Paste invite code",
@@ -277,7 +291,7 @@ export const translations = {
     notReady: "waiting",
 
     paused: "Game paused – connection lost",
-    reconnectHint: "Create a new invite code and exchange it with your partner. The game state is preserved.",
+    reconnectHint: "Exchange a fresh invite code for each disconnected seat. The game state is preserved.",
     rules: "Rules",
 
     // Statistics

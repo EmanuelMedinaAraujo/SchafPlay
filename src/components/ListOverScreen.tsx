@@ -13,7 +13,7 @@ interface ListOverScreenProps {
 
 export default function ListOverScreen({ state, language, myPlayerId, onAction, onQuit }: ListOverScreenProps) {
   const t = translations[language];
-  const { otherName, iAmReady, otherReady, sortedByScore: sortedPlayers } = summaryInfo(state, myPlayerId);
+  const { others, iAmReady, sortedByScore: sortedPlayers } = summaryInfo(state, myPlayerId);
   const winner = sortedPlayers[0];
 
   function triggerRematch() {
@@ -59,9 +59,9 @@ export default function ListOverScreen({ state, language, myPlayerId, onAction, 
             {t.quit}
           </button>
         </div>
-        <p className="muted list-over-status">
-          {otherName}: {otherReady ? `✓ ${t.isReady}` : `… ${t.notReady}`}
-        </p>
+        <div className="muted list-over-status">
+          {others.map(({ id, name }) => <div key={id}>{name}: {state.readyState[id] ? `✓ ${t.isReady}` : `… ${t.notReady}`}</div>)}
+        </div>
       </section>
     </div>
   );

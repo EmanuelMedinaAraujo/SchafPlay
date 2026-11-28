@@ -93,7 +93,7 @@ export class WebRTCPeer implements Transport, HostSignaling, GuestSignaling {
     dc.onopen = () => {
       if (this.closed) return;
       this.emitState("connected");
-      this.startHeartbeat();
+      if (!this.closed) this.startHeartbeat();
     };
     dc.onmessage = (event) => {
       if (this.closed) return;

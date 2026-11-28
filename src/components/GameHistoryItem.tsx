@@ -20,6 +20,11 @@ export default function GameHistoryItem({ game, language, onReplay }: GameHistor
   const t = translations[language];
   const [expanded, setExpanded] = useState(false);
   const score = game.finalScores[game.localPlayerId] ?? 0;
+  const opponents = game.players
+    .filter((player) => player.isHuman && player.id !== game.localPlayerId)
+    .map((player) => player.name)
+    .join(", ");
+  const participants = game.mode === "solo" ? t.statsSoloOpponent : opponents || game.opponentName || "—";
   const date = new Date(game.finishedAt).toLocaleDateString(language === "de" ? "de-DE" : "en-GB", {
     day: "2-digit",
     month: "2-digit",
@@ -39,7 +44,7 @@ export default function GameHistoryItem({ game, language, onReplay }: GameHistor
     >
       <span className="stats-date">{date}</span>
       <span className="stats-mode-icon">{game.mode === "solo" ? <BotIcon size={14} /> : <UsersIcon size={14} />}</span>
-      <span className="stats-opponent">{game.mode === "solo" ? t.statsSoloOpponent : (game.opponentName ?? "—")}</span>
+      <span className="stats-opponent" title={participants}>{participants}</span>
       <span className={`stats-score ${score >= 0 ? "positive" : "negative"}`}>{signed(score)}</span>
       <span className={`stats-result ${game.won ? "won" : "lost"}`}>{game.won ? "W" : "L"}</span>
     </button>

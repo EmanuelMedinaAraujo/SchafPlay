@@ -1,4 +1,4 @@
-import { GameState, GameStatus, Trick } from "../game/types";
+import { GameState, GameStatus, SeatId, Trick } from "../game/types";
 import { CardId, GameHistoryStore, RoundRecord, StatsMode, TrickRecord } from "./GameHistoryStore";
 import { gameHistoryStore } from "./store";
 
@@ -16,7 +16,7 @@ export class ListRecorder {
   constructor(
     private mode: StatsMode,
     private role: "host" | "guest" | "solo",
-    private localId: "p1" | "p3",
+    private localId: SeatId,
     private store: GameHistoryStore = gameHistoryStore,
   ) {}
 

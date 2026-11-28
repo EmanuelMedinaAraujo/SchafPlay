@@ -1,4 +1,4 @@
-import { bootHome, de, exchangeCodes, readInvite } from "./helpers/fixtures";
+import { bootHome, de, readInvite } from "./helpers/fixtures";
 import { expect, test } from "./helpers/test";
 
 /** Garbage that decompresses to nothing — exercises the INVALID_CODE path. */
@@ -48,12 +48,10 @@ test.describe("pairing", () => {
     await guest.goto(`/#invite=${encodeURIComponent(invite)}`);
     const guestFlow = guest.locator(".pairing-flow");
     await expect(guest.getByRole("tab", { name: de.joinGame })).toHaveAttribute("aria-selected", "true");
-    await expect(guestFlow.getByPlaceholder(de.pasteInviteHint)).toHaveValue(invite);
-
-    // The panel also auto-submits on mount, but StrictMode's dev
-    // double-invoke tears the auto-created peer down, so that path fails in
-    // the dev build. Drive the exchange explicitly instead.
-    await exchangeCodes(host, guest);
+    const reply = guestFlow.locator("textarea[readonly]");
+    await expect(reply).toBeVisible({ timeout: 15_000 });
+    await host.getByPlaceholder(de.pasteReplyHint).fill(await reply.inputValue());
+    await host.getByRole("button", { name: de.connect }).click();
 
     await expect(host.locator(".game-screen")).toBeVisible({ timeout: 15_000 });
     await expect(guest.locator(".game-screen")).toBeVisible({ timeout: 15_000 });
